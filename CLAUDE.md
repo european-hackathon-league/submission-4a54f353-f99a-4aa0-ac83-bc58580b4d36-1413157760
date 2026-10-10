@@ -23,6 +23,8 @@ BMW values: trustworthy sources, transparent reasoning, thoughtful prioritizatio
 - `architecture.mmd`: target architecture (Mermaid). **Source of truth for the pipeline.**
 - `database-design.md`: database design (tables, columns, rules) for Supabase Postgres + pgvector. **Source of truth for tables and fields.**
 - `data-model.mmd`: diagram of `database-design.md` (Mermaid ER).
+- `changes.md`: every decision changed during implementation, with reason and who decided.
+- `backend/`: the brain (FastAPI, migrations in `backend/supabase/migrations/`, tests in `backend/tests/`). Run tests with `cd backend && uv run pytest` (embedded local Postgres, no network).
 - `layers.mmd`: BMW's process slide as a diagram, for reference only (not our architecture).
 - `All-context/README.md`: index of all material. Read first.
 - `All-context/01-challenge/`: briefing, mission sheet, BMW process slides (md transcriptions + original PDF/PNG).

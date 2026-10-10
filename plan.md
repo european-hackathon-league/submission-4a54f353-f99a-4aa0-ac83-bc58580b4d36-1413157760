@@ -4,8 +4,8 @@
 
 | Phase | Title | Status | Commit | Verification result |
 |---|---|---|---|---|
-| 0 | Align docs, database design | done | see git log | Both Mermaid files render with mmdc 11.4.2; no "finding" left in design docs (BMW challenge transcriptions and meeting notes keep their original wording); database-design.md covers all tables |
-| 1 | Foundation | todo | | |
+| 0 | Align docs, database design | done | 8d9d1e8 | Both Mermaid files render with mmdc 11.4.2; no "finding" left in design docs (BMW challenge transcriptions and meeting notes keep their original wording); database-design.md covers all tables |
+| 1 | Foundation | done | see next phase | 14 tests passed (all tables + RLS, HNSW indexes, audit_event refuses UPDATE/DELETE/TRUNCATE, service_role has no UPDATE/DELETE grant, audited diff, stale save, tombstone, config sales check, strict schema, prompts, local embedder); 7 migrations apply on local Postgres 16 + pgvector; not yet applied to Supabase (no credentials) |
 | 2 | Seed | todo | | |
 | 3 | Signal contract and validation gate | todo | | |
 | 4 | Cases | todo | | |
@@ -20,7 +20,7 @@ Every phase ends with a commit `Completed phase N: <title>` pushed to `main`, an
 
 ## Open issues
 
-- none yet
+- Supabase credentials and OpenAI key not provided yet: migrations are tested on a local embedded Postgres 16 + pgvector 0.6 only; LLM steps run with the offline fallbacks until the key is in `backend/.env`.
 
 
 ## Context

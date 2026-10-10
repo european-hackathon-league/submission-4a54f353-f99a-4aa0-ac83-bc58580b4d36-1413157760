@@ -1,0 +1,68 @@
+"""Test databases: one migrated template on the embedded local Postgres,
+cloned into a fresh database per test that needs one."""
+
+import os
+import uuid
+from pathlib import Path
+
+import psycopg
+import pytest
+
+from app import db, localdb, migrate
+from app.config import BACKEND_DIR
+from app.llm import client as llm_client
+from app.llm import embeddings
+
+TEST_PG_DIR = BACKEND_DIR / ".data" / "pg-test"
+TEMPLATE = "bmw_test_template"
+
+
+def _admin(uri: str) -> psycopg.Connection:
+    return psycopg.connect(uri, autocommit=True)
+
+
+def _with_db(uri: str, name: str) -> str:
+    base, _, _ = uri.rpartition("/")
+    return f"{base}/{name}"
+
+
+@pytest.fixture(scope="session")
+def pg_uri() -> str:
+    uri = os.environ.get("TEST_DATABASE_URL") or localdb.start(Path(TEST_PG_DIR))
+    with _admin(uri) as conn:
+        localdb.create_supabase_roles(conn)
+        conn.execute(f"drop database if exists {TEMPLATE}")
+        conn.execute(f"create database {TEMPLATE}")
+    migrate.apply_all(_with_db(uri, TEMPLATE), verbose=False)
+    return uri
+
+
+@pytest.fixture
+def db_url(pg_uri):
+    """A fresh, fully migrated database; the app pool points at it."""
+    name = "t_" + uuid.uuid4().hex[:12]
+    with _admin(pg_uri) as conn:
+        conn.execute(f"create database {name} template {TEMPLATE}")
+    url = _with_db(pg_uri, name)
+    db.set_database_url(url)
+    yield url
+    db.set_database_url(None)
+    with _admin(pg_uri) as conn:
+        conn.execute(f"drop database if exists {name} with (force)")
+
+
+@pytest.fixture
+def conn(db_url):
+    with db.connect(db_url) as c:
+        yield c
+        c.rollback()
+
+
+@pytest.fixture(autouse=True)
+def offline_ai():
+    """No test talks to OpenAI: local embeddings, no LLM unless a test sets FakeLLM."""
+    embeddings.set_embedder(embeddings.LocalEmbedder())
+    llm_client.set_llm(None)
+    yield
+    embeddings.set_embedder(None)
+    llm_client.set_llm(None)

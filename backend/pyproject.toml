@@ -1,0 +1,42 @@
+[project]
+name = "bmw-brain"
+version = "0.1.0"
+description = "Backend (the brain) of the BMW Requirements Platform"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "psycopg[binary,pool]>=3.2",
+    "pgvector>=0.3",
+    "supabase>=2.7",
+    "openai>=1.50",
+    "httpx>=0.27",
+    "selectolax>=0.3",
+    "feedparser>=6.0",
+    "pdfplumber>=0.11",
+    "pypdf>=5.0",
+    "cryptography>=43",
+    "openpyxl>=3.1",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scikit-learn>=1.5",
+    "pyyaml>=6.0",
+    "tenacity>=9.0",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pgserver>=0.1.4",
+    "respx>=0.21",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
