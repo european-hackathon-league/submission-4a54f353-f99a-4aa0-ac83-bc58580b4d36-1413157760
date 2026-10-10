@@ -9,7 +9,8 @@ data/
 ├── 01-challenge/          What we are asked to build
 ├── 02-data/               Provided BMW data (raw/) and its documentation
 ├── 03-meetings/           Summaries (raw/ holds the transcripts)
-└── 04-team-notes/         Our own brainstorming
+├── 04-team-notes/         Our own brainstorming
+└── 05-web-sources/        External sources to fetch from
 ```
 
 ### 01-challenge: the task
@@ -38,6 +39,9 @@ Raw transcripts are in `03-meetings/raw/`; read the summaries first. The PM inte
 
 ### 04-team-notes: our thinking
 [`brainstorm-ideas.md`](04-team-notes/brainstorm-ideas.md): data sources, markets, architecture layers, agents, perspectives.
+
+### 05-web-sources: external data
+[`fetching-sources.md`](05-web-sources/fetching-sources.md): what to search for, the list of web sources with URLs (including sources for new launches and competitor generations), coverage per model and market, the fetch order, and what to save with every record.
 
 ## Recurring themes across the material
 - **Human in the loop, no black box:** every recommendation shows its source, market and evidence. The product manager accepts, edits or rejects.
