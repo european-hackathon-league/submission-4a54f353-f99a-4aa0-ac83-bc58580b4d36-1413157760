@@ -1,0 +1,5 @@
+i want you to make deep review and remove any context that is not relevant anymore in the actual folfder and also recheck for inconsistencies and repair them and make everything organized before we start palnning the implementation
+
+---
+
+also dont forget to update your claude md with the real decisions and delete old ones
