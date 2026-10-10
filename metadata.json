@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.10.2",
+  "checkpoint_id": "01M4KQGP72KMWX4MNKK4H06HGE",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "backend/app/audit.py",
+    "backend/app/llm/client.py",
+    "backend/app/llm/embeddings.py",
+    "backend/app/main.py",
+    "backend/app/prompts/README.md",
+    "backend/supabase/migrations/0001_extensions_and_types.sql",
+    "backend/supabase/migrations/0002_reference.sql",
+    "backend/supabase/migrations/0003_records_and_config.sql",
+    "backend/supabase/migrations/0004_baseline.sql",
+    "backend/supabase/migrations/0005_signals_cases_requirements.sql",
+    "backend/supabase/migrations/0006_collaboration_and_audit.sql",
+    "backend/supabase/migrations/0007_security_realtime_storage.sql",
+    "backend/tests/conftest.py",
+    "backend/tests/test_foundation.py",
+    "changes.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 48,
+    "cache_creation_tokens": 52143,
+    "cache_read_tokens": 4995166,
+    "output_tokens": 45037,
+    "api_call_count": 24
+  }
+}
