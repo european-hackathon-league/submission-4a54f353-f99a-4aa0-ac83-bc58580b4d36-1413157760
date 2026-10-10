@@ -43,7 +43,7 @@ This adds to the [PM interview](2026-10-10_pm-interview_summary.md) without repe
 
 | Theme | Implication |
 |---|---|
-| Market first | Use [`sales-volumes_2024-2030.xlsx`](../02-data/raw/sales-volumes_2024-2030.xlsx) to find the vehicle's main markets; weight requirements from them higher or use the top market as the default demo market |
+| Market first | Use [`sales-volumes_2024-2030.xlsx`](../02-data-provided-by-pm/raw/sales-volumes_2024-2030.xlsx) to find the vehicle's main markets; weight requirements from them higher or use the top market as the default demo market |
 | Project type as a setting | At the start, choose vehicle, market **and** project type (new generation or mid-life update); the project type limits which requirements are possible |
 | Change-depth tag | Tag each requirement as trim/option, part, or platform/powertrain; this can be the rough cost/effort factor the mission sheet allows in prioritization |
 | Quick wins from option lists | Easy items (paints, rims) map to the option lists (`option-list_*.pdf`) |

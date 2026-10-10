@@ -1,4 +1,4 @@
-# BMW Challenge – Product Manager Interview (10.10.2026)
+# Product Manager Interview 2: Notes, 10.10.2026, 16:05–16:46
 
 Cleaned from four ASR transcripts (16:05, 16:14, 16:24, 16:45). Filler words and ASR noise removed; wording lightly normalised, content unchanged. The speakers were not separated by the ASR (everything is tagged "You"), so Q = our team, A = BMW product managers (PMs). Where the audio was unclear I marked it with *[unclear]*.
 
@@ -127,11 +127,4 @@ Context: we are building an AI platform that helps BMW product managers research
 
 Mostly unintelligible ASR output. Recoverable gist: discussion of the **attributes of each case/entity so they can be shown easily in the UI**, positive remarks about the concept and being aware of the users, and an attempt to try something out *[unclear]*. No decisions can be reliably extracted.
 
----
-
-## Source files
-
-- `D:\Documents\MeetingTranscripts\2026-10-10_16-05\transcript.final.md`
-- `D:\Documents\MeetingTranscripts\2026-10-10_16-14\transcript.final.md`
-- `D:\Documents\MeetingTranscripts\2026-10-10_16-24\transcript.final.md`
-- `D:\Documents\MeetingTranscripts\2026-10-10_16-45\transcript.final.md`
+Source: four ASR transcripts recorded 10.10.2026 at 16:05, 16:14, 16:24 and 16:45 (not stored in this repository).

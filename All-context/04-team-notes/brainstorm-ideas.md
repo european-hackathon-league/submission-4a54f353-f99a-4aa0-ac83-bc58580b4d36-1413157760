@@ -1,6 +1,6 @@
 # Team Brainstorm: Ideas and Architecture Notes
 
-Informal team notes, grouped by theme.
+Informal team notes, grouped by theme. Early brainstorm (10.10.2026, before the architecture discussion): the decided design is in [`../../architecture.mmd`](../../architecture.mmd) and [`../../data-model.mmd`](../../data-model.mmd). The unedited original is in [`raw/brainstorm-raw-notes.md`](raw/brainstorm-raw-notes.md).
 
 ## Data and sources
 - Fetch from many places: YouTube and other review sources, car specs, customer feedback (by country), social media, and the Excel sheets provided by the hackathon.
@@ -38,4 +38,4 @@ Informal team notes, grouped by theme.
 
 ## Related
 - Mission and deliverables: [`../01-challenge/mission-and-deliverables.md`](../01-challenge/mission-and-deliverables.md)
-- Meeting notes: [`../03-meetings/`](../03-meetings/)
+- Meeting notes: [`../03-meetings-with-pm/`](../03-meetings-with-pm/)

@@ -2,7 +2,7 @@
 
 ![Data and sources table](assets/provided-data-overview.png)
 
-The files themselves are described in [`../02-data/README.md`](../02-data/README.md).
+The files themselves are described in [`../02-data-provided-by-pm/README.md`](../02-data-provided-by-pm/README.md).
 
 ## Provided data (per vehicle)
 

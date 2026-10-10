@@ -1,11 +1,12 @@
 erDiagram
     %% Core data model in Supabase Postgres (+ pgvector)
+    %% Field names and market values follow All-context/05-web-sources/fetching-sources.md section 7
     %% Chain: SOURCE -> FINDING -> CASE (problem) -> REQUIREMENT (solution) -> DECISION, all logged in AUDIT_EVENT
 
     CONFIG {
         uuid id PK
         text vehicle "e.g. G60"
-        text market "e.g. US"
+        text market "USA, China, Europe, Rest of World"
         jsonb competitor_set
         jsonb brand_profile "versioned assumption"
         jsonb source_filter
@@ -61,16 +62,45 @@ erDiagram
         text availability "standard, optional, absent, removed"
         text sa_code
         numeric price_eur
-        uuid source_id FK "PDF + page"
+        text record_id FK "PDF + page"
     }
     SOURCE {
-        uuid id PK
-        text source_type "bmw_feedback, study, option_list, review, news, forum, video_comment, spec_page, trend_report"
-        text location "url or file + row / page"
-        timestamptz published_at
-        timestamptz retrieved_at
+        text record_id PK "source_id + own ID, see fetching-sources.md 7.2"
+        text source_id "site, e.g. reddit, or bmw_feedback, option_list"
+        text category "A..J from fetching-sources.md"
+        text content_type "owner, expert, press, news"
+        text level "model, brand"
+        text url "or file + row / page"
+        text raw_ref "untouched raw response"
         text content_hash
-        text snapshot_path
+        timestamptz fetched_at
+        timestamptz published_at
+        text search_term
+        text thread_id
+        text author_hash
+        text chassis_code
+        text model_year
+        text vehicle_role "current, predecessor, competitor, unknown"
+        text powertrain "ICE, PHEV, BEV, unknown"
+        text country "ISO code"
+        text market "USA, China, Europe, Rest of World, unknown"
+        text language
+        text text_original
+        text text_en
+        jsonb engagement "upvotes, likes, views, replies"
+    }
+    DATA_RECORD {
+        text record_id PK "fetching-sources.md 7.3"
+        text source_id
+        text chassis_code
+        text powertrain
+        text market
+        text period "2026-09, 2025, 2030 forecast"
+        text metric "e.g. range, registrations"
+        numeric value
+        text unit
+        text source_location "sheet + cell, table, PDF page"
+        text raw_ref
     }
     AGENT_RUN {
         uuid id PK
@@ -84,26 +114,26 @@ erDiagram
     }
     FINDING {
         uuid id PK
-        uuid source_id FK
+        text record_id FK
         uuid run_id FK
         text schema_version
         text prompt_version
-        text customer_ref "verbatim ID or hashed author"
-        text market
+        text customer_ref "BMW verbatim ID or author_hash"
+        text market "USA, China, Europe, Rest of World, unknown"
         text market_basis "stated, inferred, unknown"
         text vehicle
-        text generation_tag "current, older"
+        text vehicle_role "current, predecessor, competitor, unknown"
         text powertrain
         text kind "complaint, wish, like, competitor_fact, trend, innovation"
         text severity "defect, difficult_to_use, wish, none"
         text_array car_area
         text feature_hint
         text summary "max 20 words EN"
-        text quote "exact, original language"
+        text quote "exact excerpt of text_original"
         text quote_en
-        int reach
+        int reach "from engagement"
         text reach_unit "views, upvotes, likes, none"
-        jsonb competitor_fact
+        text competitor_fact_ref "DATA_RECORD id, if a competitor fact"
         jsonb extra
         text validation "valid, quarantined, deleted"
         text reject_reason
@@ -186,6 +216,7 @@ erDiagram
     FEATURE ||--o{ VEHICLE_FEATURE : "offered as"
     FEATURE ||--o{ STUDY_SCORE : measures
     SOURCE ||--o{ FINDING : yields
+    DATA_RECORD ||--o{ FINDING : "backs competitor facts"
     AGENT_RUN ||--o{ FINDING : produced
     FEATURE ||--o{ CASE : groups
     CASE ||--o{ FINDING : contains

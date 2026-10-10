@@ -34,20 +34,20 @@ flowchart TB
     %% ---------- 2. Background agent loop ----------
     subgraph LOOP ["2 · Daily fetch loop (Python worker + cron, daily budget + priority)"]
         direction LR
-        A1["Competitor agent"]
-        A2["Customer + public feedback agent"]
-        A3["Trends agent"]
+        A1["Competitor agent<br>launches J · competitor equipment E"]
+        A2["Customer + public feedback agent<br>complaints A · reviews B · community C ·<br>expert + video D · apps H"]
+        A3["Trends agent<br>market, studies, trends F G I"]
         A4["Innovation scout<br>other industries, suppliers, CES"]
     end
-    SRCNOTE["Concrete sources + search provider:<br>owned by teammate, TBD"]
+    SRCNOTE["Sources: All-context/05-web-sources/fetching-sources.md<br>categories A..J, fetch order, record format<br>search provider: teammate, TBD"]
     SRCNOTE -.-> LOOP
 
-    SNAP[("Source snapshot store<br>raw page / API response, URL,<br>retrieved_at, content hash")]
+    SNAP[("Source records<br>raw response + record fields<br>text records 7.2 · data records 7.3")]
 
     %% ---------- 3. Finding record ----------
     subgraph NORM ["3 · Finding record (versioned JSON contract)"]
         direction TB
-        J1["finding JSON, one statement about one feature<br>source + published_at · subject + generation tag<br>market + basis · hashed author_ref<br>kind · severity · car_area fixed list · feature_hint<br>summary ≤ 20 words EN · exact quote + EN translation<br>reach + unit · competitor_fact structured · extra"]
+        J1["finding JSON, one statement about one feature<br>source + published_at · subject + generation tag<br>market USA / China / Europe / RoW / unknown + basis<br>vehicle_role · author_hash<br>kind · severity · car_area fixed list · feature_hint<br>summary ≤ 20 words EN · exact quote + EN translation<br>reach + unit · competitor_fact structured · extra"]
         J2{"Validation gate<br>schema · snapshot · quote found ·<br>duplicate · source filter · dated competitor fact"}
         J3[("Quarantine<br>rejected + reason, visible count<br>PM delete = content purged, tombstone in audit")]
         J1 --> J2
