@@ -66,3 +66,43 @@ def offline_ai():
     yield
     embeddings.set_embedder(None)
     llm_client.set_llm(None)
+
+
+SEEDED = "bmw_test_seeded"
+
+
+@pytest.fixture(scope="session")
+def seeded_template(pg_uri):
+    """A database seeded once from the provided data (about 1.5 minutes)."""
+    with _admin(pg_uri) as conn:
+        conn.execute(f"drop database if exists {SEEDED} with (force)")
+        conn.execute(f"create database {SEEDED} template {TEMPLATE}")
+    from app.seed import run
+
+    embeddings.set_embedder(embeddings.LocalEmbedder())
+    db.set_database_url(_with_db(pg_uri, SEEDED))
+    try:
+        run.seed_all()
+    finally:
+        db.set_database_url(None)
+    return SEEDED
+
+
+@pytest.fixture
+def seeded_url(pg_uri, seeded_template):
+    name = "s_" + uuid.uuid4().hex[:12]
+    with _admin(pg_uri) as conn:
+        conn.execute(f"create database {name} template {seeded_template}")
+    url = _with_db(pg_uri, name)
+    db.set_database_url(url)
+    yield url
+    db.set_database_url(None)
+    with _admin(pg_uri) as conn:
+        conn.execute(f"drop database if exists {name} with (force)")
+
+
+@pytest.fixture
+def sconn(seeded_url):
+    with db.connect(seeded_url) as c:
+        yield c
+        c.rollback()

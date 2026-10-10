@@ -176,15 +176,71 @@ def insert_many(
     run_id=None,
     on_conflict_do_nothing: bool = False,
 ) -> int:
-    """Bulk insert (seed, fetch) with one audit event per stored row. Returns rows stored."""
-    count = 0
+    """Bulk insert (seed, fetch) with one audit event per stored row. Returns rows stored.
+
+    Rows are written in batches (multi-row INSERT ... RETURNING, then one
+    multi-row audit insert per batch) in the caller's transaction.
+    """
+    return len(insert_many_returning(
+        conn, table, rows, actor=actor, rationale=rationale, key=key, run_id=run_id,
+        on_conflict_do_nothing=on_conflict_do_nothing,
+    ))
+
+
+def insert_many_returning(
+    conn: Connection,
+    table: str,
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    actor: str,
+    rationale: str | None = None,
+    key: str | Sequence[str] = "id",
+    run_id=None,
+    on_conflict_do_nothing: bool = False,
+    batch_size: int = 500,
+) -> list[dict]:
+    types = column_types(conn, table)
+    a_type = actor_type(actor)
+    stored_all: list[dict] = []
+    batch: list[Mapping[str, Any]] = []
+
+    def flush() -> None:
+        if not batch:
+            return
+        cols = list(batch[0].keys())
+        values = sql.SQL(", ").join(
+            sql.SQL("({})").format(sql.SQL(", ").join(sql.Placeholder() * len(cols))) for _ in batch
+        )
+        query = sql.SQL("insert into {} ({}) values ").format(
+            sql.Identifier(table), sql.SQL(", ").join(map(sql.Identifier, cols))
+        ) + values
+        if on_conflict_do_nothing:
+            query += sql.SQL(" on conflict do nothing")
+        query += sql.SQL(" returning *")
+        params = [_db_value(types, c, r.get(c)) for r in batch for c in cols]
+        stored = conn.execute(query, params).fetchall()
+        if stored:
+            audit_values = sql.SQL(", ").join(sql.SQL("(%s, %s, %s, %s, %s, %s, %s, %s)") for _ in stored)
+            audit_params: list[Any] = []
+            for s in stored:
+                audit_params += [actor, a_type, "create", object_type_of(table), _key_of(s, key),
+                                 Jsonb(_audit_row(s)), rationale, run_id]
+            conn.execute(
+                sql.SQL("insert into audit_event (actor, actor_type, action, object_type, object_id, after,"
+                        " rationale, run_id) values ") + audit_values,
+                audit_params,
+            )
+        stored_all.extend(stored)
+        batch.clear()
+
     for row in rows:
-        if insert(
-            conn, table, row, actor=actor, rationale=rationale, key=key, run_id=run_id,
-            on_conflict_do_nothing=on_conflict_do_nothing,
-        ) is not None:
-            count += 1
-    return count
+        if batch and list(row.keys()) != list(batch[0].keys()):
+            flush()
+        batch.append(row)
+        if len(batch) >= batch_size:
+            flush()
+    flush()
+    return stored_all
 
 
 def _where(key: Mapping[str, Any]) -> tuple[sql.Composed, list]:

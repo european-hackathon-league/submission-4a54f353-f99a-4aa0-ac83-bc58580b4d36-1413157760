@@ -1,0 +1,2937 @@
+parsed_from: All-context/05-web-sources/fetching-sources.md
+vehicles:
+- code: F70
+  series: 1 Series
+  segment: entry
+  generation: 4th generation
+  on_sale_since: '2024-01-01'
+  on_sale_precision: year
+  predecessor_code: F40
+  is_current: true
+  variants:
+  - '116'
+  - '118'
+  - '120'
+  - 120d
+  - 123 xDrive
+  - M135
+  slugs:
+  - 1-series
+  wikipedia_page: BMW 1 Series (F70)
+  names:
+    en:
+    - 1 Series
+    de:
+    - 1er
+    fr:
+    - Série 1
+    it:
+    - Serie 1
+    es:
+    - Serie 1
+    nl:
+    - 1 Serie
+- code: G60
+  series: 5 Series
+  segment: business
+  generation: 8th generation
+  on_sale_since: '2023-01-01'
+  on_sale_precision: year
+  predecessor_code: G30
+  is_current: true
+  variants:
+  - 520i
+  - 530i
+  - 540i
+  - 550e
+  - 530e
+  - i5 eDrive40
+  - i5 xDrive40
+  - i5 M60
+  - M5
+  slugs:
+  - 5-series
+  - i5
+  - m5
+  wikipedia_page: BMW 5 Series (G60)
+  chassis_aliases:
+  - G61
+  - G68
+  - G90
+  - G99
+  names:
+    en:
+    - 5 Series
+    - i5
+    de:
+    - 5er
+    - i5
+    fr:
+    - Série 5
+    it:
+    - Serie 5
+    es:
+    - Serie 5
+    nl:
+    - 5 Serie
+    zh:
+    - 宝马5系
+    - 宝马i5
+- code: G70
+  series: 7 Series
+  segment: luxury
+  generation: 7th generation
+  on_sale_since: '2022-07-01'
+  on_sale_precision: month
+  predecessor_code: G11
+  is_current: true
+  variants:
+  - 740i
+  - 750e
+  - 760i
+  - i7 eDrive50
+  - i7 xDrive60
+  - i7 M70
+  slugs:
+  - 7-series
+  - i7
+  wikipedia_page: BMW 7 Series (G70)
+  names:
+    en:
+    - 7 Series
+    - i7
+    de:
+    - 7er
+    - i7
+    fr:
+    - Série 7
+    it:
+    - Serie 7
+    es:
+    - Serie 7
+    nl:
+    - 7 Serie
+    zh:
+    - 宝马7系
+    - 宝马i7
+- code: F40
+  series: 1 Series
+  segment: entry
+  generation: 3rd generation
+  on_sale_since: '2019-01-01'
+  on_sale_precision: year
+  is_current: false
+- code: G30
+  series: 5 Series
+  segment: business
+  generation: 7th generation
+  on_sale_since: '2017-02-01'
+  on_sale_precision: month
+  is_current: false
+  chassis_aliases:
+  - G31
+  - G38
+- code: G11
+  series: 7 Series
+  segment: luxury
+  generation: 6th generation
+  on_sale_since: '2015-01-01'
+  on_sale_precision: year
+  is_current: false
+  chassis_aliases:
+  - G12
+sources:
+- source_id: bmw_feedback
+  name: BMW customer feedback (provided Excel)
+  categories:
+  - A
+  - B
+  country: Global
+  level: model
+  access: Internal
+  check_status: provided
+- source_id: bmw_study
+  name: BMW customer study 2025 (provided Excel)
+  categories:
+  - G
+  country: Global
+  level: model
+  access: Internal
+  check_status: provided
+- source_id: bmw_sales
+  name: BMW sales volumes 2024-2030 (provided Excel)
+  categories:
+  - F
+  country: Global
+  level: market
+  access: Internal
+  check_status: provided
+- source_id: option_list
+  name: BMW option lists, German market, July 2026 (provided PDF)
+  categories:
+  - E
+  country: DE
+  level: model
+  access: Internal
+  check_status: provided
+- source_id: wikipedia
+  name: 'Wikipedia model pages: generation codes, production years, body variants, successors'
+  url_pattern: '`en.wikipedia.org/w/api.php?action=query&prop=extracts&titles={page}` with the page names from section 2; also `de.` and `zh.`
+    editions. Several titles per request, joined with a vertical bar; single rapid requests are rate-limited'
+  categories:
+  - J
+  country: Global
+  level: market
+  access: API
+  check_status: Data OK
+  fetch_step: 1
+  enabled: true
+- source_id: wikidata
+  name: 'Wikidata: manufacturer, start of production, predecessor, successor'
+  url_pattern: '`wikidata.org/w/api.php?action=wbsearchentities&search={brand model}`'
+  categories:
+  - J
+  country: Global
+  level: market
+  access: API
+  check_status: Data OK
+  fetch_step: 1
+  enabled: true
+- source_id: nhtsa-vpic
+  name: 'NHTSA vPIC: every model of a make per US model year'
+  url_pattern: '`vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/{brand}/modelyear/{year}?format=json`'
+  categories:
+  - J
+  country: US
+  level: market
+  access: API
+  check_status: Data OK
+  fetch_step: 1
+  enabled: true
+- source_id: fueleconomy
+  name: 'US EPA fuel economy: exact variants and powertrains per US model year'
+  url_pattern: '`fueleconomy.gov/ws/rest/vehicle/menu/model?year={year}&make={brand}`'
+  categories:
+  - J
+  - E
+  country: US
+  level: market
+  access: API
+  check_status: Data OK
+  fetch_step: 1
+  enabled: true
+- source_id: auto-data
+  name: 'auto-data.net: generations, production years, technical specs'
+  url_pattern: Brand index `auto-data.net/en/bmw-brand-86`; BMW model pages `auto-data.net/en/bmw-1-series-model-948`, `...bmw-5-series-model-944`,
+    `...bmw-7-series-model-945`, `...bmw-i5-model-3260`, `...bmw-i7-model-3105`; competitor pages are linked from each brand index
+  categories:
+  - J
+  - E
+  country: Global
+  level: market
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 1
+  enabled: true
+- source_id: ev-database
+  name: 'EV Database: electric models on sale and announced, availability dates, specs'
+  url_pattern: '`ev-database.org/car/{id}/{name}`. BMW: `1906/BMW-i5-eDrive40-Sedan`, `2096/BMW-i5-xDrive40-Sedan`, `1907/BMW-i5-M60-xDrive-Sedan`,
+    `2114/BMW-i5-eDrive40-Touring`, `2115/BMW-i5-M60-xDrive-Touring`, `1905/BMW-i7-eDrive50`, `1676/BMW-i7-xDrive60`, `1838/BMW-i7-M70-xDrive`;
+    all cars are linked from `ev-database.org`'
+  categories:
+  - J
+  - E
+  country: EU
+  level: market
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 1
+  enabled: true
+- source_id: motor1
+  name: Motor1 news
+  url_pattern: '`motor1.com/rss/news/all/`'
+  categories:
+  - J
+  - E
+  country: Global
+  level: model
+  access: RSS
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: insideevs
+  name: InsideEVs news
+  url_pattern: '`insideevs.com/rss/news/all/`'
+  categories:
+  - J
+  - E
+  - I
+  country: Global
+  level: model
+  access: RSS
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: electrek
+  name: Electrek news
+  url_pattern: '`electrek.co/feed/`'
+  categories:
+  - J
+  - I
+  country: Global
+  level: model
+  access: RSS
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: thedrive
+  name: The Drive news
+  url_pattern: '`thedrive.com/feed`'
+  categories:
+  - J
+  country: US
+  level: model
+  access: RSS
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: carscoops
+  name: Carscoops news and spy shots
+  url_pattern: '`carscoops.com/feed/`, `carscoops.com/category/scoops/`'
+  categories:
+  - J
+  country: Global
+  level: model
+  access: RSS
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: autoevolution-feed
+  name: autoevolution news
+  url_pattern: '`autoevolution.com/rss/backend.xml`'
+  categories:
+  - J
+  country: Global
+  level: model
+  access: RSS
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: bmwblog
+  name: BMWBlog, BMW-only news
+  url_pattern: '`bmwblog.com/feed/`'
+  categories:
+  - J
+  country: Global
+  level: model
+  access: RSS
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: bimmertoday
+  name: Bimmertoday, BMW-only news in German
+  url_pattern: '`bimmertoday.de/feed/`'
+  categories:
+  - J
+  country: DE
+  level: model
+  access: RSS
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: carnewschina
+  name: 'CarNewsChina: Chinese launches, specs, MIIT filings (new models before launch), monthly sales, in English'
+  url_pattern: '`carnewschina.com/feed/`, `carnewschina.com/tag/{brand}/`, `carnewschina.com/tag/miit/`'
+  categories:
+  - J
+  - E
+  - F
+  country: CN
+  level: model
+  access: RSS, Scraping
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: cnevpost
+  name: 'CnEVPost: Chinese EV launches and CPCA / CAAM sales, in English'
+  url_pattern: '`cnevpost.com/feed/`, `cnevpost.com/tag/{brand}/`'
+  categories:
+  - J
+  - E
+  - F
+  country: CN
+  level: model
+  access: RSS, Scraping
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: press-bmw
+  name: BMW Group PressClub
+  url_pattern: '`press.bmwgroup.com/global`, feed `press.bmwgroup.com/global/rss`'
+  categories:
+  - J
+  - E
+  country: Global
+  level: model
+  access: RSS, Scraping
+  check_status: Data OK
+  fetch_step: 3
+  enabled: true
+- source_id: press-mercedes
+  name: Mercedes-Benz Media
+  url_pattern: '`media.mercedes-benz.com`'
+  categories:
+  - J
+  - E
+  country: Global
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: press-audi
+  name: Audi Media Center (the old `audi-mediacenter.com` address redirects here)
+  url_pattern: '`audi.com/en/press-releases`, hub `audi.com/en/service-2305`'
+  categories:
+  - J
+  - E
+  country: Global
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: press-genesis
+  name: Genesis newsroom (USA)
+  url_pattern: '`genesisnewsusa.com`'
+  categories:
+  - J
+  - E
+  country: US
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: press-lexus
+  name: Lexus pressroom (USA)
+  url_pattern: '`pressroom.lexus.com`'
+  categories:
+  - J
+  - E
+  country: US
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: press-porsche
+  name: Porsche Newsroom
+  url_pattern: '`newsroom.porsche.com/en.html`'
+  categories:
+  - J
+  - E
+  country: Global
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: autocar-new-cars
+  name: Autocar "new cars" list
+  url_pattern: '`autocar.co.uk/car-news/new-cars`'
+  categories:
+  - J
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: caranddriver-future
+  name: Car and Driver "future cars"
+  url_pattern: '`caranddriver.com/future-cars/`'
+  categories:
+  - J
+  country: US
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: autoexpress-news
+  name: Auto Express news
+  url_pattern: '`autoexpress.co.uk/news`'
+  categories:
+  - J
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: autohome-new
+  name: Autohome new-car listing
+  url_pattern: '`autohome.com.cn/newbrand/`'
+  categories:
+  - J
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: dongchedi-new
+  name: Dongchedi new-car listing
+  url_pattern: '`dongchedi.com/newcar`'
+  categories:
+  - J
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: byd-site
+  name: BYD
+  url_pattern: '`byd.com`'
+  categories:
+  - J
+  - E
+  country: CN
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: nio-site
+  name: NIO news
+  url_pattern: '`nio.com/news`'
+  categories:
+  - J
+  - E
+  country: CN
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: xiaomi-ev-site
+  name: Xiaomi EV
+  url_pattern: '`xiaomiev.com`'
+  categories:
+  - J
+  - E
+  country: CN
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: zeekr-site
+  name: Zeekr
+  url_pattern: '`zeekrlife.com`'
+  categories:
+  - J
+  - E
+  country: CN
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: iaa
+  name: IAA Mobility (Munich auto show)
+  url_pattern: '`iaa-mobility.com/en`'
+  categories:
+  - J
+  - I
+  country: DE
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: ces
+  name: CES
+  url_pattern: '`ces.tech`'
+  categories:
+  - J
+  - I
+  country: US
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: auto-china
+  name: Auto China (Beijing and Shanghai shows)
+  url_pattern: '`autochinashow.org`'
+  categories:
+  - J
+  - I
+  country: CN
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 3
+  enabled: true
+- source_id: autoblog
+  name: Autoblog news
+  url_pattern: '`autoblog.com`'
+  categories:
+  - J
+  country: US
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: autoevolution-pages
+  name: autoevolution model generation pages
+  url_pattern: '`autoevolution.com/{brand}/{model}/`'
+  categories:
+  - J
+  country: Global
+  level: market
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: gasgoo
+  name: Gasgoo, Chinese industry news in English
+  url_pattern: '`autonews.gasgoo.com`'
+  categories:
+  - J
+  country: CN
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: tesla-ir
+  name: Tesla investor relations (Tesla has no press portal)
+  url_pattern: '`ir.tesla.com`'
+  categories:
+  - J
+  - E
+  country: Global
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: nhtsa-complaints
+  name: NHTSA owner complaints
+  url_pattern: '`api.nhtsa.gov/complaints/complaintsByVehicle?make={brand}&model={NHTSA name}&modelYear={year}`, names from section 2.1'
+  categories:
+  - A
+  country: US
+  level: model
+  access: API
+  check_status: Data OK
+  fetch_step: 2
+  enabled: true
+- source_id: nhtsa-recalls
+  name: NHTSA recalls
+  url_pattern: '`api.nhtsa.gov/recalls/recallsByVehicle?make={brand}&model={NHTSA name}&modelYear={year}`'
+  categories:
+  - A
+  country: US
+  level: model
+  access: API
+  check_status: Not tested
+  fetch_step: 2
+  enabled: true
+- source_id: carcomplaints
+  name: CarComplaints.com
+  url_pattern: '`carcomplaints.com/{Brand}/{variant}/`; the variant list per brand is in [3.9](#39-all-pages-page-structure-and-pagination)'
+  categories:
+  - A
+  country: US
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 6
+  enabled: true
+- source_id: adac-breakdown
+  name: ADAC breakdown statistics
+  url_pattern: '`adac.de/rund-ums-fahrzeug/unfall-schaden-panne/adac-pannenstatistik/`'
+  categories:
+  - A
+  country: DE
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: tuv-report
+  name: TÜV Report (press summaries; the full report is paid)
+  url_pattern: '`tuv.com/germany/de/`'
+  categories:
+  - A
+  country: DE
+  level: model
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: 12365auto
+  name: 12365auto owner complaint platform
+  url_pattern: '`12365auto.com/zlts/`'
+  categories:
+  - A
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: eu-safety-gate
+  name: EU Safety Gate product alerts
+  url_pattern: '`ec.europa.eu/safety-gate-alerts/screen/search`'
+  categories:
+  - A
+  country: EU
+  level: model
+  access: Scraping, JS app
+  check_status: Page OK
+  fetch_step: 12
+  enabled: false
+- source_id: samr-recalls
+  name: SAMR recall notices
+  url_pattern: '`samr.gov.cn`'
+  categories:
+  - A
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 12
+  enabled: false
+- source_id: parkers
+  name: Parkers owner and expert reviews
+  url_pattern: '`parkers.co.uk/{brand}/{model}/owner-reviews/`, then per generation with `?page={n}`; structure in [3.9](#39-all-pages-page-structure-and-pagination),
+    slugs in [3.10](#310-all-competitors-slug-per-site)'
+  categories:
+  - B
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 6
+  enabled: true
+- source_id: whatcar
+  name: What Car? reviews and Reliability Survey
+  url_pattern: '`whatcar.com/{brand}/{model}/{body}/review/`, body = `hatchback`, `saloon` or `estate`: `bmw/1-series/hatchback`, `bmw/5-series/saloon`,
+    `bmw/7-series/saloon`, `mercedes-benz/e-class/saloon`'
+  categories:
+  - B
+  - G
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 6
+  enabled: true
+- source_id: kbb
+  name: Kelley Blue Book consumer reviews
+  url_pattern: '`kbb.com/{brand}/{model}/{year}/consumer-reviews/`; reviews are in the page JSON; structure in [3.9](#39-all-pages-page-structure-and-pagination),
+    slugs in [3.10](#310-all-competitors-slug-per-site)'
+  categories:
+  - B
+  country: US
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 6
+  enabled: true
+- source_id: carwow
+  name: Carwow owner and expert reviews
+  url_pattern: '`carwow.co.uk/{brand}/{model}`: `bmw/1-series`, `bmw/5-series`, `bmw/7-series`, `mercedes/e-class`, `audi/a3`. Mercedes slug is
+    `mercedes`. German site `carwow.de`'
+  categories:
+  - B
+  - D
+  country: GB, DE
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 6
+  enabled: true
+- source_id: autoscout24
+  name: AutoScout24 model pages and owner ratings
+  url_pattern: '`autoscout24.de/auto/{brand}/{brand}-{model}/`: `bmw/bmw-1er`, `bmw/bmw-5er`, `bmw/bmw-7er`, `mercedes-benz/mercedes-benz-e-klasse`'
+  categories:
+  - B
+  country: DE
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 6
+  enabled: true
+- source_id: caradisiac
+  name: Caradisiac owner "avis"
+  url_pattern: '`caradisiac.com`'
+  categories:
+  - B
+  - D
+  country: FR
+  level: model
+  access: Scraping, French
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: largus
+  name: L'argus
+  url_pattern: '`largus.fr`'
+  categories:
+  - B
+  country: FR
+  level: model
+  access: Scraping, French
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: quattroruote
+  name: Quattroruote
+  url_pattern: '`quattroruote.it/listino/{brand}/{model}`: `bmw/serie-5`'
+  categories:
+  - B
+  - D
+  country: IT
+  level: model
+  access: Scraping, Italian
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: alvolante
+  name: AlVolante
+  url_pattern: '`alvolante.it`'
+  categories:
+  - B
+  country: IT
+  level: model
+  access: Scraping, Italian
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: km77
+  name: km77
+  url_pattern: '`km77.com/coches/{brand}/{model}`: `bmw/serie-5`'
+  categories:
+  - B
+  - D
+  country: ES
+  level: model
+  access: Scraping, Spanish
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: coches-net
+  name: coches.net
+  url_pattern: '`coches.net`'
+  categories:
+  - B
+  country: ES
+  level: model
+  access: Scraping, Spanish
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: elbilforum
+  name: Elbilforum, Norwegian EV owners
+  url_pattern: '`elbilforum.no`'
+  categories:
+  - B
+  - C
+  country: 'NO'
+  level: model
+  access: Scraping, Norwegian
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: autohome
+  name: Autohome owner reviews (koubei)
+  url_pattern: '`k.autohome.com.cn/{series id}/`; the series ID of each model is found through the site search'
+  categories:
+  - B
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: dongchedi
+  name: Dongchedi owner reviews and rankings
+  url_pattern: '`dongchedi.com/auto/series/{series id}`'
+  categories:
+  - B
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: yiche
+  name: Yiche
+  url_pattern: '`yiche.com`'
+  categories:
+  - B
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: pcauto
+  name: PCauto
+  url_pattern: '`pcauto.com.cn`'
+  categories:
+  - B
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: xcar
+  name: Xcar
+  url_pattern: '`xcar.com.cn`'
+  categories:
+  - B
+  country: CN
+  level: model
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 10
+  enabled: false
+- source_id: cars-com
+  name: Cars.com consumer reviews
+  url_pattern: '`cars.com/research/{brand}-{variant}-{year}/consumer-reviews/`: `bmw-530-2024`'
+  categories:
+  - B
+  country: US
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: edmunds
+  name: Edmunds consumer and expert reviews
+  url_pattern: '`edmunds.com/{brand}/{model}/{year}/consumer-reviews/`: `bmw/5-series/2024`'
+  categories:
+  - B
+  - D
+  country: US
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: cargurus
+  name: CarGurus owner reviews
+  url_pattern: '`cargurus.com`'
+  categories:
+  - B
+  country: US
+  level: model
+  access: Browser
+  check_status: Blocked (406)
+  fetch_step: 11
+  enabled: false
+- source_id: autotrader-uk
+  name: Auto Trader UK owner reviews
+  url_pattern: '`autotrader.co.uk`'
+  categories:
+  - B
+  country: GB
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: mobile-de
+  name: mobile.de owner ratings
+  url_pattern: '`mobile.de`'
+  categories:
+  - B
+  country: DE
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: autoweek-nl
+  name: AutoWeek.nl owner reviews
+  url_pattern: '`autoweek.nl`'
+  categories:
+  - B
+  - D
+  country: NL
+  level: model
+  access: Browser, Dutch
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: reddit
+  name: 'Reddit: `r/BMW`, `r/cars`, `r/electricvehicles`, `r/whatcarshouldIbuy`, `r/mercedes_benz`, `r/Audi`, `r/TeslaLounge`, `r/CarTalkUK`;
+    model subreddits are found with the API''s subreddit search (`/subreddits/search?q=BMW i5`)'
+  url_pattern: '`oauth.reddit.com/r/{subreddit}/search?q={term}&restrict_sr=1`'
+  categories:
+  - C
+  - H
+  country: Global, US-heavy
+  level: model
+  access: API
+  check_status: Not tested
+  fetch_step: 2
+  enabled: true
+- source_id: youtube-comments
+  name: YouTube comments on videos of the channels in section 3.5
+  url_pattern: '`googleapis.com/youtube/v3/commentThreads?videoId={video id}`'
+  categories:
+  - C
+  - D
+  country: Global
+  level: model
+  access: API
+  check_status: Not tested
+  fetch_step: 2
+  enabled: true
+- source_id: motor-talk
+  name: Motor-Talk, largest German car forum
+  url_pattern: 'BMW index `motor-talk.de/forum/bmw-b4.html`. F70: `/forum/bmw-1er-f70-b1196.html`; F40: `/forum/bmw-1er-f40-b1079.html`; G60,
+    G61 and M5: `/forum/bmw-5er-g60-g61-g90-g99-b1172.html`; G30: `/forum/bmw-5er-g30-g31-f90-b1004.html`; 7 Series: `/forum/bmw-6er-7er-8er-b167.html`;
+    i5: `/forum/bmw-i5-b1188.html`; other BMW i models under `/forum/bmw-i-b867.html`. Rival brand forums are linked from `motor-talk.de/forum/auto-b3.html`
+    (`audi-b40`, `cupra-b1104`, `byd-b1208`, `chinesische-pkw-b433`)'
+  categories:
+  - C
+  country: DE
+  level: model
+  access: Scraping, German
+  check_status: Pattern OK
+  fetch_step: 5
+  enabled: true
+- source_id: tmc
+  name: Tesla Motors Club, Model S forum
+  url_pattern: '`teslamotorsclub.com/tmc/forums/model-s.73/`'
+  categories:
+  - C
+  country: US
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 5
+  enabled: true
+- source_id: genesis-owners
+  name: Genesis Owners
+  url_pattern: 'G80: `genesisowners.com/genesis-forum/forums/genesis-g80-forum-g80-ev-forum-g80forum-com.107/`; G90 from 2023: `.../forums/genesis-g90-2023-second-generation.161/`'
+  categories:
+  - C
+  country: US
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 5
+  enabled: true
+- source_id: lucid-owners
+  name: Lucid Owners, Air forums
+  url_pattern: '`lucidowners.com/forums/`, feed `lucidowners.com/forums/-/index.rss`'
+  categories:
+  - C
+  country: US
+  level: model
+  access: Scraping, RSS
+  check_status: Pattern OK
+  fetch_step: 5
+  enabled: true
+- source_id: pistonheads
+  name: PistonHeads, "BMW General" forum
+  url_pattern: '`pistonheads.com/gassing/forum.asp?h=0&f=72`'
+  categories:
+  - C
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 5
+  enabled: true
+- source_id: bimmerpost-g60
+  name: Bimmerpost 5 Series G60 forum
+  url_pattern: '`g60.bimmerpost.com/forums/`'
+  categories:
+  - C
+  - H
+  country: Global, US-heavy
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: bimmerpost-g70
+  name: Bimmerpost 7 Series G70 forum
+  url_pattern: '`g70.bimmerpost.com/forums/`'
+  categories:
+  - C
+  - H
+  country: Global, US-heavy
+  level: model
+  access: Browser
+  check_status: No response
+  fetch_step: 11
+  enabled: false
+- source_id: bimmerpost-f70
+  name: Bimmerpost 1 Series F70 forum
+  url_pattern: '`f70.bimmerpost.com/forums/`; the address answers but is blocked, so the forum itself is unconfirmed. All model forums are linked
+    from `bimmerpost.com`'
+  categories:
+  - C
+  - H
+  country: Global
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: mbworld
+  name: MBWorld (E-Class, S-Class, EQE, EQS)
+  url_pattern: '`mbworld.org/forums/`'
+  categories:
+  - C
+  country: US
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: audiworld
+  name: AudiWorld (A6, A8, A3)
+  url_pattern: '`audiworld.com/forums/`'
+  categories:
+  - C
+  country: US
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: clublexus
+  name: ClubLexus (ES, LS)
+  url_pattern: '`clublexus.com/forums/`'
+  categories:
+  - C
+  country: US
+  level: model
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: bimmerfest
+  name: Bimmerfest
+  url_pattern: '`bimmerfest.com`'
+  categories:
+  - C
+  country: US
+  level: model
+  access: Browser
+  check_status: Challenge (202)
+  fetch_step: 11
+  enabled: false
+- source_id: speakev
+  name: SpeakEV (i5, i7 and electric rivals)
+  url_pattern: '`speakev.com`'
+  categories:
+  - C
+  country: GB
+  level: model
+  access: Browser
+  check_status: Challenge (202)
+  fetch_step: 11
+  enabled: false
+- source_id: weibo
+  name: Weibo
+  url_pattern: '`weibo.com`'
+  categories:
+  - C
+  country: CN
+  level: model
+  access: Login, Chinese
+  check_status: Page OK
+  fetch_step: 13
+  enabled: false
+- source_id: xiaohongshu
+  name: Xiaohongshu
+  url_pattern: '`xiaohongshu.com`'
+  categories:
+  - C
+  country: CN
+  level: model
+  access: Login, Chinese
+  check_status: Page OK
+  fetch_step: 13
+  enabled: false
+- source_id: bilibili
+  name: Bilibili
+  url_pattern: '`bilibili.com`'
+  categories:
+  - C
+  - D
+  country: CN
+  level: model
+  access: Login, Chinese
+  check_status: Page OK
+  fetch_step: 13
+  enabled: false
+- source_id: douyin
+  name: Douyin
+  url_pattern: '`douyin.com`'
+  categories:
+  - C
+  country: CN
+  level: model
+  access: Login, Chinese
+  check_status: Page OK
+  fetch_step: 13
+  enabled: false
+- source_id: zhihu
+  name: Zhihu
+  url_pattern: '`zhihu.com`'
+  categories:
+  - C
+  country: CN
+  level: model
+  access: Login, Chinese
+  check_status: Page OK
+  fetch_step: 13
+  enabled: false
+- source_id: youtube-transcripts
+  name: YouTube transcripts of the channels below
+  url_pattern: 'Video list per channel: `googleapis.com/youtube/v3/search?channelId={channel id}&q={term}`; transcript through a transcript library'
+  categories:
+  - D
+  country: Global
+  level: model
+  access: API, library
+  check_status: Not tested
+  fetch_step: 7
+  enabled: true
+- source_id: caranddriver
+  name: Car and Driver
+  url_pattern: '`caranddriver.com/{brand}/{model}`: `bmw/5-series`, `bmw/7-series`, `bmw/i5`, `mercedes-benz/e-class`, `genesis/g80`'
+  categories:
+  - D
+  country: US
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: motortrend
+  name: MotorTrend
+  url_pattern: '`motortrend.com/cars/{brand}/{model}/`: `bmw/5-series`, `bmw/7-series`, `mercedes-benz/e-class`'
+  categories:
+  - D
+  country: US
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: autocar
+  name: Autocar
+  url_pattern: '`autocar.co.uk/car-review/{brand}/{model}`: `bmw/1-series`, `bmw/5-series`, `bmw/7-series`, `mercedes-benz/e-class`, `audi/a3`'
+  categories:
+  - D
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: autoexpress
+  name: Auto Express, incl. Driver Power owner survey
+  url_pattern: '`autoexpress.co.uk/{brand}/{model}`: `bmw/1-series`, `bmw/5-series`, `bmw/7-series`, `mercedes/e-class`, `audi/a3`. Mercedes slug
+    is `mercedes`'
+  categories:
+  - D
+  - G
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: topgear
+  name: Top Gear
+  url_pattern: '`topgear.com/car-reviews/{brand}/{model}`: `bmw/1-series`, `bmw/5-series`, `bmw/7-series`, `mercedes-benz/e-class`'
+  categories:
+  - D
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: drive-uk
+  name: 'Drive (drive.co.uk), the successor of Honest John: every `honestjohn.co.uk` address now redirects here'
+  url_pattern: '`drive.co.uk/cars/{brand}/{model}/review`: `bmw/1-series`, `bmw/5-series`, `bmw/i5`, `bmw/7-series`, `mercedes-benz/e-class`,
+    `audi/a3`'
+  categories:
+  - D
+  country: GB
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: ams
+  name: auto motor und sport
+  url_pattern: '`auto-motor-und-sport.de/marken-modelle/{brand}/{model}/`; slugs in [3.9](#39-all-pages-page-structure-and-pagination)'
+  categories:
+  - D
+  country: DE
+  level: model
+  access: Scraping, German, partly paywalled
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: autobild
+  name: Auto Bild
+  url_pattern: '`autobild.de/marken-modelle/{brand}/{model}/`; slugs in [3.9](#39-all-pages-page-structure-and-pagination)'
+  categories:
+  - D
+  country: DE
+  level: model
+  access: Scraping, German
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: adac-autotest
+  name: ADAC Autotest scored tests
+  url_pattern: '`adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/{brand}/{model}/`; slugs in [3.9](#39-all-pages-page-structure-and-pagination)'
+  categories:
+  - D
+  - G
+  country: DE
+  level: model
+  access: Scraping, German
+  check_status: Pattern OK
+  fetch_step: 7
+  enabled: true
+- source_id: automobile-magazine
+  name: L'Automobile Magazine
+  url_pattern: '`automobile-magazine.fr`'
+  categories:
+  - D
+  country: FR
+  level: model
+  access: Scraping, French
+  check_status: Page OK
+  fetch_step: 7
+  enabled: true
+- source_id: teknikens-varld
+  name: Teknikens Värld
+  url_pattern: '`teknikensvarld.expressen.se`'
+  categories:
+  - D
+  country: SE
+  level: model
+  access: Scraping, Swedish
+  check_status: Page OK
+  fetch_step: 7
+  enabled: true
+- source_id: podcasts
+  name: The Smoking Tire and Autocar podcasts, through their YouTube channels below
+  url_pattern: Same as `youtube-transcripts`
+  categories:
+  - D
+  country: Global
+  level: model
+  access: API, library
+  check_status: Not tested
+  fetch_step: 12
+  enabled: false
+- source_id: price-lists
+  name: Competitor price and option lists. German editions first, to match our German option-list PDFs
+  url_pattern: 'German OEM sites: `mercedes-benz.de`, `audi.de`, `tesla.com/de_de`, `genesis.com/de`, `lexus.de`, `porsche.com/germany`, `volkswagen.de`,
+    `cupraofficial.de`, `mgmotor.de`, `byd.com/de`'
+  categories:
+  - E
+  country: DE, then GB, US
+  level: model
+  access: Download (PDF)
+  check_status: Not tested
+  fetch_step: 8
+  enabled: true
+- source_id: configurators
+  name: Online configurators and US "build and price" pages
+  url_pattern: 'Same OEM sites as `price-lists`; US: `bmwusa.com`, `mbusa.com`, `audiusa.com`, `genesis.com/us`, `lexus.com`, `lucidmotors.com`'
+  categories:
+  - E
+  country: per market
+  level: model
+  access: Browser (JS apps)
+  check_status: Not tested
+  fetch_step: 12
+  enabled: false
+- source_id: euro-ncap
+  name: Euro NCAP assistance-system ratings
+  url_pattern: '`euroncap.com/en/results/`'
+  categories:
+  - E
+  - G
+  country: EU
+  level: model
+  access: Scraping
+  check_status: Not tested
+  fetch_step: 12
+  enabled: false
+- source_id: iihs
+  name: IIHS ratings
+  url_pattern: '`iihs.org/ratings/vehicle/{brand}/{model-body}/{year}`: `bmw/5-series-4-door-sedan/2024`'
+  categories:
+  - E
+  - G
+  country: US
+  level: model
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 12
+  enabled: false
+- source_id: app-store
+  name: Apple App Store reviews
+  url_pattern: '`itunes.apple.com/{country}/rss/customerreviews/page={1..10}/id={app id}/sortby=mostrecent/json`. Up to 10 pages of 50 = 500 newest
+    reviews per country; an empty page is requested again'
+  categories:
+  - H
+  country: per country
+  level: brand
+  access: RSS
+  check_status: Data OK
+  fetch_step: 4
+  enabled: true
+- source_id: google-play
+  name: Google Play reviews. Not available in China
+  url_pattern: '`play.google.com/store/apps/details?id={package}&hl={language}&gl={country}`, reviews through a scraper library'
+  categories:
+  - H
+  country: per country
+  level: brand
+  access: Library
+  check_status: Page OK
+  fetch_step: 4
+  enabled: true
+- source_id: huawei-appgallery
+  name: Huawei AppGallery, the main Chinese Android store
+  url_pattern: '`appgallery.huawei.com`'
+  categories:
+  - H
+  country: CN
+  level: brand
+  access: Scraping, Chinese
+  check_status: Page OK
+  fetch_step: 13
+  enabled: false
+- source_id: kba
+  name: KBA new registrations
+  url_pattern: 'Monthly: `kba.de/DE/Statistik/Fahrzeuge/Neuzulassungen/MonatlicheNeuzulassungen/monatl_neuzulassungen_node.html`; by segment and
+    model: `.../Neuzulassungen/Segmente/n_segmente_node.html`'
+  categories:
+  - F
+  country: DE
+  level: market
+  access: Download (Excel, PDF)
+  check_status: Pattern OK
+  fetch_step: 9
+  enabled: true
+- source_id: smmt
+  name: SMMT car registrations
+  url_pattern: '`smmt.co.uk/vehicle-data/car-registrations/`'
+  categories:
+  - F
+  country: GB
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: goodcarbadcar
+  name: GoodCarBadCar US sales by model
+  url_pattern: '`goodcarbadcar.net/{brand}-{model}-sales-figures/`: `bmw-5-series`, `bmw-7-series`, `mercedes-benz-e-class`'
+  categories:
+  - F
+  country: US
+  level: market
+  access: Scraping
+  check_status: Pattern OK
+  fetch_step: 9
+  enabled: true
+- source_id: carfigures
+  name: CarFigures US sales
+  url_pattern: '`carfigures.com`'
+  categories:
+  - F
+  country: US
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: cox-automotive
+  name: Cox Automotive sales reports
+  url_pattern: '`coxautoinc.com`'
+  categories:
+  - F
+  country: US
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: pfa
+  name: PFA, French registrations
+  url_pattern: '`pfa-auto.fr`'
+  categories:
+  - F
+  country: FR
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: unrae
+  name: UNRAE, Italian registrations
+  url_pattern: '`unrae.it`'
+  categories:
+  - F
+  country: IT
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: anfac
+  name: ANFAC, Spanish registrations
+  url_pattern: '`anfac.com`'
+  categories:
+  - F
+  country: ES
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: ofv
+  name: OFV, Norwegian registrations
+  url_pattern: '`ofv.no`'
+  categories:
+  - F
+  country: 'NO'
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: mobility-sweden
+  name: Mobility Sweden registrations
+  url_pattern: '`mobilitysweden.se`'
+  categories:
+  - F
+  country: SE
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: rai-bovag
+  name: RAI Vereniging and BOVAG, Dutch registrations
+  url_pattern: '`raivereniging.nl`, `bovag.nl`'
+  categories:
+  - F
+  country: NL
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: iea-ev-outlook
+  name: IEA Global EV Outlook
+  url_pattern: '`iea.org/reports/global-ev-outlook-{year}`: `2025`, `2026`'
+  categories:
+  - I
+  country: Global
+  level: market
+  access: Download (PDF, data)
+  check_status: Pattern OK
+  fetch_step: 9
+  enabled: true
+- source_id: deloitte
+  name: Deloitte Global Automotive Consumer Study
+  url_pattern: '`deloitte.com/global/en/Industries/automotive/perspectives/global-automotive-consumer-study.html`'
+  categories:
+  - I
+  country: Global
+  level: market
+  access: Download (PDF)
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: capgemini
+  name: Capgemini Research Institute
+  url_pattern: '`capgemini.com/insights/research-library/`'
+  categories:
+  - I
+  country: Global
+  level: market
+  access: Download (PDF)
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: ey
+  name: EY automotive insights
+  url_pattern: '`ey.com/en_gl/industries/automotive`'
+  categories:
+  - I
+  country: Global
+  level: market
+  access: Scraping
+  check_status: Page OK
+  fetch_step: 9
+  enabled: true
+- source_id: google-trends
+  name: Google Trends search interest by country. Not usable for China
+  url_pattern: '`trends.google.com/trends/explore?q={term}&geo={country}`, through a library; plain requests are rate-limited (HTTP 429)'
+  categories:
+  - F
+  country: Global
+  level: market
+  access: Library
+  check_status: Not tested
+  fetch_step: 9
+  enabled: true
+- source_id: acea
+  name: ACEA registrations by brand and powertrain
+  url_pattern: '`acea.auto`'
+  categories:
+  - F
+  country: EU
+  level: market
+  access: Browser, Download
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: jdpower
+  name: J.D. Power press releases (IQS, APEAL, TXI, VDS), separate US and China studies
+  url_pattern: '`jdpower.com/business/press-releases`'
+  categories:
+  - G
+  country: US, CN
+  level: brand
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: pwc
+  name: PwC automotive insights
+  url_pattern: '`pwc.com/gx/en/industries/automotive.html`'
+  categories:
+  - I
+  country: Global
+  level: market
+  access: Browser
+  check_status: Blocked (403)
+  fetch_step: 11
+  enabled: false
+- source_id: mckinsey
+  name: McKinsey Center for Future Mobility
+  url_pattern: '`mckinsey.com/features/mckinsey-center-for-future-mobility/our-insights`'
+  categories:
+  - I
+  country: Global
+  level: market
+  access: Browser
+  check_status: No response
+  fetch_step: 11
+  enabled: false
+- source_id: baidu-index
+  name: Baidu Index, the China replacement for Google Trends
+  url_pattern: '`index.baidu.com`'
+  categories:
+  - F
+  country: CN
+  level: market
+  access: Login, Chinese
+  check_status: Page OK
+  fetch_step: 13
+  enabled: false
+competitors:
+- bmw_vehicle: F70
+  brand: Audi
+  model: A3
+  label: Audi A3
+  generation: 4th generation (8Y)
+  names:
+    en: Audi A3
+    de: A3
+    fr: A3
+  wikipedia_page: Audi A3
+  not_sold_in: []
+  status: active
+- bmw_vehicle: F70
+  brand: Mercedes-Benz
+  model: A-Class
+  label: Mercedes A-Class
+  generation: W177, 2018
+  names:
+    en: Mercedes A-Class
+    de: A-Klasse
+    fr: Classe A
+  wikipedia_page: Mercedes-Benz A-Class (W177)
+  not_sold_in: []
+  status: active
+- bmw_vehicle: F70
+  brand: Volkswagen
+  model: Golf
+  label: VW Golf
+  generation: Mk8, 2019
+  names:
+    en: VW Golf
+    de: Golf 8
+    fr: Golf 8
+  wikipedia_page: Volkswagen Golf Mk8
+  not_sold_in: []
+  status: active
+- bmw_vehicle: F70
+  brand: Cupra
+  model: Leon
+  label: Cupra Leon
+  generation: Based on the 4th SEAT León
+  names:
+    en: Cupra Leon
+    de: Leon
+    fr: Leon
+  wikipedia_page: Cupra Leon
+  not_sold_in: []
+  status: active
+- bmw_vehicle: F70
+  brand: MG
+  model: MG4
+  label: MG4
+  generation: '2022'
+  names:
+    en: MG4
+    de: MG4
+    fr: MG4
+  wikipedia_page: MG4 EV
+  not_sold_in: []
+  status: active
+- bmw_vehicle: F70
+  brand: BYD
+  model: Dolphin
+  label: BYD Dolphin
+  generation: '2021'
+  names:
+    en: BYD Dolphin
+    de: Dolphin
+    fr: Dolphin
+  wikipedia_page: BYD Dolphin
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: Mercedes-Benz
+  model: E-Class
+  label: Mercedes E-Class (E-Class L in China)
+  generation: W214, 2023
+  names:
+    en: Mercedes E-Class (E-Class L in China)
+    de: E-Klasse
+    fr: Classe E
+    zh: 奔驰E级
+  wikipedia_page: Mercedes-Benz E-Class (W214)
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: Mercedes-Benz
+  model: EQE
+  label: Mercedes EQE
+  generation: V295, shown 2021
+  names:
+    en: Mercedes EQE
+    de: EQE
+    fr: EQE
+    zh: 奔驰EQE
+  wikipedia_page: Mercedes-Benz EQE
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: Audi
+  model: A6
+  label: Audi A6 (A6L in China)
+  generation: 6th generation
+  names:
+    en: Audi A6 (A6L in China)
+    de: A6
+    fr: A6
+    zh: 奥迪A6L
+  wikipedia_page: Audi A6
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: Audi
+  model: A6 e-tron
+  label: Audi A6 e-tron
+  generation: '2024'
+  names:
+    en: Audi A6 e-tron
+    de: A6 e-tron
+    fr: A6 e-tron
+    zh: 奥迪A6 e-tron
+  wikipedia_page: Audi A6 e-tron
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: Tesla
+  model: Model S
+  label: Tesla Model S
+  generation: 2012 to 2026, production ended
+  names:
+    en: Tesla Model S
+    de: Model S
+    fr: Model S
+    zh: 特斯拉Model S
+  wikipedia_page: Tesla Model S
+  not_sold_in: []
+  status: ended
+- bmw_vehicle: G60
+  brand: Genesis
+  model: G80
+  label: Genesis G80
+  generation: 3rd generation
+  names:
+    en: Genesis G80
+    de: G80
+    fr: G80
+    zh: 捷尼赛思G80
+  wikipedia_page: Genesis G80
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: Lexus
+  model: ES
+  label: Lexus ES
+  generation: 8th generation
+  names:
+    en: Lexus ES
+    de: ES
+    fr: ES
+    zh: 雷克萨斯ES
+  wikipedia_page: Lexus ES
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: NIO
+  model: ET7
+  label: NIO ET7
+  generation: 1st generation
+  names:
+    en: NIO ET7
+    de: ET7
+    fr: ET7
+    zh: 蔚来ET7
+  wikipedia_page: Nio ET7
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: Zeekr
+  model: '001'
+  label: Zeekr 001
+  generation: '2021'
+  names:
+    en: Zeekr 001
+    de: '001'
+    fr: '001'
+    zh: 极氪001
+  wikipedia_page: Zeekr 001
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: Xiaomi
+  model: SU7
+  label: Xiaomi SU7
+  generation: 1st generation
+  names:
+    en: Xiaomi SU7
+    de: SU7
+    fr: SU7
+    zh: 小米SU7
+  wikipedia_page: Xiaomi SU7
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G60
+  brand: BYD
+  model: Han
+  label: BYD Han
+  generation: '2020'
+  names:
+    en: BYD Han
+    de: Han
+    fr: Han
+    zh: 比亚迪汉
+  wikipedia_page: BYD Han
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G70
+  brand: Mercedes-Benz
+  model: S-Class
+  label: Mercedes S-Class
+  generation: W223, 2020
+  names:
+    en: Mercedes S-Class
+    de: S-Klasse
+    fr: Classe S
+    zh: 奔驰S级
+  wikipedia_page: Mercedes-Benz S-Class (W223)
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G70
+  brand: Mercedes-Benz
+  model: EQS
+  label: Mercedes EQS
+  generation: V297, 2021
+  names:
+    en: Mercedes EQS
+    de: EQS
+    fr: EQS
+    zh: 奔驰EQS
+  wikipedia_page: Mercedes-Benz EQS
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G70
+  brand: Audi
+  model: A8
+  label: Audi A8 (A8L in China)
+  generation: 4th generation
+  names:
+    en: Audi A8 (A8L in China)
+    de: A8
+    fr: A8
+    zh: 奥迪A8L
+  wikipedia_page: Audi A8
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G70
+  brand: Lexus
+  model: LS
+  label: Lexus LS
+  generation: 5th generation
+  names:
+    en: Lexus LS
+    de: LS
+    fr: LS
+    zh: 雷克萨斯LS
+  wikipedia_page: Lexus LS
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G70
+  brand: Genesis
+  model: G90
+  label: Genesis G90
+  generation: 2nd generation, US model year 2023 onward
+  names:
+    en: Genesis G90
+    de: G90
+    fr: G90
+    zh: 捷尼赛思G90
+  wikipedia_page: Genesis G90
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G70
+  brand: Porsche
+  model: Panamera
+  label: Porsche Panamera
+  generation: 3rd generation
+  names:
+    en: Porsche Panamera
+    de: Panamera
+    fr: Panamera
+    zh: 保时捷Panamera
+  wikipedia_page: Porsche Panamera
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G70
+  brand: Lucid
+  model: Air
+  label: Lucid Air
+  generation: '2021'
+  names:
+    en: Lucid Air
+    de: Air
+    fr: Air
+  wikipedia_page: Lucid Air
+  not_sold_in:
+  - China
+  status: active
+- bmw_vehicle: G70
+  brand: NIO
+  model: ET9
+  label: NIO ET9
+  generation: '2025'
+  names:
+    en: NIO ET9
+    de: ET9
+    fr: ET9
+    zh: 蔚来ET9
+  wikipedia_page: Nio ET9
+  not_sold_in: []
+  status: active
+- bmw_vehicle: G70
+  brand: Maextro
+  model: S800
+  label: Maextro S800
+  generation: '2025'
+  names:
+    en: Maextro S800
+    zh: 尊界S800
+  wikipedia_page: Maextro S800
+  not_sold_in:
+  - Europe
+  status: active
+- bmw_vehicle: G70
+  brand: Hongqi
+  model: H9
+  label: Hongqi H9
+  generation: 1st generation
+  names:
+    en: Hongqi H9
+    de: H9
+    fr: H9
+    zh: 红旗H9
+  wikipedia_page: Hongqi H9
+  not_sold_in: []
+  status: active
+slugs:
+- label: BMW 1 Series
+  source_id: parkers
+  slug: bmw/1-series
+  note: owner reviews
+- label: BMW 1 Series
+  source_id: whatcar
+  slug: bmw/1-series/hatchback
+  note: ''
+- label: BMW 1 Series
+  source_id: carwow
+  slug: bmw/1-series
+  note: ''
+- label: BMW 1 Series
+  source_id: caranddriver
+  slug: bmw/1-series
+  note: ''
+- label: BMW 1 Series
+  source_id: motortrend
+  slug: bmw/1-series
+  note: ''
+- label: BMW 1 Series
+  source_id: autocar
+  slug: bmw/1-series
+  note: ''
+- label: BMW 1 Series
+  source_id: autoexpress
+  slug: bmw/1-series
+  note: ''
+- label: BMW 1 Series
+  source_id: topgear
+  slug: bmw/1-series
+  note: ''
+- label: BMW 1 Series
+  source_id: drive-uk
+  slug: bmw/1-series
+  note: ''
+- label: BMW 5 Series
+  source_id: parkers
+  slug: bmw/5-series
+  note: ''
+- label: BMW 5 Series
+  source_id: whatcar
+  slug: bmw/5-series/saloon
+  note: ''
+- label: BMW 5 Series
+  source_id: carwow
+  slug: bmw/5-series
+  note: ''
+- label: BMW 5 Series
+  source_id: kbb
+  slug: bmw/5-series
+  note: ''
+- label: BMW 5 Series
+  source_id: caranddriver
+  slug: bmw/5-series
+  note: ''
+- label: BMW 5 Series
+  source_id: motortrend
+  slug: bmw/5-series
+  note: ''
+- label: BMW 5 Series
+  source_id: autocar
+  slug: bmw/5-series
+  note: ''
+- label: BMW 5 Series
+  source_id: autoexpress
+  slug: bmw/5-series
+  note: ''
+- label: BMW 5 Series
+  source_id: topgear
+  slug: bmw/5-series
+  note: ''
+- label: BMW 5 Series
+  source_id: drive-uk
+  slug: bmw/5-series
+  note: ''
+- label: BMW i5
+  source_id: parkers
+  slug: bmw/i5/reviews/
+  note: 'expert only: `bmw/i5/reviews/`'
+- label: BMW i5
+  source_id: carwow
+  slug: bmw/i5
+  note: ''
+- label: BMW i5
+  source_id: kbb
+  slug: bmw/i5
+  note: ''
+- label: BMW i5
+  source_id: caranddriver
+  slug: bmw/i5
+  note: ''
+- label: BMW i5
+  source_id: motortrend
+  slug: bmw/i5
+  note: ''
+- label: BMW i5
+  source_id: autocar
+  slug: bmw/i5
+  note: ''
+- label: BMW i5
+  source_id: autoexpress
+  slug: bmw/i5
+  note: ''
+- label: BMW i5
+  source_id: topgear
+  slug: bmw/i5
+  note: ''
+- label: BMW i5
+  source_id: drive-uk
+  slug: bmw/i5
+  note: ''
+- label: BMW M5
+  source_id: parkers
+  slug: bmw/5-series/m5-{year}
+  note: under `bmw/5-series/m5-{year}`
+- label: BMW M5
+  source_id: whatcar
+  slug: bmw/m5/saloon
+  note: ''
+- label: BMW M5
+  source_id: carwow
+  slug: bmw/m5
+  note: ''
+- label: BMW M5
+  source_id: kbb
+  slug: bmw/m5/2026
+  note: 'year 2026: `bmw/m5/2026`'
+- label: BMW M5
+  source_id: caranddriver
+  slug: bmw/m5
+  note: ''
+- label: BMW M5
+  source_id: motortrend
+  slug: bmw/m5
+  note: ''
+- label: BMW M5
+  source_id: autocar
+  slug: bmw/m5
+  note: ''
+- label: BMW M5
+  source_id: autoexpress
+  slug: bmw/5-series/m5
+  note: '`bmw/5-series/m5`'
+- label: BMW M5
+  source_id: topgear
+  slug: bmw/m5
+  note: ''
+- label: BMW M5
+  source_id: drive-uk
+  slug: bmw/m5
+  note: ''
+- label: BMW 7 Series
+  source_id: parkers
+  slug: bmw/7-series
+  note: ''
+- label: BMW 7 Series
+  source_id: whatcar
+  slug: bmw/7-series/saloon
+  note: ''
+- label: BMW 7 Series
+  source_id: carwow
+  slug: bmw/7-series
+  note: ''
+- label: BMW 7 Series
+  source_id: kbb
+  slug: bmw/7-series
+  note: ''
+- label: BMW 7 Series
+  source_id: caranddriver
+  slug: bmw/7-series
+  note: ''
+- label: BMW 7 Series
+  source_id: motortrend
+  slug: bmw/7-series
+  note: ''
+- label: BMW 7 Series
+  source_id: autocar
+  slug: bmw/7-series
+  note: ''
+- label: BMW 7 Series
+  source_id: autoexpress
+  slug: bmw/7-series
+  note: ''
+- label: BMW 7 Series
+  source_id: topgear
+  slug: bmw/7-series
+  note: ''
+- label: BMW 7 Series
+  source_id: drive-uk
+  slug: bmw/7-series
+  note: ''
+- label: BMW i7
+  source_id: parkers
+  slug: bmw/i7/reviews/
+  note: 'expert only: `bmw/i7/reviews/`'
+- label: BMW i7
+  source_id: carwow
+  slug: bmw/i7
+  note: ''
+- label: BMW i7
+  source_id: kbb
+  slug: bmw/i7/2026
+  note: 'year 2026: `bmw/i7/2026`'
+- label: BMW i7
+  source_id: caranddriver
+  slug: bmw/i7
+  note: ''
+- label: BMW i7
+  source_id: motortrend
+  slug: bmw/i7
+  note: ''
+- label: BMW i7
+  source_id: autocar
+  slug: bmw/i7
+  note: ''
+- label: BMW i7
+  source_id: autoexpress
+  slug: bmw/i7
+  note: ''
+- label: BMW i7
+  source_id: drive-uk
+  slug: bmw/i7
+  note: ''
+- label: Audi A3
+  source_id: parkers
+  slug: audi/a3
+  note: ''
+- label: Audi A3
+  source_id: whatcar
+  slug: audi/a3/hatchback
+  note: ''
+- label: Audi A3
+  source_id: whatcar
+  slug: audi/a3/saloon
+  note: ''
+- label: Audi A3
+  source_id: carwow
+  slug: audi/a3
+  note: ''
+- label: Audi A3
+  source_id: kbb
+  slug: audi/a3
+  note: ''
+- label: Audi A3
+  source_id: caranddriver
+  slug: audi/a3
+  note: ''
+- label: Audi A3
+  source_id: motortrend
+  slug: audi/a3
+  note: ''
+- label: Audi A3
+  source_id: autocar
+  slug: audi/a3-sportback
+  note: '`audi/a3-sportback`'
+- label: Audi A3
+  source_id: autoexpress
+  slug: audi/a3
+  note: ''
+- label: Audi A3
+  source_id: topgear
+  slug: audi/a3
+  note: ''
+- label: Audi A3
+  source_id: drive-uk
+  slug: audi/a3
+  note: ''
+- label: Mercedes A-Class
+  source_id: parkers
+  slug: mercedes-benz/a-class
+  note: ''
+- label: Mercedes A-Class
+  source_id: whatcar
+  slug: mercedes-benz/a-class/hatchback
+  note: ''
+- label: Mercedes A-Class
+  source_id: whatcar
+  slug: mercedes-benz/a-class/saloon
+  note: ''
+- label: Mercedes A-Class
+  source_id: carwow
+  slug: mercedes/a-class
+  note: ''
+- label: Mercedes A-Class
+  source_id: caranddriver
+  slug: mercedes-benz/a-class
+  note: ''
+- label: Mercedes A-Class
+  source_id: motortrend
+  slug: mercedes-benz/a-class
+  note: ''
+- label: Mercedes A-Class
+  source_id: autocar
+  slug: mercedes-benz/a-class
+  note: ''
+- label: Mercedes A-Class
+  source_id: autoexpress
+  slug: mercedes/a-class
+  note: ''
+- label: Mercedes A-Class
+  source_id: topgear
+  slug: mercedes-benz/a-class
+  note: ''
+- label: Mercedes A-Class
+  source_id: drive-uk
+  slug: mercedes-benz/a-class
+  note: ''
+- label: VW Golf
+  source_id: parkers
+  slug: volkswagen/golf
+  note: ''
+- label: VW Golf
+  source_id: whatcar
+  slug: volkswagen/golf/hatchback
+  note: ''
+- label: VW Golf
+  source_id: carwow
+  slug: volkswagen/golf
+  note: ''
+- label: VW Golf
+  source_id: kbb
+  slug: volkswagen/golf
+  note: ''
+- label: VW Golf
+  source_id: caranddriver
+  slug: volkswagen/golf
+  note: ''
+- label: VW Golf
+  source_id: motortrend
+  slug: volkswagen/golf
+  note: ''
+- label: VW Golf
+  source_id: autocar
+  slug: volkswagen/golf
+  note: ''
+- label: VW Golf
+  source_id: autoexpress
+  slug: volkswagen/golf
+  note: ''
+- label: VW Golf
+  source_id: topgear
+  slug: volkswagen/golf-mk8
+  note: '`volkswagen/golf-mk8`'
+- label: VW Golf
+  source_id: drive-uk
+  slug: volkswagen/golf
+  note: ''
+- label: Cupra Leon
+  source_id: parkers
+  slug: cupra/leon/reviews/
+  note: 'expert only: `cupra/leon/reviews/`'
+- label: Cupra Leon
+  source_id: whatcar
+  slug: cupra/leon/hatchback
+  note: ''
+- label: Cupra Leon
+  source_id: carwow
+  slug: cupra/leon
+  note: ''
+- label: Cupra Leon
+  source_id: autocar
+  slug: cupra/leon
+  note: ''
+- label: Cupra Leon
+  source_id: autoexpress
+  slug: cupra/leon
+  note: ''
+- label: Cupra Leon
+  source_id: topgear
+  slug: cupra/leon
+  note: ''
+- label: Cupra Leon
+  source_id: drive-uk
+  slug: cupra/leon
+  note: ''
+- label: MG4
+  source_id: parkers
+  slug: mg/mg4/reviews/
+  note: 'expert only: `mg/mg4/reviews/`'
+- label: MG4
+  source_id: carwow
+  slug: mg/mg-4
+  note: '`mg/mg-4`'
+- label: MG4
+  source_id: autoexpress
+  slug: mg/mg4
+  note: ''
+- label: MG4
+  source_id: drive-uk
+  slug: mg/mg4
+  note: ''
+- label: BYD Dolphin
+  source_id: parkers
+  slug: byd/dolphin/reviews/
+  note: 'expert only: `byd/dolphin/reviews/`'
+- label: BYD Dolphin
+  source_id: whatcar
+  slug: byd/dolphin/hatchback
+  note: ''
+- label: BYD Dolphin
+  source_id: carwow
+  slug: byd/dolphin
+  note: ''
+- label: BYD Dolphin
+  source_id: autocar
+  slug: byd/dolphin
+  note: ''
+- label: BYD Dolphin
+  source_id: autoexpress
+  slug: byd/dolphin
+  note: ''
+- label: BYD Dolphin
+  source_id: topgear
+  slug: byd/dolphin
+  note: ''
+- label: BYD Dolphin
+  source_id: drive-uk
+  slug: byd/dolphin
+  note: ''
+- label: Mercedes E-Class
+  source_id: parkers
+  slug: mercedes-benz/e-class
+  note: ''
+- label: Mercedes E-Class
+  source_id: whatcar
+  slug: mercedes-benz/e-class/saloon
+  note: ''
+- label: Mercedes E-Class
+  source_id: carwow
+  slug: mercedes/e-class
+  note: ''
+- label: Mercedes E-Class
+  source_id: kbb
+  slug: mercedes-benz/e-class
+  note: ''
+- label: Mercedes E-Class
+  source_id: caranddriver
+  slug: mercedes-benz/e-class
+  note: ''
+- label: Mercedes E-Class
+  source_id: motortrend
+  slug: mercedes-benz/e-class
+  note: ''
+- label: Mercedes E-Class
+  source_id: autocar
+  slug: mercedes-benz/e-class
+  note: ''
+- label: Mercedes E-Class
+  source_id: autoexpress
+  slug: mercedes/e-class
+  note: ''
+- label: Mercedes E-Class
+  source_id: topgear
+  slug: mercedes-benz/e-class
+  note: ''
+- label: Mercedes E-Class
+  source_id: drive-uk
+  slug: mercedes-benz/e-class
+  note: ''
+- label: Mercedes EQE
+  source_id: parkers
+  slug: mercedes-benz/eqe/reviews/
+  note: 'expert only: `mercedes-benz/eqe/reviews/`'
+- label: Mercedes EQE
+  source_id: carwow
+  slug: mercedes/eqe
+  note: ''
+- label: Mercedes EQE
+  source_id: kbb
+  slug: mercedes-benz/eqe/2026
+  note: 'year 2026: `mercedes-benz/eqe/2026`'
+- label: Mercedes EQE
+  source_id: caranddriver
+  slug: mercedes-benz/eqe
+  note: ''
+- label: Mercedes EQE
+  source_id: motortrend
+  slug: mercedes-benz/eqe-class
+  note: '`mercedes-benz/eqe-class`'
+- label: Mercedes EQE
+  source_id: autocar
+  slug: mercedes-benz/eqe
+  note: ''
+- label: Mercedes EQE
+  source_id: autoexpress
+  slug: mercedes/eqe
+  note: ''
+- label: Mercedes EQE
+  source_id: topgear
+  slug: mercedes-benz/eqe
+  note: ''
+- label: Mercedes EQE
+  source_id: drive-uk
+  slug: mercedes-benz/eqe
+  note: ''
+- label: Audi A6
+  source_id: parkers
+  slug: audi/a6
+  note: ''
+- label: Audi A6
+  source_id: whatcar
+  slug: audi/a6/saloon
+  note: ''
+- label: Audi A6
+  source_id: carwow
+  slug: audi/a6
+  note: ''
+- label: Audi A6
+  source_id: kbb
+  slug: audi/a6
+  note: ''
+- label: Audi A6
+  source_id: caranddriver
+  slug: audi/a6
+  note: ''
+- label: Audi A6
+  source_id: motortrend
+  slug: audi/a6
+  note: ''
+- label: Audi A6
+  source_id: autocar
+  slug: audi/a6
+  note: ''
+- label: Audi A6
+  source_id: autoexpress
+  slug: audi/a6
+  note: ''
+- label: Audi A6
+  source_id: topgear
+  slug: audi/a6
+  note: ''
+- label: Audi A6
+  source_id: drive-uk
+  slug: audi/a6
+  note: ''
+- label: Audi A6 e-tron
+  source_id: parkers
+  slug: audi/a6-e-tron/reviews/
+  note: 'expert only: `audi/a6-e-tron/reviews/`'
+- label: Audi A6 e-tron
+  source_id: carwow
+  slug: audi/a6-sportback-e-tron
+  note: '`audi/a6-sportback-e-tron`'
+- label: Audi A6 e-tron
+  source_id: caranddriver
+  slug: audi/a6-e-tron
+  note: ''
+- label: Audi A6 e-tron
+  source_id: motortrend
+  slug: audi/a6-e-tron
+  note: ''
+- label: Audi A6 e-tron
+  source_id: autocar
+  slug: audi/a6-e-tron
+  note: ''
+- label: Audi A6 e-tron
+  source_id: autoexpress
+  slug: audi/a6/avant/e-tron
+  note: '`audi/a6/avant/e-tron`'
+- label: Audi A6 e-tron
+  source_id: topgear
+  slug: audi/a6-e-tron
+  note: ''
+- label: Audi A6 e-tron
+  source_id: drive-uk
+  slug: audi/a6-e-tron
+  note: ''
+- label: Tesla Model S
+  source_id: parkers
+  slug: tesla/model-s
+  note: ''
+- label: Tesla Model S
+  source_id: whatcar
+  slug: tesla/model-s/hatchback
+  note: ''
+- label: Tesla Model S
+  source_id: carwow
+  slug: tesla/model-s
+  note: ''
+- label: Tesla Model S
+  source_id: kbb
+  slug: tesla/model-s
+  note: ''
+- label: Tesla Model S
+  source_id: caranddriver
+  slug: tesla/model-s
+  note: ''
+- label: Tesla Model S
+  source_id: motortrend
+  slug: tesla/model-s
+  note: ''
+- label: Tesla Model S
+  source_id: autocar
+  slug: tesla/model-s-plaid
+  note: '`tesla/model-s-plaid`'
+- label: Tesla Model S
+  source_id: autoexpress
+  slug: tesla/model-s
+  note: ''
+- label: Tesla Model S
+  source_id: topgear
+  slug: tesla/model-s
+  note: ''
+- label: Genesis G80
+  source_id: parkers
+  slug: genesis/g80/reviews/
+  note: 'expert only: `genesis/g80/reviews/`'
+- label: Genesis G80
+  source_id: whatcar
+  slug: genesis/g80/saloon/review/n23156
+  note: 'saloon, with ID: `genesis/g80/saloon/review/n23156`'
+- label: Genesis G80
+  source_id: carwow
+  slug: genesis/g80
+  note: ''
+- label: Genesis G80
+  source_id: kbb
+  slug: genesis/g80
+  note: ''
+- label: Genesis G80
+  source_id: caranddriver
+  slug: genesis/g80
+  note: ''
+- label: Genesis G80
+  source_id: motortrend
+  slug: genesis/g80
+  note: ''
+- label: Genesis G80
+  source_id: autocar
+  slug: genesis/electrified-g80
+  note: '`genesis/electrified-g80`'
+- label: Genesis G80
+  source_id: autoexpress
+  slug: genesis/g80
+  note: ''
+- label: Genesis G80
+  source_id: topgear
+  slug: genesis/g80-electrified
+  note: '`genesis/g80-electrified`'
+- label: Genesis G80
+  source_id: drive-uk
+  slug: genesis/g80
+  note: ''
+- label: Lexus ES
+  source_id: parkers
+  slug: lexus/es
+  note: ''
+- label: Lexus ES
+  source_id: whatcar
+  slug: lexus/es/saloon
+  note: ''
+- label: Lexus ES
+  source_id: carwow
+  slug: lexus/es
+  note: ''
+- label: Lexus ES
+  source_id: kbb
+  slug: lexus/es
+  note: ''
+- label: Lexus ES
+  source_id: caranddriver
+  slug: lexus/es
+  note: ''
+- label: Lexus ES
+  source_id: motortrend
+  slug: lexus/es
+  note: ''
+- label: Lexus ES
+  source_id: autocar
+  slug: lexus/es
+  note: ''
+- label: Lexus ES
+  source_id: autoexpress
+  slug: lexus/es
+  note: ''
+- label: Lexus ES
+  source_id: topgear
+  slug: lexus/es
+  note: ''
+- label: Lexus ES
+  source_id: drive-uk
+  slug: lexus/es
+  note: ''
+- label: NIO ET7
+  source_id: autocar
+  slug: nio/et7
+  note: ''
+- label: Zeekr 001
+  source_id: autoexpress
+  slug: zeekr/001
+  note: ''
+- label: Mercedes S-Class
+  source_id: parkers
+  slug: mercedes-benz/s-class
+  note: ''
+- label: Mercedes S-Class
+  source_id: whatcar
+  slug: mercedes-benz/s-class/saloon
+  note: ''
+- label: Mercedes S-Class
+  source_id: carwow
+  slug: mercedes/s-class
+  note: ''
+- label: Mercedes S-Class
+  source_id: kbb
+  slug: mercedes-benz/s-class
+  note: ''
+- label: Mercedes S-Class
+  source_id: caranddriver
+  slug: mercedes-benz/s-class
+  note: ''
+- label: Mercedes S-Class
+  source_id: motortrend
+  slug: mercedes-benz/s-class
+  note: ''
+- label: Mercedes S-Class
+  source_id: autocar
+  slug: mercedes-benz/s-class
+  note: ''
+- label: Mercedes S-Class
+  source_id: autoexpress
+  slug: mercedes/s-class
+  note: ''
+- label: Mercedes S-Class
+  source_id: topgear
+  slug: mercedes-benz/s-class
+  note: ''
+- label: Mercedes S-Class
+  source_id: drive-uk
+  slug: mercedes-benz/s-class
+  note: ''
+- label: Mercedes EQS
+  source_id: parkers
+  slug: mercedes-benz/eqs/reviews/
+  note: 'expert only: `mercedes-benz/eqs/reviews/`'
+- label: Mercedes EQS
+  source_id: carwow
+  slug: mercedes/eqs
+  note: ''
+- label: Mercedes EQS
+  source_id: caranddriver
+  slug: mercedes-benz/eqs
+  note: ''
+- label: Mercedes EQS
+  source_id: motortrend
+  slug: mercedes-benz/eqs-class
+  note: '`mercedes-benz/eqs-class`'
+- label: Mercedes EQS
+  source_id: autocar
+  slug: mercedes-benz/eqs
+  note: ''
+- label: Mercedes EQS
+  source_id: autoexpress
+  slug: mercedes/eqs
+  note: ''
+- label: Mercedes EQS
+  source_id: topgear
+  slug: mercedes-benz/eqs
+  note: ''
+- label: Mercedes EQS
+  source_id: drive-uk
+  slug: mercedes-benz/eqs
+  note: ''
+- label: Audi A8
+  source_id: parkers
+  slug: audi/a8
+  note: ''
+- label: Audi A8
+  source_id: whatcar
+  slug: audi/a8/saloon
+  note: ''
+- label: Audi A8
+  source_id: carwow
+  slug: audi/a8
+  note: ''
+- label: Audi A8
+  source_id: kbb
+  slug: audi/a8
+  note: ''
+- label: Audi A8
+  source_id: caranddriver
+  slug: audi/a8
+  note: ''
+- label: Audi A8
+  source_id: motortrend
+  slug: audi/a8/2026
+  note: 'with year: `audi/a8/2026`'
+- label: Audi A8
+  source_id: autocar
+  slug: audi/a8
+  note: ''
+- label: Audi A8
+  source_id: autoexpress
+  slug: audi/a8
+  note: ''
+- label: Audi A8
+  source_id: topgear
+  slug: audi/a8
+  note: ''
+- label: Audi A8
+  source_id: drive-uk
+  slug: audi/a8
+  note: ''
+- label: Lexus LS
+  source_id: parkers
+  slug: lexus/ls
+  note: ''
+- label: Lexus LS
+  source_id: whatcar
+  slug: lexus/ls/saloon
+  note: ''
+- label: Lexus LS
+  source_id: carwow
+  slug: lexus/ls
+  note: ''
+- label: Lexus LS
+  source_id: kbb
+  slug: lexus/ls
+  note: ''
+- label: Lexus LS
+  source_id: caranddriver
+  slug: lexus/ls
+  note: ''
+- label: Lexus LS
+  source_id: motortrend
+  slug: lexus/ls
+  note: ''
+- label: Lexus LS
+  source_id: autocar
+  slug: lexus/ls
+  note: ''
+- label: Lexus LS
+  source_id: autoexpress
+  slug: lexus/ls
+  note: ''
+- label: Lexus LS
+  source_id: topgear
+  slug: lexus/ls
+  note: ''
+- label: Genesis G90
+  source_id: kbb
+  slug: genesis/g90
+  note: ''
+- label: Genesis G90
+  source_id: caranddriver
+  slug: genesis/g90
+  note: ''
+- label: Genesis G90
+  source_id: motortrend
+  slug: genesis/g90
+  note: ''
+- label: Genesis G90
+  source_id: autocar
+  slug: genesis/g90
+  note: ''
+- label: Genesis G90
+  source_id: autoexpress
+  slug: genesis/g90
+  note: ''
+- label: Genesis G90
+  source_id: topgear
+  slug: usa/genesis/g90
+  note: '`usa/genesis/g90`'
+- label: Porsche Panamera
+  source_id: parkers
+  slug: porsche/panamera
+  note: ''
+- label: Porsche Panamera
+  source_id: whatcar
+  slug: porsche/panamera/hatchback
+  note: ''
+- label: Porsche Panamera
+  source_id: carwow
+  slug: porsche/panamera
+  note: ''
+- label: Porsche Panamera
+  source_id: caranddriver
+  slug: porsche/panamera
+  note: ''
+- label: Porsche Panamera
+  source_id: motortrend
+  slug: porsche/panamera
+  note: ''
+- label: Porsche Panamera
+  source_id: autocar
+  slug: porsche/panamera
+  note: ''
+- label: Porsche Panamera
+  source_id: autoexpress
+  slug: porsche/panamera
+  note: ''
+- label: Porsche Panamera
+  source_id: topgear
+  slug: porsche/panamera
+  note: ''
+- label: Porsche Panamera
+  source_id: drive-uk
+  slug: porsche/panamera
+  note: ''
+- label: Lucid Air
+  source_id: kbb
+  slug: lucid/air
+  note: ''
+- label: Lucid Air
+  source_id: caranddriver
+  slug: lucid-motors/air
+  note: '`lucid-motors/air`'
+- label: Lucid Air
+  source_id: motortrend
+  slug: lucid/air
+  note: ''
+- label: Lucid Air
+  source_id: autocar
+  slug: lucid/air
+  note: ''
+- label: Lucid Air
+  source_id: autoexpress
+  slug: lucid/air
+  note: ''
+- label: Lucid Air
+  source_id: topgear
+  slug: lucid/air
+  note: ''
