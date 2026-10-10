@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.10.2",
+  "checkpoint_id": "01M4M3D5NX30ZQTDAY4YARZP58",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "backend/app/api/auth.py",
+    "backend/app/api/deps.py",
+    "backend/app/api/routers/cases.py",
+    "backend/app/api/routers/collab.py",
+    "backend/app/api/routers/config.py",
+    "backend/app/api/routers/requirements.py",
+    "backend/app/api/routers/signals.py",
+    "backend/app/cases/queries.py",
+    "backend/app/rag/index.py",
+    "backend/app/reports/audit_chain.py",
+    "backend/app/scoring/profiles.py",
+    "backend/tests/test_api.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 162,
+    "cache_creation_tokens": 254082,
+    "cache_read_tokens": 17696128,
+    "output_tokens": 72743,
+    "api_call_count": 81
+  }
+}
