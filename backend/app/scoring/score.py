@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 
 from app import audit
+from app.cases import figures
 
 FACTORS = ("distinct_customers", "severity", "satisfaction_gap", "competitor_gap", "market_volume",
            "removed_vs_predecessor", "reach", "trend")
@@ -138,8 +139,13 @@ def rationale(case, config, profile, factors, brand, fit, score) -> str:
             continue
         parts.append(f"{labels[name](f)} ({f['normalized']:.2f} x {f['weight']:.2f} = {f['contribution']:.3f})")
     fit_text = fit or "unknown, treated as neutral"
-    return (f"Score {score:.3f} for {config['vehicle']} / {config['market']}, profile '{profile['name']}'. "
+    text = (f"Score {score:.3f} for {config['vehicle']} / {config['market']}, profile '{profile['name']}'. "
             f"Brand fit {fit_text} (x{brand:.2f}). Factors, largest first: " + "; ".join(parts) + ".")
+    sf = config.get("source_filter") or {}
+    if figures.has_filter(sf):
+        skipped = [f"{k.removeprefix('exclude_')}: {', '.join(v)}" for k, v in sf.items() if v]
+        text += " Source filter skips " + "; ".join(skipped) + "."
+    return text
 
 
 def references(conn, config: dict, cases: list[dict]) -> dict:
@@ -154,7 +160,7 @@ def references(conn, config: dict, cases: list[dict]) -> dict:
 
 
 def score_config(conn, config_id, *, profile_ids: list | None = None, states=("open", "confirmed", "observed"),
-                 run_id=None) -> int:
+                 run_id=None, case_ids: list[str] | None = None) -> int:
     """Score every case of the config's vehicle under each (or the given) weight profile."""
     config = conn.execute("select * from config where id = %s", (config_id,)).fetchone()
     profiles = conn.execute("select * from weight_profile where config_id = %s" +
@@ -163,10 +169,15 @@ def score_config(conn, config_id, *, profile_ids: list | None = None, states=("o
     cases = conn.execute(
         "select c.*, cv.manual_rank from case_item c join case_vehicle cv on cv.case_id = c.id"
         " where cv.vehicle = %s and cv.state = any(%s)", (config["vehicle"], list(states))).fetchall()
+    if figures.has_filter(config["source_filter"]):
+        cap = int((config["thresholds"] or {}).get("reach_cap", 100000))
+        cases = [{**c, "figures": figures.compute(conn, c["id"], cap, config["source_filter"])} for c in cases]
     refs = references(conn, config, cases)
     rows = []
     for profile in profiles:
         for case in cases:
+            if case_ids is not None and case["id"] not in case_ids:
+                continue
             result = compute(case, profile, config, refs)
             rows.append({"case_id": case["id"], "weight_profile_id": profile["id"], **result})
     audit.insert_many(conn, "case_score", rows, actor=ACTOR, run_id=run_id,

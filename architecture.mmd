@@ -26,8 +26,8 @@ flowchart TB
         B3["Sales volumes<br>2030 forecast = market weight"]
         B4["Customer study 2025<br>raw + normalized 0..1,<br>US dissatisfied share"]
         B6["BMW customer feedback Excel<br>converted to signal records"]
-        B5["Feature catalog<br>links VFC topics, option codes, study attributes,<br>car area per feature, incl. non-orderable"]
-        B7{"Human check by team<br>catalog mappings confirmed"}
+        B5["Fixed taxonomy = feature catalog (taxonomy/)<br>219 topics (BMW VFC level 2) · 11 aspect groups · 11 car areas<br>one feature per topic; option codes and study attributes mapped to topics"]
+        B7{"Human check by team<br>option list + the two topic mappings confirmed<br>only a human changes the taxonomy"}
         B1 & B2 & B3 & B4 & B6 --> B5 --> B7
     end
     PRED["On-demand predecessor research<br>PM signals 'removed vs older generation'<br>→ web search, stored as web source"]
@@ -48,8 +48,10 @@ flowchart TB
     %% ---------- 3. Signal record ----------
     subgraph NORM ["3 · Signal record (signal = every piece of evidence, versioned JSON contract)"]
         direction TB
-        J1["signal JSON, one statement about one feature<br>source + published_at · subject + generation tag<br>market USA / China / Europe / RoW / unknown + basis<br>vehicle_role · evidence_role bmw_customer / competitor / market · author_hash<br>kind · severity · car_area fixed list · feature_hint<br>summary ≤ 20 words EN · exact quote + EN translation<br>reach + unit · competitor_fact structured · extra"]
-        J2{"Validation gate<br>schema · snapshot · quote found ·<br>duplicate · source filter · dated competitor fact"}
+        J1["signal JSON signal@2, one statement about one topic<br>source + published_at · subject + generation tag<br>market USA / China / Europe / RoW / unknown + basis<br>vehicle_role · evidence_role bmw_customer / competitor / market · author_hash<br>kind · severity · topic_id + aspect_group from closed lists (enums)<br>car area derived from the topic in code, never predicted<br>summary ≤ 20 words EN · exact quote + EN translation<br>reach + unit · competitor_fact structured · extra"]
+        J2{"Validation gate<br>schema · stored record · quote found · known topic + aspect group ·<br>duplicate · dated competitor fact · scope tag (price = out of scope)"}
+        J4[("Taxonomy review queue<br>topic 'other' or low confidence<br>PM maps to an existing topic or dismisses;<br>no topic is ever created automatically")]
+        J2 -- "other / low confidence" --> J4
         J3[("Quarantine<br>rejected + reason, visible count<br>PM delete = content purged, tombstone in audit")]
         J1 --> J2
     end
@@ -57,8 +59,8 @@ flowchart TB
     %% ---------- 4. Cases ----------
     subgraph SC ["4 · Group signals into CASES (case = problem, composed of a group of signals;<br>one case can apply to several BMW lines, each line's PM works it)"]
         direction TB
-        S1["Link to feature<br>feature_hint → vector search in catalog<br>no match → new feature candidate → PM"]
-        S2["Link to case inside feature<br>embedding of summary, tuned similarity threshold<br>stable IDs, merges / splits logged"]
+        S1["Topic first<br>BMW rows: lookup from VFC labels · web: LLM picked from closed list<br>no topic yet → LLM classifier before grouping, never a similarity guess"]
+        S2["Case = topic + aspect group<br>only groups ≥ 50 signals split by summary similarity,<br>never across a topic · stable IDs, merges / splits logged"]
         S3["Case figures per vehicle<br>all opinions in one case: complaints · wishes · likes<br>distinct customers per market + powertrain · reach<br>study score · equipment today · competitor offer · trend<br>competitor signals = competitor evidence,<br>never counted as BMW customers"]
         S4["Tags: vehicles · scope · brand fit · segment<br>release fit current car / next gen / OTA, LLM from case size<br>AI proposes, PM can override"]
         S5["Conflict detector<br>market A negative, market B positive,<br>≥ N customers each → flag"]
@@ -71,7 +73,7 @@ flowchart TB
     %% ---------- 5. Case scoring ----------
     subgraph CS ["5 · Case importance score (no cost: a problem has no cost)"]
         direction TB
-        P1["Factors 0..1<br>distinct customers · severity · reach capped<br>satisfaction gap · competitor gap · market volume 2030<br>removed vs predecessor · trend · brand fit"]
+        P1["Factors 0..1<br>distinct customers · severity · reach capped<br>satisfaction gap · competitor gap · market volume 2030<br>removed vs predecessor · trend · brand fit<br>config source filter: skipped sources left out of the figures"]
         P2["Case score = weighted sum with weight profile<br>breakdown stored per version"]
         P1 --> P2
     end
@@ -104,11 +106,17 @@ flowchart TB
         H1["Requirement rank<br>case score x cost multiplier S 1.0 · M 0.85 · L 0.7<br>board filters as on the case board"]
         H2["Edit · delete · re-target with engineers<br>RAG sidebar on requirement page too<br>delete = tombstone in audit"]
         H3{"PM approves requirement"}
-        H4["Export top 10<br>codebeamer / Jira format with arguments:<br>complaint · wish · competition · cost"]
+        H4["Export top 10 (JSON / CSV now, logged)<br>codebeamer / Jira format later, with arguments:<br>complaint · wish · competition · cost"]
         H5["Requirement documentation<br>versioned, incl. rejected + reason"]
         H1 --> H2 --> H3
         H3 -- "yes" --> H4 --> H5
     end
+
+    %% ---------- API (contract with the UI) ----------
+    API["FastAPI + OpenAPI spec (UI contract)<br>Supabase Auth token → actor pm: / engineer: / admin:<br>PMs act only on their lines · stale save → 409<br>views + exports logged in the audit trail"]
+    API <--> U1
+    API <--> R2
+    API <--> DB
 
     %% ---------- Storage + audit (cross-cutting) ----------
     DB[("Supabase Postgres + pgvector<br>source records · signals · features · cases ·<br>requirements · scores · decisions · embeddings")]
@@ -163,5 +171,6 @@ flowchart TB
     classDef gate fill:#fdecea,stroke:#c62828,color:#000
     class A1,A2,A3,A4,PRED,J1,S1,S2,S3,S4,S5,S7,P1,P2,R1,R2,R3,H1,U3 ai
     class U0,U1,U2,H2,H4,CF3,CF4,CF5,SRCNOTE human
-    class DB,AUDIT,RAGIDX,SNAP,J3 store
+    class DB,AUDIT,RAGIDX,SNAP,J3,J4 store
+    class API ai
     class J2,B7,S6,U4,H3 gate

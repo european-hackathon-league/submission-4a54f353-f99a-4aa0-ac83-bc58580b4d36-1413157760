@@ -81,7 +81,7 @@ erDiagram
         text market "USA, China, Europe, Rest of World"
         uuid_array competitor_ids
         uuid brand_profile_id FK
-        jsonb source_filter
+        jsonb source_filter "exclude sources, categories, content types; applied when scoring"
         jsonb thresholds "open minimum, conflict minimum 5, similarity"
     }
     WEIGHT_PROFILE {
@@ -96,6 +96,7 @@ erDiagram
         uuid id PK "Supabase auth uid"
         text name
         text role "pm, engineer, admin"
+        text_array vehicles "lines the PM owns, empty = all"
     }
 
     %% ---------- Baseline ----------

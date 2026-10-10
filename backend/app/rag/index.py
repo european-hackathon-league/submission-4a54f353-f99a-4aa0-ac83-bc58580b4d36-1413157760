@@ -80,6 +80,33 @@ def rebuild(conn, *, actor: str = "system") -> dict:
     return counts
 
 
+def refresh_page(conn, object_type: str, object_id: str) -> int:
+    """Re-index one case or requirement page after a save or generation, so the
+    sidebar sees it before the next full rebuild. Derived data: no audit event."""
+    if object_type == "case":
+        c = conn.execute("select id, title, body_md from case_item where id = %s", (object_id,)).fetchone()
+        vehicles = [r["vehicle"] for r in conn.execute("select vehicle from case_vehicle where case_id = %s",
+                                                       (object_id,)).fetchall()]
+        chunk = c and {"vehicle": vehicles[0] if len(vehicles) == 1 else None, "market": None, "case_id": c["id"],
+                       "text": f"{c['id']}: {c['title']}\n{c['body_md']}"}
+    elif object_type == "requirement":
+        r = conn.execute("select id, case_id, vehicle, market, title, body_md, status from requirement"
+                         " where id = %s", (object_id,)).fetchone()
+        chunk = r and r["status"] != "deleted" and {"vehicle": r["vehicle"], "market": r["market"],
+                                                    "case_id": r["case_id"],
+                                                    "text": f"{r['id']}: {r['title']}\n{r['body_md']}"}
+    else:
+        raise ValueError("only case and requirement pages are refreshed one by one")
+    conn.execute("delete from rag_chunk where object_type = %s and object_id = %s", (object_type, object_id))
+    if not chunk:
+        return 0
+    vector = get_embedder().embed([chunk["text"][:2000]])[0]
+    conn.execute("insert into rag_chunk (object_type, object_id, vehicle, market, case_id, text, embedding)"
+                 " values (%s, %s, %s, %s, %s, %s, %s)",
+                 (object_type, object_id, chunk["vehicle"], chunk["market"], chunk["case_id"], chunk["text"], vector))
+    return 1
+
+
 if __name__ == "__main__":
     with db.transaction() as conn:
         print(rebuild(conn))

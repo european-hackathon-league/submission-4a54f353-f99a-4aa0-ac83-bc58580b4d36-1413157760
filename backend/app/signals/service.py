@@ -3,6 +3,8 @@ PM actions on the quarantine. Agents call ``ingest``; they never write cases."""
 
 from __future__ import annotations
 
+import datetime as dt
+
 from app import audit, taxonomy
 from app.llm.embeddings import get_embedder
 from app.signals.gate import check, load_context
@@ -67,7 +69,7 @@ def queue_taxonomy_review(conn, *, actor: str, run_id=None) -> int:
     ], actor=actor, run_id=run_id, rationale="classifier could not place the signal with confidence")
 
 
-def delete_quarantined(conn, signal_id: str, *, actor: str, rationale: str) -> dict:
+def delete_quarantined(conn, signal_id: str, *, actor: str, rationale: str, request_id=None) -> dict:
     """PM deletes a quarantined signal: content purged, tombstone kept. The source
     record is purged too when no other signal uses it."""
     row = conn.execute("select id, record_id, validation from signal where id = %s", (signal_id,)).fetchone()
@@ -76,18 +78,19 @@ def delete_quarantined(conn, signal_id: str, *, actor: str, rationale: str) -> d
     if row["validation"] != "quarantined":
         raise ValueError("only quarantined signals can be deleted here")
     out = audit.tombstone(conn, "signal", {"id": signal_id}, CONTENT_COLUMNS, actor=actor, rationale=rationale,
-                          extra_changes={"validation": "deleted"})
+                          extra_changes={"validation": "deleted"}, request_id=request_id)
     others = conn.execute(
         "select count(*) n from signal where record_id = %s and id <> %s and validation <> 'deleted'",
         (row["record_id"], signal_id),
     ).fetchone()["n"]
     if others == 0:
         audit.tombstone(conn, "source_record", {"record_id": row["record_id"]}, ("text_original", "text_en", "title"),
-                        actor=actor, rationale=f"purged with quarantined signal {signal_id}: {rationale}")
+                        actor=actor, rationale=f"purged with quarantined signal {signal_id}: {rationale}",
+                        request_id=request_id)
     return out
 
 
-def release(conn, signal_id: str, changes: dict, *, actor: str, rationale: str) -> dict:
+def release(conn, signal_id: str, changes: dict, *, actor: str, rationale: str, request_id=None) -> dict:
     """Re-check a quarantined signal after a correction (e.g. LLM classification
     arrived) and make it valid if it now passes the gate."""
     current = conn.execute("select * from signal where id = %s", (signal_id,)).fetchone()
@@ -115,6 +118,41 @@ def release(conn, signal_id: str, changes: dict, *, actor: str, rationale: str) 
     update.update(validation="valid", reject_reason=None)
     update["embedding"] = get_embedder().embed([embedding_text(result.row)])[0]
     released = audit.update(conn, "signal", {"id": signal_id}, update, actor=actor, rationale=rationale,
-                            action="release")
+                            action="release", request_id=request_id)
     queue_taxonomy_review(conn, actor=actor)
     return released
+
+
+def resolve_proposal(conn, proposal_id: str, action: str, *, actor: str, rationale: str,
+                     topic_id: str | None = None, aspect_group: str | None = None, request_id=None) -> dict:
+    """PM resolves a taxonomy review row: map the signal to an existing topic (and
+    optionally another aspect group), or dismiss it. A topic is never created here
+    (``accepted_new_topic`` means a human changed ``taxonomy/`` and re-seeded).
+    A mapped signal leaves its case so the next case run groups it under the new topic."""
+    proposal = audit.fetch_for_update(conn, "taxonomy_proposal", {"id": proposal_id})
+    if proposal["status"] != "open":
+        raise ValueError("proposal already resolved")
+    now = {"decided_by": actor, "decided_at": dt.datetime.now(dt.timezone.utc)}
+    if action == "dismiss":
+        return audit.update(conn, "taxonomy_proposal", {"id": proposal_id}, {"status": "dismissed", **now},
+                            actor=actor, rationale=rationale, request_id=request_id)
+    if action != "map":
+        raise ValueError("action is map or dismiss")
+    if not topic_id or topic_id == taxonomy.OTHER or topic_id not in taxonomy.topics():
+        raise ValueError(f"unknown topic {topic_id!r}: pick one of the fixed taxonomy")
+    if aspect_group and aspect_group not in taxonomy.aspect_groups():
+        raise ValueError(f"unknown aspect group {aspect_group!r}")
+    feature = conn.execute("select id from feature where topic_id = %s", (topic_id,)).fetchone()
+    if feature is None:
+        raise audit.NotFound(f"topic {topic_id} is not seeded")
+    changes = {"feature_id": feature["id"], "car_area": [taxonomy.car_area_of(topic_id)], "classified_by": "pm",
+               "classification_confidence": "high", "taxonomy_version": taxonomy.version(), "case_id": None}
+    if aspect_group:
+        changes["aspect_group"] = aspect_group
+        if aspect_group == "price":
+            changes["scope_tag"] = "out_of_scope"
+    audit.update(conn, "signal", {"id": proposal["signal_id"]}, changes, actor=actor, rationale=rationale,
+                 action="reclassify", request_id=request_id)
+    return audit.update(conn, "taxonomy_proposal", {"id": proposal_id},
+                        {"status": "mapped_to_existing", "resolved_feature_id": feature["id"], **now},
+                        actor=actor, rationale=rationale, request_id=request_id)

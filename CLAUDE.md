@@ -26,6 +26,7 @@ BMW values: trustworthy sources, transparent reasoning, thoughtful prioritizatio
 - `changes.md`: every decision changed during implementation, with reason and who decided.
 - `taxonomy/`: the fixed taxonomy (11 car areas, 219 topics, 11 aspect groups), its build script and the classifier eval. **Source of truth for the classification.** Only a human changes it.
 - `backend/`: the brain (FastAPI, migrations in `backend/supabase/migrations/`, tests in `backend/tests/`). Run tests with `cd backend && uv run pytest` (embedded local Postgres, no network).
+- `backend/API.md`: how the UI calls the API (auth, errors, main flows); the OpenAPI spec at `/docs` is the contract.
 - `layers.mmd`: BMW's process slide as a diagram, for reference only (not our architecture).
 - `All-context/README.md`: index of all material. Read first.
 - `All-context/01-challenge/`: briefing, mission sheet, BMW process slides (md transcriptions + original PDF/PNG).

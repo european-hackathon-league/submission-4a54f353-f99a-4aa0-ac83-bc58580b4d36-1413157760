@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_role_key: str = ""
     supabase_db_url: str = ""
+    # API auth: "supabase" (Bearer token), "dev" (X-User-Id header), "auto" = supabase
+    # when SUPABASE_URL is set, else dev. See app/api/auth.py.
+    auth_mode: str = "auto"
+    supabase_jwt_secret: str = ""
+    # Comma-separated origins of the UI allowed by CORS.
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
     # Fallback for development and tests: embedded local Postgres (pgserver).
     local_db_dir: Path = BACKEND_DIR / ".data" / "pg"
 
@@ -43,8 +49,13 @@ class Settings(BaseSettings):
     reddit_client_id: str = ""
     reddit_client_secret: str = ""
     youtube_api_key: str = ""
-    fetch_user_agent: str = "BMW-PM-Research-Prototype/0.1 (TUM.ai hackathon; contact: team)"
+    fetch_user_agent: str = ("BMW-PM-Research-Prototype/0.1"
+                             " (+https://github.com/ghassenzaara/BMW-Product-Management-Challenge)")
     fetch_daily_request_budget: int = 2000
+
+    def model_post_init(self, __context) -> None:
+        if self.auth_mode in ("auto", ""):
+            self.auth_mode = "supabase" if self.supabase_url else "dev"
 
     @property
     def db_url(self) -> str:

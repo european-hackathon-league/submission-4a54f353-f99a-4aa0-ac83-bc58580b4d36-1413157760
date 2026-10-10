@@ -13,7 +13,23 @@ from collections import defaultdict
 NEGATIVE = ("complaint", "wish")
 
 
-def compute(conn, case_id: str, reach_cap: int = 100000) -> dict:
+def excluded(signal: dict, source_filter: dict | None) -> bool:
+    """True when the config's source filter skips this signal's source."""
+    if not source_filter:
+        return False
+    return (signal["source_id"] in (source_filter.get("exclude_sources") or [])
+            or signal["category"] in (source_filter.get("exclude_categories") or [])
+            or signal["content_type"] in (source_filter.get("exclude_content_types") or []))
+
+
+def has_filter(source_filter: dict | None) -> bool:
+    return bool(source_filter) and any(source_filter.get(k) for k in (
+        "exclude_sources", "exclude_categories", "exclude_content_types"))
+
+
+def compute(conn, case_id: str, reach_cap: int = 100000, source_filter: dict | None = None) -> dict:
+    """Figures of one case. With a source filter (config, "PMs skip sources") the
+    signals of excluded sources are left out; the stored figures use no filter."""
     case = conn.execute("select id, feature_id from case_item where id = %s", (case_id,)).fetchone()
     signals = conn.execute(
         "select s.id, s.kind, s.severity, s.market, s.vehicle, s.powertrain, s.customer_ref, s.evidence_role,"
@@ -22,6 +38,7 @@ def compute(conn, case_id: str, reach_cap: int = 100000) -> dict:
         " where s.case_id = %s and s.validation = 'valid'",
         (case_id,),
     ).fetchall()
+    signals = [s for s in signals if not excluded(s, source_filter)]
     vehicles = sorted({s["vehicle"] for s in signals if s["vehicle"]})
     by_vehicle = {}
     for v in vehicles:

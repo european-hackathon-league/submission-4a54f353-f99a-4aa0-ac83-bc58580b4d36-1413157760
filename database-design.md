@@ -157,7 +157,7 @@ One PM view: vehicle + market.
 | `market` | market_t | not `unknown` |
 | `competitor_ids` | uuid[] | defaults to confirmed competitors of the vehicle in this market |
 | `brand_profile_id` | uuid FK | |
-| `source_filter` | jsonb | `{"exclude_sources": [...], "exclude_categories": [...], "exclude_content_types": [...]}` |
+| `source_filter` | jsonb | `{"exclude_sources": [...], "exclude_categories": [...], "exclude_content_types": [...]}`. Applied when scoring the config: the case figures are recomputed without the excluded sources, and the rationale names them. Stored case figures stay unfiltered |
 | `thresholds` | jsonb | `open_min_customers`, `conflict_min_customers` (5), `similarity_case`, `case_split_min_signals` (50), `reach_cap` |
 | `active` | bool | |
 
@@ -186,7 +186,7 @@ Check (`weights_valid`, migration 0009): `case_weights` is a non-empty object, e
 | `id` | uuid PK | = Supabase `auth.users.id` |
 | `name` | text | |
 | `role` | text | `pm`, `engineer`, `admin` |
-| `vehicles` | text[] | lines the user owns (several PMs share the platform) |
+| `vehicles` | text[] | lines the user owns (several PMs share the platform); the API lets a PM act only on these lines, an empty list means all lines |
 
 ## 2. Baseline (seeded once, team-confirmed)
 
