@@ -8,8 +8,8 @@
 | 1 | Foundation | done | 6dfc8e2 | 14 tests passed (all tables + RLS, HNSW indexes, audit_event refuses UPDATE/DELETE/TRUNCATE, service_role has no UPDATE/DELETE grant, audited diff, stale save, tombstone, config sales check, strict schema, prompts, local embedder); 7 migrations apply on local Postgres 16 + pgvector; not yet applied to Supabase (no credentials) |
 | 2 | Seed | done | 2463e1b | 28 tests passed. Seeded 134 sources, 27 competitors, 231 slugs, 6 vehicles, 36 sales records, 387 study scores, 153 features (candidate), 78 option-list pages, 3,282 equipment rows, 116 tech values, 10,128 feedback records, 13,771 signals (13,105 valid, 666 quarantined), 10 configs; counts match the data README; every quote found in its record; every seeded row audited. Team review of the CSVs pending |
 | 3 | Signal contract and validation gate | done | 4cf8b03 | 14 gate tests passed (+ foundation, seed, review-fix tests); all 13,105 valid seed signals embedded (local provider); car-area eval: heuristic baseline 34.7 % on 300 verbatims, LLM eval pending OPENAI_API_KEY |
-| 4 | Cases | done | see next phase | 6 case tests passed; seed data (local embedder, threshold 0.15): 1,322 cases, 712 spanning several lines, 293 opened per line, 1 market conflict; threshold report in backend/reports/clustering_thresholds.md |
-| 5 | Scoring | todo | | |
+| 4 | Cases | done | 7051b60 | 6 case tests passed; seed data (local embedder, threshold 0.15): 1,322 cases, 712 spanning several lines, 293 opened per line, 1 market conflict; threshold report in backend/reports/clustering_thresholds.md |
+| 5 | Scoring | done | see next phase | 9 tests passed (scoring + cases); seed data: 29,584 case scores for 10 configs x 4 profiles in 15 s; G60 / USA: 6 cases in the top 10 under every profile |
 | 6 | Requirements | todo | | |
 | 7 | RAG sidebar agent | todo | | |
 | 8 | Daily fetch loop (steps 1 to 9) | todo | | |

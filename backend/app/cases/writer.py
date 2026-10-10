@@ -21,7 +21,9 @@ from app.llm.client import LLMUnavailable, get_llm, llm_available
 CITATION = re.compile(r"\[signal:([0-9a-f-]{36})\]")
 _WORD = re.compile(r"[a-z][a-z-]{3,}")
 _GENERIC = {"customer", "stated", "vehicle", "car", "advised", "writer", "really", "would", "like", "also",
-            "just", "very", "much", "bmw", "series", "feature", "great", "good", "nice", "love", "likes"}
+            "just", "very", "much", "bmw", "series", "feature", "great", "good", "nice", "love", "likes",
+            "problem", "problems", "issue", "issues", "mentioned", "explained", "states", "said", "says", "time",
+            "times", "when", "they", "there", "them", "than", "then", "dealer", "service", "requested"}
 
 
 class CaseText(BaseModel):
