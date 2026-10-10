@@ -49,6 +49,7 @@ import {
   unclusteredSelectors,
 } from "../src/mock/authored/world";
 import { webSpecToSignal } from "../src/mock/convert";
+import { caseShortTitles, requirementShortTitles, shortFromTitle } from "../src/mock/authored/short-names";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dataDir = resolve(here, "../../docs/02-data/processed");
@@ -353,6 +354,7 @@ for (const spec of caseSpecs) {
   const updatedAt = spec.updatedAt ?? between(spec.createdAt, NOW, 0.8);
   cases.push({
     ...rest,
+    shortTitle: caseShortTitles[spec.id] ?? shortFromTitle(spec.featureName),
     highlights: highlights ?? deriveHighlights(spec.bodyMd, competitorOffer),
     topicId: mainTopic,
     pmContext: spec.pmContext ?? null,
@@ -389,6 +391,7 @@ for (const sel of unclusteredSelectors) {
 // ---------- Requirements ----------
 const requirements: Requirement[] = requirementSpecs.map((r) => ({
   ...r,
+  shortTitle: requirementShortTitles[r.id] ?? shortFromTitle(r.title),
   updatedAt: r.updatedAt ?? r.createdAt,
   manualRank: null,
   synthetic: true,

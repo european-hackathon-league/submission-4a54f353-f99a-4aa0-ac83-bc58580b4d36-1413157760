@@ -24,7 +24,7 @@ import { api } from "@/lib/api/client";
 import { useApi } from "@/lib/api/hooks";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/common/page";
-import { CaseStateBadge, Pill, ScoreBar, caseStateTone } from "@/components/common/badges";
+import { CaseStateDot, Pill, ScoreBar, caseStateTone } from "@/components/common/badges";
 import { useUsers } from "@/components/common/people";
 import { CaseCard } from "@/components/cases/case-card";
 import { CaseActionDialog, type UiCaseAction } from "@/components/cases/case-action-dialog";
@@ -221,7 +221,7 @@ function Column({ state, cases, scores }: { state: CaseState; cases: Case[]; sco
   const { setNodeRef, isOver } = useDroppable({ id: state });
   const toneDot = { slate: "bg-slate-400", sky: "bg-sky-500", violet: "bg-violet-500", amber: "bg-amber-500", emerald: "bg-emerald-500" } as Record<string, string>;
   return (
-    <div ref={setNodeRef} className={cn("flex w-72 shrink-0 flex-col rounded-lg bg-muted/60 transition", isOver && "bg-primary/10 ring-2 ring-primary/40")}>
+    <div ref={setNodeRef} className={cn("flex w-60 shrink-0 flex-col rounded-lg bg-muted/60 transition", isOver && "bg-primary/10 ring-2 ring-primary/40")}>
       <div className="flex items-center gap-2 px-3 py-2.5">
         <span className={cn("size-2 rounded-full", toneDot[caseStateTone[state]] ?? "bg-slate-400")} />
         <span className="text-sm font-semibold">{caseStateLabel[state]}</span>
@@ -326,13 +326,14 @@ function Ranked({
                 {whatIf && delta === 0 && <Minus className="size-3 text-muted-foreground" />}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-sm font-medium">{c.title}</span>
-                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <span className="font-mono">{c.id}</span>
-                  <CaseStateBadge state={c.state} />
+                <span className="flex items-center gap-3">
+                  <span className="truncate text-sm font-medium" title={c.title}>
+                    {c.shortTitle}
+                  </span>
+                  <CaseStateDot state={c.state} />
                   {c.manualRank != null && <Pill t="violet">Manual rank</Pill>}
                 </span>
-                {why && <span className="block text-[11px] text-primary">{why}</span>}
+                {why && <span className="block truncate text-[11px] text-primary">{why}</span>}
               </span>
               <span title={top.map(([f, v]) => `${factorLabel[f]} +${v.toFixed(2)}`).join(" · ")}>
                 <ScoreBar value={s.score} />

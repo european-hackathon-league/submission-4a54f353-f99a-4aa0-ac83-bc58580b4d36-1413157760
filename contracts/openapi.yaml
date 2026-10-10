@@ -3552,6 +3552,8 @@ components:
           minLength: 1
         title:
           type: string
+        shortTitle:
+          type: string
         summary:
           type: string
         highlights:
@@ -3822,6 +3824,7 @@ components:
       required:
         - id
         - title
+        - shortTitle
         - summary
         - highlights
         - topicId
@@ -4070,6 +4073,8 @@ components:
             - G70
         title:
           type: string
+        shortTitle:
+          type: string
         description:
           type: string
         marketScope:
@@ -4192,6 +4197,7 @@ components:
         - caseId
         - series
         - title
+        - shortTitle
         - description
         - marketScope
         - variantOf

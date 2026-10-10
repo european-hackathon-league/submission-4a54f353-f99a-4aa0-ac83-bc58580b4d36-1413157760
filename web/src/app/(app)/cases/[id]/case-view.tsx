@@ -33,7 +33,7 @@ import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { download, fromNow } from "@/lib/format";
 import { caseSankey, isCustomer, isFact, sayLabel, topicLabels, type SankeyNode } from "@/lib/sankey";
 import { cn } from "@/lib/utils";
-import { CaseStateBadge, EvidenceBars, MarketChip, OutcomeBadge, Pill, ReleaseChip, ReqStatusBadge } from "@/components/common/badges";
+import { CaseStateBadge, EvidenceBars, MarketChip, OutcomeBadge, ReqStatusDot } from "@/components/common/badges";
 import { Markdown } from "@/components/common/markdown";
 import { PageSkeleton } from "@/components/common/page";
 import { UserAvatar, useUsers } from "@/components/common/people";
@@ -56,6 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Step = "evidence" | "knowledge" | "requirements";
+const releaseShort = { next_gen: "Next gen", lci: "LCI", ota: "OTA" } as const;
 type Drawer = "details" | "activity" | null;
 interface QuoteSet {
   title: string;
@@ -121,7 +122,10 @@ export function CaseView() {
           <ChevronLeft className="size-4" /> {c.id}
         </Link>
         <div className="mt-1 flex flex-wrap items-start gap-3">
-          <h1 className="min-w-0 flex-1 text-2xl leading-snug font-semibold tracking-tight text-balance">{c.title}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl leading-snug font-semibold tracking-tight">{c.shortTitle}</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">{c.title}</p>
+          </div>
           <div className="flex items-center gap-1">
             <IconButton label={watching ? "Stop watching" : "Watch"} onClick={() => toggleWatch()}>
               {watching ? <EyeOff /> : <Eye />}
@@ -535,13 +539,13 @@ function RequirementsStep({
         <div className="divide-y rounded-xl border bg-card shadow-xs">
           {requirements.map((r) => (
             <button key={r.id} onClick={() => onOpen(r.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/50">
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{r.title}</span>
-                <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium" title={r.title}>
+                {r.shortTitle}
               </span>
-              <ReleaseChip release={r.releaseTarget} />
-              <Pill>Cost {r.cost.size}</Pill>
-              <ReqStatusBadge status={r.status} />
+              <span className="text-xs text-muted-foreground">
+                {releaseShort[r.releaseTarget]} · {r.cost.size}
+              </span>
+              <ReqStatusDot status={r.status} />
               <ArrowRight className="size-4 text-muted-foreground" />
             </button>
           ))}

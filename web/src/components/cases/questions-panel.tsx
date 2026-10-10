@@ -13,9 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Pill } from "@/components/common/badges";
 import { ProposalCard } from "@/components/common/proposal-card";
-import { useUsers } from "@/components/common/people";
 
 export function QuestionsPanel({ caseId, questions, proposals, canEdit }: { caseId: string; questions: OpenQuestion[]; proposals: Proposal[]; canEdit: boolean }) {
   const [adding, setAdding] = useState(false);
@@ -50,11 +48,13 @@ export function QuestionsPanel({ caseId, questions, proposals, canEdit }: { case
       {adding && <AddQuestion caseId={caseId} onDone={() => setAdding(false)} />}
 
       {groups.map((g) => (
-        <div key={g.a} className="space-y-2">
-          <h3 className="text-sm font-semibold">{addresseeLabel[g.a]}</h3>
-          {g.items.map((q) => (
-            <QuestionRow key={q.id} q={q} />
-          ))}
+        <div key={g.a} className="overflow-hidden rounded-xl border bg-card">
+          <h3 className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">{addresseeLabel[g.a]}</h3>
+          <div className="divide-y">
+            {g.items.map((q) => (
+              <QuestionRow key={q.id} q={q} />
+            ))}
+          </div>
         </div>
       ))}
       {questions.length === 0 && !adding && <p className="text-sm text-muted-foreground">No questions yet.</p>}
@@ -67,32 +67,16 @@ function QuestionRow({ q }: { q: OpenQuestion }) {
   const patch = useApiMutation("patchQuestion", { success: "Answer saved" });
   const [answering, setAnswering] = useState(false);
   const [answer, setAnswer] = useState("");
-  const { name } = useUsers();
   const overdue = q.status === "open" && q.dueDate && q.dueDate < new Date().toISOString().slice(0, 10);
   return (
-    <div className={cn("rounded-lg border bg-card p-3", q.status === "answered" && "bg-muted/30")}>
-      <div className="flex items-start gap-2">
-        {q.status === "answered" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <CircleDot className="mt-0.5 size-4 shrink-0 text-amber-500" />}
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-sm font-medium">{q.question}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="font-mono">{q.id}</span>
-            {q.contact && <span>→ {q.contact}</span>}
-            <span>asked by {name(q.askedBy)}</span>
-            {q.dueDate && <Pill t={overdue ? "red" : "outline"}>due {fmtDate(q.dueDate)}</Pill>}
-            {q.fieldsAffected.length > 0 && <span>affects: {q.fieldsAffected.join(", ")}</span>}
-          </div>
-          <p className="text-xs text-muted-foreground">Why: {q.why}</p>
-          {q.status === "answered" && (
-            <div className="mt-1 rounded-md border-l-2 border-emerald-500 bg-emerald-50/60 px-2 py-1 text-sm dark:bg-emerald-950/30">
-              {q.answer}
-              <span className="ml-2 text-[11px] text-muted-foreground">
-                ({q.answerSource?.replace("_", " ")}, {fmtDate(q.answeredAt)})
-              </span>
-            </div>
-          )}
+    <div className="px-3 py-2.5">
+      <div className="flex items-start gap-2.5">
+        {q.status === "answered" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-positive" /> : <CircleDot className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <span className="block text-sm" title={`Why: ${q.why}`}>
+            {q.question}
+          </span>
+          {q.status === "answered" && <div className="rounded-md border-l-2 border-positive bg-positive/5 px-2 py-1 text-sm">{q.answer}</div>}
           {answering && (
             <form
               className="mt-2 space-y-2"
@@ -113,6 +97,7 @@ function QuestionRow({ q }: { q: OpenQuestion }) {
             </form>
           )}
         </div>
+        {q.status === "open" && q.dueDate && <span className={cn("shrink-0 pt-0.5 text-xs", overdue ? "text-negative" : "text-muted-foreground")}>{fmtDate(q.dueDate)}</span>}
         {q.status === "open" && !answering && (
           <div className="flex shrink-0 gap-1">
             <Button size="xs" variant="outline" onClick={() => setAnswering(true)}>

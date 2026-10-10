@@ -846,6 +846,9 @@
           "title": {
             "type": "string"
           },
+          "shortTitle": {
+            "type": "string"
+          },
           "summary": {
             "type": "string"
           },
@@ -1444,6 +1447,7 @@
         "required": [
           "id",
           "title",
+          "shortTitle",
           "summary",
           "highlights",
           "topicId",
@@ -1759,6 +1763,9 @@
           "title": {
             "type": "string"
           },
+          "shortTitle": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
@@ -1965,6 +1972,7 @@
           "caseId",
           "series",
           "title",
+          "shortTitle",
           "description",
           "marketScope",
           "variantOf",

@@ -26,6 +26,7 @@ import { liveChatEnabled, liveReply } from "./ai/live";
 import { refreshPool } from "./authored/world";
 import { webSpecToSignal } from "./convert";
 import taxonomyData from "./fixtures/taxonomy.json";
+import { shortFromTitle } from "./authored/short-names";
 
 type Ep = typeof endpoints;
 type In<T> = T extends z.ZodType ? z.output<T> : undefined;
@@ -111,6 +112,7 @@ function createRequirement(d: Dataset, c: Case, draft: ReturnType<typeof draftRe
     carArea: c.carArea,
     changeDepth: c.changeDepth,
     ownerId: c.ownerId,
+    shortTitle: draft.marketScope === "CN" && c.scope !== "CN" ? `${c.shortTitle} (China)` : c.shortTitle,
     manualRank: null,
     plannedFeatureId: null,
     createdAt: now(),
@@ -306,6 +308,7 @@ export const handlers: Handlers = {
     const c: Case = {
       id,
       title: body.title,
+      shortTitle: shortFromTitle(body.title),
       summary: body.summary,
       series: body.series,
       relatedSeries: [],

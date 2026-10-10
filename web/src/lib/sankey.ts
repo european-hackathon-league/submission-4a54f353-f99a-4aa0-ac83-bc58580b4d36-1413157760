@@ -155,7 +155,7 @@ export function caseSankey(c: Case, signals: Signal[], topics: TopicLabels, maxS
   nodes.set(caseId, {
     id: caseId,
     column: 2,
-    label: c.title,
+    label: c.shortTitle,
     sub: customers === 1 ? "customer" : "customers",
     value: signals.length,
     tone: "customer",
@@ -202,7 +202,7 @@ export function overviewSankey(signals: Signal[], cases: Case[], maxCases = 8): 
         ? { id: target, column: 2, label: "Not in a case yet", tone: "fact" }
         : target === "case:other"
           ? { id: target, column: 2, label: "Other cases", tone: "customer" }
-          : { id: target, column: 2, label: c!.title, sub: c!.id, tone: "customer", href: `/cases/${c!.id}` },
+          : { id: target, column: 2, label: c!.shortTitle, tone: "customer", href: `/cases/${c!.id}` },
       s.id,
     );
     link(srcId, areaId, g.tone);
