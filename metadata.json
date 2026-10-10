@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.10.2",
+  "checkpoint_id": "01M4KRQA1PC00ZR51Y0JN9ZQXT",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "backend/app/audit.py",
+    "backend/app/prompts/feedback_classify@v1.md",
+    "backend/app/seed/catalog.py",
+    "backend/app/seed/catalog_proposal.py",
+    "backend/app/seed/classify.py",
+    "backend/app/seed/loaders.py",
+    "backend/app/seed/option_lists.py",
+    "backend/app/seed/option_load.py",
+    "backend/app/seed/readers.py",
+    "backend/app/seed/registry.py",
+    "backend/app/seed/run.py",
+    "backend/seed/review/README.md",
+    "backend/tests/test_seed.py",
+    "changes.md",
+    "plan.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 114,
+    "cache_creation_tokens": 146486,
+    "cache_read_tokens": 18119618,
+    "output_tokens": 91093,
+    "api_call_count": 57
+  }
+}
