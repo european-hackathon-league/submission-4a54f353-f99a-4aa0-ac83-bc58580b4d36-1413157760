@@ -3,7 +3,7 @@
 The reference list of external sources to scrape: what to search for, where to get it, in which order, and what to save.
 
 - **Purpose:** enrich the provided BMW data ([`../02-data-provided-by-pm/README.md`](../02-data-provided-by-pm/README.md)) with competitor, market and customer signals from the web.
-- **Traceability:** everything fetched is saved together with the source it came from ([section 7](#7-what-to-save-with-every-record)), so any later finding can be traced back to its origin.
+- **Traceability:** everything fetched is saved together with the source it came from ([section 7](#7-what-to-save-with-every-record)), so any later signal can be traced back to its origin.
 - **Checked on:** 2026-10-10. Lines marked ✓ were confirmed live on that date.
 
 ## Contents

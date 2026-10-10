@@ -4,7 +4,7 @@
 
 | Phase | Title | Status | Commit | Verification result |
 |---|---|---|---|---|
-| 0 | Align docs, database design | todo | | |
+| 0 | Align docs, database design | done | see git log | Both Mermaid files render with mmdc 11.4.2; no "finding" left in design docs (BMW challenge transcriptions and meeting notes keep their original wording); database-design.md covers all tables |
 | 1 | Foundation | todo | | |
 | 2 | Seed | todo | | |
 | 3 | Signal contract and validation gate | todo | | |
@@ -37,56 +37,14 @@ Decisions added in this round:
 Stack: Python 3.12, FastAPI, Supabase (Postgres + pgvector, Storage, Realtime, Auth), OpenAI (chat + embeddings), `uv` venv, httpx + selectolax for scraping, feedparser for RSS, pdfplumber for PDFs, openpyxl/pandas inside the venv.
 
 ## Database design (built in phase 1, documented in phase 0)
-All tables in schema `public`, UUID or text keys, `created_at` default `now()`. The backend uses the service role; the UI talks to the FastAPI API (plus Realtime for notifications). Every write goes through `audit.py`.
+Full design: [`database-design.md`](database-design.md) (diagram: `data-model.mmd`). Table groups: reference and configuration (`vehicle`, `competitor`, `source_registry`, `site_slug`, `search_term`, `car_area`, `brand_profile`, `config`, `weight_profile`, `app_user`), baseline (`feature`, `feature_mapping`, `vehicle_feature`, `study_score`, `data_record` + view `sales_volume`), evidence (`agent_run`, `source_record`, `signal`), cases and requirements (`case_item`, `case_vehicle`, `case_lineage`, `case_score`, `requirement`, `page_version`), collaboration and audit (`decision`, `chat_message`, `notification`, `rag_chunk`, `audit_event`).
 
-**Reference and configuration**
-| Table | Key columns | Notes |
-|---|---|---|
-| `vehicle` | `code` PK, series, segment, generation, `on_sale_since` date, `predecessor_code`, `markets_sold` text[] | From fetching-sources 2.1 + sales; records published before `on_sale_since` belong to the predecessor |
-| `competitor` | id, `bmw_vehicle` FK, brand, model, generation, since, `names` jsonb (de/fr/zh), `wikipedia_page`, `markets` text[] | From fetching-sources 2.3; new launches (category J) add rows |
-| `site_slug` | (`subject_type`, `subject_id`, `source_id`) PK, `slug` | Fetching-sources 3.10 |
-| `search_term` | subject, `term`, `language` | Incl. collision-safe terms from 2.4 and names per language 2.2 |
-| `source_registry` | `source_id` PK, name, `url_pattern`, `categories` text[], country, level, access, `check_status`, `fetch_step`, `enabled`, `last_cursor` jsonb | Parsed once from the sources file; `last_cursor` drives incremental fetching |
-| `brand_profile` | id, version, `body_md` | Versioned assumption, PM-editable |
-| `config` | id, `vehicle` FK, market, `competitor_ids` uuid[], `brand_profile_id`, `source_filter` jsonb, `thresholds` jsonb (open-case minimum, conflict minimum 5, similarity threshold) | Check: vehicle/market valid only if 2030 sales > 0 |
-| `weight_profile` | id, `config_id` FK, name, `case_weights` jsonb, `brand_multipliers` jsonb, `cost_multipliers` jsonb, `created_by` | Defaults: 0.25/0.20/0.15/0.15/0.10/0.05/0.05/0.05; 1.0/0.8/0.5; S 1.0 / M 0.85 / L 0.7 |
-| `app_user` | id = Supabase auth uid, name, role (pm, engineer, admin) | Several PMs |
-
-**Baseline**
-| Table | Key columns | Notes |
-|---|---|---|
-| `feature` | id, name, `car_area`, status (confirmed, candidate), `embedding` vector | Feature catalog |
-| `feature_mapping` | `feature_id` FK, kind (vfc_topic, option_code, study_attribute), value | Normalized links instead of arrays |
-| `vehicle_feature` | vehicle FK, `feature_id` FK, variant, market, availability (standard, optional, absent, removed), `sa_code`, `price_eur`, `record_id` | Option lists (market DE) |
-| `study_score` | id, vehicle FK, market, attribute, method (mean_10pt, dist_7level), raw jsonb, normalized, `dissatisfied_share`, `feature_id` | Customer study |
-| `data_record` | `record_id` PK, `source_id`, brand, model, `chassis_code`, powertrain, country, market, period, metric, value, unit, `source_location`, `raw_ref`, `fetched_at` | Fetching-sources 7.3; also holds BMW sales (`source_id` = `bmw_sales`), tech data from option lists and competitor specs. View `sales_volume` on top |
-
-**Evidence**
-| Table | Key columns | Notes |
-|---|---|---|
-| `agent_run` | id, agent, started/ended, counts (records, signals valid, quarantined), `llm_cost`, status, error | One per run |
-| `source_record` | `record_id` PK + all fields of fetching-sources 7.2 (source_id, category, content_type, level, url, raw_ref, fetched_at, published_at, search_term, thread_id, author_hash, brand, model, chassis_code, model_year, vehicle_role, powertrain, country, market, language, title, text_original, text_en, rating_value, rating_scale, engagement jsonb), `content_hash` unique, `run_id` | Text records; BMW feedback verbatims too (`source_id` = `bmw_feedback`) |
-| `signal` | id, `record_id` FK, `run_id`, schema/prompt version, `customer_ref`, market + basis, vehicle, `vehicle_role`, `evidence_role` (bmw_customer, competitor, market), powertrain, kind, severity, `car_area` text[], `feature_hint`, `feature_id`, `case_id`, summary, quote, `quote_en`, reach + unit, `data_record_id` (competitor fact), `extra` jsonb, `validation` (valid, quarantined, deleted), `reject_reason`, `embedding` vector | Signal = evidence; competitor signals have `evidence_role = competitor` |
-
-**Cases and requirements**
-| Table | Key columns | Notes |
-|---|---|---|
-| `case` | `id` text PK (`CASE-G60-0012`), `config_id`, `feature_id`, title, state (observed, open, confirmed, rejected), `body_md`, `body_version`, `figures` jsonb, `market_conflict`, scope / brand_fit / segment tags, `release_fit` (current_car, next_gen, ota) + reason + `release_fit_source` (ai, pm), `manual_rank` + reason, `embedding` vector, `flag_new_evidence` int | Case = group of signals |
-| `case_lineage` | `from_case`, `to_case`, op (merge, split), actor | Stable IDs |
-| `case_score` | id, `case_id`, `weight_profile_id`, factors jsonb, score, rationale, `computed_at` | One row per version |
-| `requirement` | `id` text PK (`REQ-G60-USA-0012`), `case_id` FK, market (only when split), `body_md`, `body_version`, `metric_target`, `acceptance_criteria`, `release_target`, `evidence_level`, assumptions, `cost_size`, `cost_source`, status (draft, in_discussion, approved, rejected, deleted), `rank_score`, `manual_rank` + reason | |
-| `page_version` | `object_type`, `object_id`, version, `body_md`, author, `created_at` | History of Notion-like pages; stale save rejected |
-
-**Collaboration and audit**
-| Table | Key columns | Notes |
-|---|---|---|
-| `decision` | id, `object_type`, `object_id`, actor, action, rationale | PM / engineer actions |
-| `chat_message` | id, `object_type`, `object_id`, role, content, `cited_signals` uuid[], `proposed_diff` jsonb, `diff_status` | RAG sidebar |
-| `notification` | id, type, `object_type`, `object_id`, message, `read_by` uuid[] | Realtime-enabled |
-| `rag_chunk` | id, `object_type`, `object_id`, text, `embedding` vector, `tsv` tsvector | Hybrid search |
-| `audit_event` | `seq` bigserial PK, at, actor, `actor_type` (ai, human, system), action, `object_type`, `object_id`, before jsonb, after jsonb, rationale | Append-only: UPDATE/DELETE revoked + trigger raises |
-
-**Indexes and rules**: HNSW on every `embedding`; GIN on `rag_chunk.tsv`; btree on `signal(case_id)`, `signal(feature_id)`, `signal(market)`, `source_record(source_id, published_at)`, `case(config_id, state)`; unique `source_record.content_hash`. Deletes are tombstones: content columns nulled, row kept, audit event written. RLS on with deny-all for `anon`; `authenticated` may only read `notification`.
+Changes agreed with the user in phase 0 against the first draft of this plan:
+- The case table is `case_item` (`CASE` is reserved in SQL); API and UI still say "case".
+- A case is not tied to one vehicle or config: one problem can apply to several BMW lines. Vehicles are tags in `case_vehicle`, which holds the per-vehicle state, PM rank, release fit, conflict flag and new-evidence flag. Case IDs are `CASE-0012`; requirements are per line (`REQ-G60-0012`, `REQ-G60-USA-0012` when split). Scores stay per weight profile, so per config.
+- `car_area` is a table (fixed list, confirmed in phase 2) instead of a hard-coded list.
+- Option-list pages are stored as `source_record` rows (`source_id = option_list`), so equipment facts are quotable like every other source.
+- `site_slug` key includes the slug (some sites have several pages per car).
 
 ## Phase 0 — Align docs and write the database design
 - `CLAUDE.md` already uses Signal and holds this round's decisions. Rename Finding → Signal in `architecture.mmd`, `data-model.mmd`, `README.md`; add "a case is composed of a group of signals", the two end filters, competitor signals, fetch scope steps 1 to 9, backfill + incremental.
@@ -102,6 +60,7 @@ All tables in schema `public`, UUID or text keys, `created_at` default `now()`. 
 - Test: update/delete on `audit_event` fails.
 
 ## Phase 2 — Seed
+- Pre-seeding: everything in `All-context/02-data-provided-by-pm/raw/` (3 feedback files, customer study, sales volumes, 3 option-list PDFs) is imported into the tables created in phase 1, read-only from `raw/`, each file also stored in the `raw-records` bucket.
 - **Registry seed** (parse `fetching-sources.md` once into YAML, reviewed, then load): `source_registry`, `competitor`, `site_slug`, `search_term`, vehicle generations / `on_sale_since`.
 - **Portfolio** → `vehicle`. **Sales** → `data_record` (identical RoW values flagged `suspect`).
 - **Study** → `study_score` (CN_EU means normalized; US distributions → normalized mean + dissatisfied share).

@@ -49,7 +49,7 @@ The two PM interviews are the most important user input.
 
 ## Recurring themes across the material
 - **Human in the loop, no black box:** every recommendation shows its source, market and evidence. The product manager accepts, edits or rejects.
-- **Traceability and audit trail:** from finding, to requirement, to score, to decision, including who changed what, when and why.
+- **Traceability and audit trail:** from signal, to case, to requirement, to score, to decision, including who changed what, when and why.
 - **Evidence vs. assumption:** make clear which conclusions rest on data and which on forward-looking assumptions.
 - **Continuous loop:** competitor and feedback agents re-check requirements and flag outdated ones. They do not overwrite.
 - **Brand fit and market differences:** volume of mentions is not relevance. China, the US and the Middle East need separate treatment.

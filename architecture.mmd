@@ -1,7 +1,8 @@
 flowchart TB
     %% =========================================================
     %% BMW Requirements Platform: target architecture
-    %% CASE = the problem (what customers / market say)
+    %% SIGNAL = every piece of evidence (one statement about one feature from one source record)
+    %% CASE = the problem (what customers / market say), composed of a group of signals
     %% REQUIREMENT = what BMW builds, generated only after the PM confirms a case
     %% Brain = background pipeline (daily, no PM needed)
     %% Dotted arrows to AUDIT = every step writes an audit event
@@ -24,7 +25,7 @@ flowchart TB
         B2["BMW portfolio<br>segment, generation, markets sold,<br>shared Baukasten features"]
         B3["Sales volumes<br>2030 forecast = market weight"]
         B4["Customer study 2025<br>raw + normalized 0..1,<br>US dissatisfied share"]
-        B6["BMW customer feedback Excel<br>converted to finding records"]
+        B6["BMW customer feedback Excel<br>converted to signal records"]
         B5["Feature catalog<br>links VFC topics, option codes, study attributes,<br>car area per feature, incl. non-orderable"]
         B7{"Human check by team<br>catalog mappings confirmed"}
         B1 & B2 & B3 & B4 & B6 --> B5 --> B7
@@ -32,36 +33,36 @@ flowchart TB
     PRED["On-demand predecessor research<br>PM signals 'removed vs older generation'<br>→ web search, stored as web source"]
 
     %% ---------- 2. Background agent loop ----------
-    subgraph LOOP ["2 · Daily fetch loop (Python worker + cron, daily budget + priority)"]
+    subgraph LOOP ["2 · Daily fetch loop (Python worker + cron, daily budget + priority)<br>v1 = fetch steps 1 to 9 · one backfill over all pages, then daily incremental"]
         direction LR
         A1["Competitor agent<br>launches J · competitor equipment E"]
         A2["Customer + public feedback agent<br>complaints A · reviews B · community C ·<br>expert + video D · apps H"]
         A3["Trends agent<br>market, studies, trends F G I"]
         A4["Innovation scout<br>other industries, suppliers, CES"]
     end
-    SRCNOTE["Sources: All-context/05-web-sources/fetching-sources.md<br>categories A..J, fetch order, record format<br>search provider: teammate, TBD"]
+    SRCNOTE["Sources: All-context/05-web-sources/fetching-sources.md<br>categories A..J, fetch order, record format<br>URL patterns + APIs given; a general search provider<br>only for discovery, pluggable"]
     SRCNOTE -.-> LOOP
 
     SNAP[("Source records<br>raw response + record fields<br>text records 7.2 · data records 7.3")]
 
-    %% ---------- 3. Finding record ----------
-    subgraph NORM ["3 · Finding record (versioned JSON contract)"]
+    %% ---------- 3. Signal record ----------
+    subgraph NORM ["3 · Signal record (signal = every piece of evidence, versioned JSON contract)"]
         direction TB
-        J1["finding JSON, one statement about one feature<br>source + published_at · subject + generation tag<br>market USA / China / Europe / RoW / unknown + basis<br>vehicle_role · author_hash<br>kind · severity · car_area fixed list · feature_hint<br>summary ≤ 20 words EN · exact quote + EN translation<br>reach + unit · competitor_fact structured · extra"]
+        J1["signal JSON, one statement about one feature<br>source + published_at · subject + generation tag<br>market USA / China / Europe / RoW / unknown + basis<br>vehicle_role · evidence_role bmw_customer / competitor / market · author_hash<br>kind · severity · car_area fixed list · feature_hint<br>summary ≤ 20 words EN · exact quote + EN translation<br>reach + unit · competitor_fact structured · extra"]
         J2{"Validation gate<br>schema · snapshot · quote found ·<br>duplicate · source filter · dated competitor fact"}
         J3[("Quarantine<br>rejected + reason, visible count<br>PM delete = content purged, tombstone in audit")]
         J1 --> J2
     end
 
     %% ---------- 4. Cases ----------
-    subgraph SC ["4 · Cluster findings into CASES (case = problem)"]
+    subgraph SC ["4 · Group signals into CASES (case = problem, composed of a group of signals;<br>one case can apply to several BMW lines, each line's PM works it)"]
         direction TB
         S1["Link to feature<br>feature_hint → vector search in catalog<br>no match → new feature candidate → PM"]
         S2["Link to case inside feature<br>embedding of summary, tuned similarity threshold<br>stable IDs, merges / splits logged"]
-        S3["Case figures<br>all opinions in one case: complaints · wishes · likes<br>distinct customers per market + powertrain · reach<br>study score · equipment today · competitor offer · trend"]
-        S4["Tags: scope · brand fit · segment<br>AI proposes, PM can override"]
+        S3["Case figures per vehicle<br>all opinions in one case: complaints · wishes · likes<br>distinct customers per market + powertrain · reach<br>study score · equipment today · competitor offer · trend<br>competitor signals = competitor evidence,<br>never counted as BMW customers"]
+        S4["Tags: vehicles · scope · brand fit · segment<br>release fit current car / next gen / OTA, LLM from case size<br>AI proposes, PM can override"]
         S5["Conflict detector<br>market A negative, market B positive,<br>≥ N customers each → flag"]
-        S6{"Open threshold reached?<br>customers · defect · competitor gap · removed feature<br>or PM opens by hand"}
+        S6{"Open threshold reached, per vehicle?<br>customers · defect · competitor gap · removed feature<br>or PM opens by hand"}
         S7["Observed case<br>overview map only, keeps collecting"]
         S1 --> S2 --> S3 --> S4 --> S5 --> S6
         S6 -- "no" --> S7
@@ -79,7 +80,7 @@ flowchart TB
     subgraph PM ["6 · PM workspace: case board + case page (UI by teammate)"]
         direction TB
         U0["Notification toast<br>new open case · new evidence · conflict · run failed"]
-        U1["Case board<br>ranked, drag = PM override with reason<br>filters: market, car area, source, status"]
+        U1["Case board<br>ranked, drag = PM override with reason<br>filters: market · car area / category · state ·<br>source type · release fit"]
         U2["Case page, Notion-like<br>markdown body + structured fields<br>evidence: quotes → sources, score breakdown"]
         U3["RAG sidebar agent<br>answers with citations, compares markets,<br>proposes edits as diff → PM accepts"]
         U4{"PM confirms case<br>after meetings + discussion"}
@@ -91,7 +92,7 @@ flowchart TB
     %% ---------- 7. Requirement generation ----------
     subgraph RQ ["7 · Requirement generation (only from confirmed cases)"]
         direction TB
-        R1["Requirement agent<br>one requirement per case,<br>split per market only if markets differ"]
+        R1["Requirement agent<br>one requirement per confirmed case and BMW line,<br>split per market only if markets differ"]
         R2["Requirement page, Notion-like<br>description · metric + target · acceptance criteria<br>release target: next gen · current car · OTA<br>assumptions · evidence level · linked case"]
         R3["Cost<br>option price if exists, else AI S/M/L estimate<br>PM + engineers edit"]
         R1 --> R2 --> R3
@@ -100,7 +101,7 @@ flowchart TB
     %% ---------- 8. Requirement ranking + handover ----------
     subgraph HO ["8 · Requirement ranking, discussion with engineering, handover"]
         direction TB
-        H1["Requirement rank<br>case score adjusted by cost"]
+        H1["Requirement rank<br>case score x cost multiplier S 1.0 · M 0.85 · L 0.7<br>board filters as on the case board"]
         H2["Edit · delete · re-target with engineers<br>RAG sidebar on requirement page too<br>delete = tombstone in audit"]
         H3{"PM approves requirement"}
         H4["Export top 10<br>codebeamer / Jira format with arguments:<br>complaint · wish · competition · cost"]
@@ -110,9 +111,9 @@ flowchart TB
     end
 
     %% ---------- Storage + audit (cross-cutting) ----------
-    DB[("Supabase Postgres + pgvector<br>sources · findings · features · cases ·<br>requirements · scores · decisions · embeddings")]
+    DB[("Supabase Postgres + pgvector<br>source records · signals · features · cases ·<br>requirements · scores · decisions · embeddings")]
     AUDIT[("Audit event log, append-only<br>actor AI agent or PM · timestamp ·<br>object · before / after diff · rationale<br>incl. views + exports")]
-    RAGIDX[("RAG index<br>case + requirement pages, findings, quotes,<br>snapshots, decisions, audit events")]
+    RAGIDX[("RAG index<br>case + requirement pages, signals, quotes,<br>snapshots, decisions, audit events")]
 
     %% ---------- Main flow ----------
     CFG --> SEED
