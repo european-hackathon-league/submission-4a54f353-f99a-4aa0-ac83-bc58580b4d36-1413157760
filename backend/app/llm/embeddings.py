@@ -97,6 +97,17 @@ def get_embedder() -> Embedder:
     return OpenAIEmbedder()
 
 
+def as_np(value) -> np.ndarray:
+    """pgvector returns Vector objects from the database; convert to float32 numpy."""
+    if hasattr(value, "to_numpy"):
+        value = value.to_numpy()
+    return np.asarray(value, dtype=np.float32)
+
+
+def as_matrix(values) -> np.ndarray:
+    return np.vstack([as_np(v) for v in values]) if len(values) else np.zeros((0, 0), dtype=np.float32)
+
+
 def cosine(a: np.ndarray, b: np.ndarray) -> float:
     na, nb = np.linalg.norm(a), np.linalg.norm(b)
     return float(a @ b / (na * nb)) if na and nb else 0.0

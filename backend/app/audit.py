@@ -140,6 +140,8 @@ def _db_value(types: Mapping[str, str], column: str, value: Any) -> Any:
         return None
     udt = types.get(column, "")
     if udt == "vector":
+        if hasattr(value, "to_numpy"):
+            value = value.to_numpy()
         return value if isinstance(value, np.ndarray) else np.asarray(value, dtype=np.float32)
     if udt in ("jsonb", "json"):
         return Jsonb(_json_safe(value))
@@ -362,6 +364,77 @@ def update(
             run_id=run_id, request_id=request_id,
         )
     return after
+
+
+def _cast(udt: str) -> str:
+    return f"{udt[1:]}[]" if udt.startswith("_") else udt
+
+
+def update_many(
+    conn: Connection,
+    table: str,
+    updates: Sequence[tuple[Mapping[str, Any], Mapping[str, Any]]],
+    *,
+    actor: str,
+    rationale: str | None = None,
+    action: str = "update",
+    run_id=None,
+    batch_size: int = 500,
+) -> int:
+    """Bulk version of ``update`` for one-column keys (pipelines: embeddings, case
+    assignment). Same semantics: only changed fields are written and audited, one
+    audit event per changed row, the whole call is atomic. Returns rows changed."""
+    a_type = actor_type(actor)
+    if not updates:
+        return 0
+    key_cols = {tuple(k.keys()) for k, _ in updates}
+    if len(key_cols) != 1 or len(next(iter(key_cols))) != 1:
+        raise ValueError("update_many needs the same single-column key for every row")
+    key_col = next(iter(key_cols))[0]
+    types = _check_columns(conn, table, {key_col, *(c for _, ch in updates for c in ch)})
+    changed_total = 0
+    with atomic(conn):
+        for i in range(0, len(updates), batch_size):
+            chunk = updates[i : i + batch_size]
+            keys = [k[key_col] for k, _ in chunk]
+            befores = {str(r[key_col]): r for r in conn.execute(
+                sql.SQL("select * from {} where {} = any(%s) for update").format(
+                    sql.Identifier(table), sql.Identifier(key_col)), (keys,)).fetchall()}
+            groups: dict[tuple, list] = {}
+            for k, ch in chunk:
+                before = befores.get(str(k[key_col]))
+                if before is None:
+                    raise NotFound(f"{table} {key_col}={k[key_col]} not found")
+                diff = {c: v for c, v in ch.items() if not _same(types.get(c, ""), c, before.get(c), v)}
+                if diff:
+                    groups.setdefault(tuple(sorted(diff)), []).append((k[key_col], diff, before))
+            for cols, items in groups.items():
+                placeholders = sql.SQL(", ").join(
+                    sql.SQL("({})").format(sql.SQL(", ").join(
+                        [sql.SQL("%s::{}").format(sql.SQL(_cast(types[key_col])))]
+                        + [sql.SQL("%s::{}").format(sql.SQL(_cast(types[c]))) for c in cols]))
+                    for _ in items)
+                sets = sql.SQL(", ").join(sql.SQL("{} = v.{}").format(sql.Identifier(c), sql.Identifier(c))
+                                          for c in cols)
+                query = sql.SQL("update {} as t set {} from (values {}) as v({}) where t.{} = v.{} returning t.*").format(
+                    sql.Identifier(table), sets, placeholders,
+                    sql.SQL(", ").join(map(sql.Identifier, (key_col, *cols))),
+                    sql.Identifier(key_col), sql.Identifier(key_col))
+                params: list[Any] = []
+                for kv, diff, _ in items:
+                    params += [kv] + [_db_value(types, c, diff[c]) for c in cols]
+                after = {str(r[key_col]): r for r in conn.execute(query, params).fetchall()}
+                audit_values = sql.SQL(", ").join(sql.SQL("(%s, %s, %s, %s, %s, %s, %s, %s, %s)") for _ in items)
+                audit_params: list[Any] = []
+                for kv, diff, before in items:
+                    a = after[str(kv)]
+                    audit_params += [actor, a_type, action, object_type_of(table), str(kv),
+                                     Jsonb(_audit_row({c: before.get(c) for c in cols})),
+                                     Jsonb(_audit_row({c: a.get(c) for c in cols})), rationale, run_id]
+                conn.execute(sql.SQL("insert into audit_event (actor, actor_type, action, object_type, object_id,"
+                                     " before, after, rationale, run_id) values ") + audit_values, audit_params)
+                changed_total += len(items)
+    return changed_total
 
 
 def tombstone(
