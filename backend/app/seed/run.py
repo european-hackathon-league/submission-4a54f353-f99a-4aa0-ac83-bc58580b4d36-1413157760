@@ -30,7 +30,7 @@ PROFILES = [
 ]
 DEFAULT_THRESHOLDS = {
     "open_min_customers": 10, "conflict_min_customers": 5, "conflict_negative_share": 0.6,
-    "similarity_feature": {"openai": 0.45, "local": 0.30}, "similarity_case": {"openai": 0.55, "local": 0.35},
+    "similarity_feature": {"openai": 0.45, "local": 0.30}, "similarity_case": {"openai": 0.55, "local": 0.15},
     "reach_cap": 100000, "competitor_gap_min_rivals": 1,
 }
 BRAND_PROFILE_V1 = """# BMW brand profile (assumption, version 1)
