@@ -1,0 +1,52 @@
+for the third point the repeated process is a daily check so its a 24 hours refreshing to check for news so its already not a problem
+lets start planning every step all over the way start by step one giving me what we need to decide and what we need to change discuss every aspect of it to see if we are on the same track or not
+
+---
+
+yeah the conecpt is that scraping runs in the background
+
+---
+
+its another llm like maybe we use chatgpt model for llm model for the last classification with which part is this case part of we need to use some classification model like jev there is an open source possibility that we can use search online to know what we can do for the search places dont care about it now my collegue is working on them we will provide you with information later.
+
+---
+
+we can instead of classifying it in a so late step we could prompt the agents to give which area of the car it is and that way we just use that key word to store it in the right place
+
+---
+
+yeah lets move to step 2
+
+---
+
+1. approved 
+2. yes 
+3. approved with adding an option of deleting it from the database 
+4. keep and tag in case its still in production and can be changed
+5. the json draft looks pretty good but lets keep ourselves flexible and depend on the future requirements and constraints we will find during implementing this project
+
+---
+
+what do you mean by polarities i dont really understand the whole step 4 can you elaborate further
+
+---
+
+and are we then showing themes or what what is the the case then
+
+---
+
+the case is the problem not the solution and this the one that needs to be taken care of from the PM and with meetings and discussions to edit it and confirm it and after that the requirements get generated
+first question does a case need many requirements or needs only one base yourself on the notes to find relevant informations so i think the theme is the same as the case
+
+---
+
+one case holds all opinions 
+one requirement is per case only in case there is differentiation for different markets and that way update the earlier stages to reflect this change
+other than that confirm  but:
+the cases are the problems they dont have any cost but when we generate the requirements the requirements are also editable in a way to discuss with engineers and change them or delete them and adding the costs there
+my idea is to make the case like notion page where you can add titles and everything and there is a sidebar rag agent also able to edit this case or requirement and able to discuss with the chef itslef and in the real state its just a markdown file but its well presented and you can edit it like a real notion page if you understand it but its not our job my collegue is working on the ui just letting you know
+if we finished lets step into the next steps and hurry up to prepare the implementation plan after we finish all the steps
+
+---
+
+give me the definition case, and how requirements are made based on the case i need you to define them to me based on what we discussed to see you understood them and then if i confirm define them in the claude.md file and also all the defaults are okay and the exporting is just feature that we can process later
