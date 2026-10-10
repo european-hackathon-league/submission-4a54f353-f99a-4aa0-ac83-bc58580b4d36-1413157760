@@ -104,12 +104,36 @@ PK (`subject_type`, `subject_id`, `source_id`, `slug`): a few sites have more th
 | `scope` | text | `any`, `single_brand_source` (bare model name allowed only there) |
 
 ### `car_area`
-Fixed list the agents tag from (no separate classifier). Rows, not code, so the team can confirm and extend it in phase 2.
+The 11 car areas of the fixed taxonomy (`taxonomy/car_areas.csv`): level 1, what the PM sees and filters by. A signal's car area is always derived from its topic, never predicted.
 
 | Column | Type | Notes |
 |---|---|---|
-| `code` | text PK | e.g. `interior`, `seats`, `infotainment` |
-| `name` | text | |
+| `code` | text PK | `exterior_design`, `interior_comfort`, `seats`, `climate`, `infotainment_hmi`, `connectivity_digital`, `driver_assistance`, `dynamics_powertrain`, `range_charging`, `practicality`, `quality_materials` |
+| `name` | text | label |
+| `description` | text | |
+
+### `aspect_group`
+The 11 aspect groups of the taxonomy (grouped from BMW's 84 VFC level-3 labels): what a statement is about. Neutral, so likes and complaints share a group.
+
+| Column | Type | Notes |
+|---|---|---|
+| `code` | text PK | `function`, `usability`, `reliability`, `performance`, `efficiency_range`, `design`, `comfort`, `space`, `quality`, `sound`, `price` |
+| `description` | text | |
+
+`price` is pricing, which is out of scope: such signals get `scope_tag = out_of_scope` and stay visible.
+
+### `taxonomy_proposal`
+Review queue for signals the classifier could not place (topic `other`) or placed with low confidence. Only a human resolves a row; a topic is never created automatically. The usual outcome is "mapped to an existing topic". View `taxonomy_review` lists the open rows with quote and summary.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `signal_id` | uuid FK → `signal`, unique | |
+| `suggested_name` | text | the classifier's `other_suggestion` |
+| `reason` | text | `other`, `low_confidence` |
+| `status` | text | `open`, `mapped_to_existing`, `accepted_new_topic`, `dismissed` |
+| `resolved_feature_id` | uuid FK → `feature` | |
+| `decided_by`, `decided_at` | text, timestamptz | required once the status is not `open` |
 | `description` | text | used in the agent prompt |
 
 ### `brand_profile`
@@ -134,7 +158,7 @@ One PM view: vehicle + market.
 | `competitor_ids` | uuid[] | defaults to confirmed competitors of the vehicle in this market |
 | `brand_profile_id` | uuid FK | |
 | `source_filter` | jsonb | `{"exclude_sources": [...], "exclude_categories": [...], "exclude_content_types": [...]}` |
-| `thresholds` | jsonb | `open_min_customers`, `conflict_min_customers` (5), `similarity_case`, `similarity_feature`, `reach_cap` |
+| `thresholds` | jsonb | `open_min_customers`, `conflict_min_customers` (5), `similarity_case`, `case_split_min_signals` (50), `reach_cap` |
 | `active` | bool | |
 
 Unique (`vehicle`, `market`). Trigger: insert or update fails unless `sales_volume` has 2030 units > 0 for this vehicle and market.
@@ -167,16 +191,19 @@ Check (`weights_valid`, migration 0009): `case_weights` is a non-empty object, e
 ## 2. Baseline (seeded once, team-confirmed)
 
 ### `feature`
-The feature catalog. Shared across vehicles (Baukasten: seats, materials and driver-assistance software span series).
+**A feature is a topic of the fixed taxonomy**: one row per topic (219, BMW's VFC level 2) plus the fallback `other`. Loaded from `taxonomy/taxonomy.json`; only a human changes the list, in `taxonomy/`. The topic is the hidden link to equipment, study and cost; the PM sees the car area. Shared across vehicles (Baukasten: seats, materials and driver-assistance software span series).
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid PK | |
-| `name` | text unique | `Seat ventilation` |
-| `car_area` | text FK → `car_area` | |
-| `description` | text | used for the feature link |
-| `status` | text | `confirmed`, `candidate` (agent-proposed, waits for the PM), `rejected` |
-| `embedding` | vector(1536) | name + description |
+| `topic_id` | text unique | taxonomy slug: `seat_massage`; `other` = fallback |
+| `name` | text unique | BMW's VFC level-2 label: `Seat massage` |
+| `car_area` | text FK → `car_area` | exactly one per topic; null only for `other` |
+| `description`, `hint` | text | hint for ambiguous BMW labels |
+| `vfc_level2` | text[] | the BMW label and its aliases |
+| `taxonomy_version` | text | `2026-10-11.1` |
+| `status` | text | `confirmed` for taxonomy topics (`candidate`, `rejected` unused since the taxonomy) |
+| `embedding` | vector(1536) | label + hint; null for `other` |
 
 ### `feature_mapping`
 Normalized links from the catalog to BMW labels.
@@ -304,7 +331,7 @@ Text records of fetching-sources 7.2. BMW feedback verbatims (`source_id = bmw_f
 | `deleted_at` | timestamptz | tombstone |
 
 ### `signal`
-One statement about one feature from one source record. Versioned JSON contract (fixed core fields + `extra`).
+One statement about one topic from one source record. Versioned JSON contract (fixed core fields + `extra`). Three closed facets: topic (`feature_id`), aspect group and car area (derived).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -323,9 +350,13 @@ One statement about one feature from one source record. Versioned JSON contract 
 | `powertrain` | powertrain_t | |
 | `kind` | text | `complaint`, `wish`, `like`, `competitor_fact`, `trend`, `innovation` |
 | `severity` | text | `defect`, `difficult_to_use`, `wish`, `none` |
-| `car_area` | text[] | codes from `car_area` |
-| `feature_hint` | text | free text from the agent, embedded for the feature link |
-| `feature_id` | uuid FK, nullable | |
+| `feature_id` | uuid FK, nullable | the topic (`feature.topic_id`). BMW rows: lookup from the VFC level-2 label; web signals: picked by the LLM from the closed list (enum). Null = waits for the LLM classifier (a topic is never guessed) |
+| `aspect_group` | text FK → `aspect_group`, nullable | BMW rows: lookup from the VFC level-3 label; web signals: LLM, closed list |
+| `car_area` | text[] | the one car area of the topic, derived in code and stored for filtering; empty without a topic |
+| `classified_by` | text | `bmw_label`, `llm`, `pm` |
+| `classification_confidence` | text | `high`, `medium`, `low` |
+| `taxonomy_version` | text | version the signal was classified with |
+| `feature_hint` | text | BMW's VFC level-2 label for seed rows |
 | `case_id` | text FK → `case_item`, nullable | |
 | `summary` | text | English, ≤ 20 words (checked in the gate) |
 | `quote` | text | exact excerpt of `source_record.text_original` |
@@ -345,7 +376,7 @@ Checks: `validation = 'valid'` requires `quote`, `summary` and `record_id`; `evi
 
 ## 4. Cases and requirements
 
-A case is a **problem**, composed of a group of signals about one feature. It is **not tied to one vehicle**: the same problem (e.g. "My BMW app loses the phone key") can come from several lines and series, because features are shared (Baukasten). The vehicles a case applies to are tags in `case_vehicle`, and each line's PM works the case for that line.
+A case is a **problem**, composed of a group of signals about one topic and one aspect group. Each case sits under one topic and so under one car area; a car area holds many cases. It is **not tied to one vehicle**: the same problem (e.g. "My BMW app loses the phone key") can come from several lines and series, because features are shared (Baukasten). The vehicles a case applies to are tags in `case_vehicle`, and each line's PM works the case for that line.
 
 ### `case_item`
 Named `case_item` because `CASE` is a reserved word in SQL. API and UI call it "case".
@@ -353,7 +384,8 @@ Named `case_item` because `CASE` is a reserved word in SQL. API and UI call it "
 | Column | Type | Notes |
 |---|---|---|
 | `id` | text PK | `CASE-0012`, from a sequence, stable forever; four digits up to `CASE-9999`, then the plain number (`CASE-10000`) |
-| `feature_id` | uuid FK | |
+| `feature_id` | uuid FK | the topic |
+| `aspect_group` | text FK → `aspect_group`, nullable | cases are grouped by topic + aspect group; only groups with `case_split_min_signals` (50) signals or more are split further by similarity |
 | `title` | text | the problem, never the solution |
 | `body_md` | text | Notion-like page |
 | `body_version` | int | stale saves rejected |

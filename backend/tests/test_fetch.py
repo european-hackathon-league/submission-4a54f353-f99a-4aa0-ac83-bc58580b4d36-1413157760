@@ -111,10 +111,6 @@ def test_worker_end_to_end(db_url, monkeypatch):
     respx.get(url__startswith="https://api.nhtsa.gov/complaints/complaintsByVehicle").mock(
         return_value=httpx.Response(200, content=fixture("nhtsa_complaints_i5_2024.json")))
     with db.transaction() as conn:
-        for code in ("infotainment", "driving_dynamics", "powertrain", "driver_assistance", "seats", "climate",
-                     "range_charging", "connected_services", "access_cargo", "interior", "exterior", "lighting",
-                     "quality", "safety", "general"):
-            audit.insert(conn, "car_area", {"code": code, "name": code}, actor="seed:test", key="code")
         audit.insert(conn, "vehicle", {"code": "G60", "series": "5 Series", "is_current": True}, actor="seed:test",
                      key="code")
         audit.insert(conn, "source_registry", {"source_id": "nhtsa-complaints", "name": "NHTSA", "access": "API",

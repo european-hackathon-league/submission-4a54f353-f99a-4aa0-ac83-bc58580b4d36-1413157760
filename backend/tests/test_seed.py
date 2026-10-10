@@ -75,7 +75,7 @@ def test_option_list_grid_g60():
     assert vent.package == "COMFORT PAKET" and set(vent.availability.values()) == {"optional"}
     steptronic = next(i for i in items if i.name == "Steptronic Getriebe mit Schaltwippen")
     assert "i5 eDrive40" not in steptronic.availability  # electric models have no gearbox
-    assert item_feature("Aktive Sitzbelüftung vorn") == "Seat heating and ventilation"
+    assert item_feature("Aktive Sitzbelüftung vorn") == "seating_ventilate_heat"
 
 
 def test_tech_data_g60_range():
@@ -114,6 +114,26 @@ def test_seed_counts(sconn):
     assert q("select count(*) n from weight_profile where is_default") == 10
     assert q("select count(*) n from vehicle_feature") > 3000
     assert q("select count(*) n from data_record where source_id = 'bmw_sales'") == 36
+
+
+def test_taxonomy_seed(sconn):
+    """Car areas, topics and aspect groups come from taxonomy/; BMW rows are mapped by lookup."""
+    q = lambda sql, *p: sconn.execute(sql, p).fetchone()["n"]  # noqa: E731
+    assert q("select count(*) n from car_area") == 11
+    assert q("select count(*) n from aspect_group") == 11
+    assert q("select count(*) n from feature") == 219 + 1  # topics + the fallback "other"
+    assert q("select count(*) n from feature where topic_id is null") == 0
+    # 11,214 rows carry a usable VFC label; no_class_found and general enquiry (2,557) wait for the LLM.
+    assert q("select count(*) n from signal where classified_by = 'bmw_label'") == 11214
+    assert q("select count(*) n from signal where feature_id is null") == 2557
+    assert q("select count(*) n from signal where feature_id is not null and aspect_group is null") == 0
+    # The stored car area is always the car area of the topic.
+    assert q("select count(*) n from signal s join feature f on f.id = s.feature_id"
+             " where s.car_area <> array[f.car_area]") == 0
+    assert q("select count(*) n from signal where aspect_group = 'price' and scope_tag = 'in_scope'") == 0
+    assert q("select count(*) n from signal where aspect_group = 'price'") == 116
+    assert q("select count(*) n from study_score where feature_id is not null") > 0
+    assert q("select count(*) n from vehicle_feature where feature_id is not null") > 0
 
 
 def test_every_seed_quote_is_in_its_record(sconn):

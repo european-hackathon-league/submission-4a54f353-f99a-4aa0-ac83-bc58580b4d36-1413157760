@@ -11,17 +11,20 @@
 | 4 | Cases | done | 7051b60 | 6 case tests passed; seed data (local embedder, threshold 0.15): 1,322 cases, 712 spanning several lines, 293 opened per line, 1 market conflict; threshold report in backend/reports/clustering_thresholds.md |
 | 5 | Scoring | done | 1c23f9f | 9 tests passed (scoring + cases); seed data: 29,584 case scores for 10 configs x 4 profiles in 15 s; G60 / USA: 6 cases in the top 10 under every profile |
 | 6 | Requirements | done | 8f6b836 | 4 requirement tests passed (+ case tests); seed data: confirming the top G60 / USA case generated REQ-G60-0930 (26 customers, study satisfaction 0.74, evidence bmw_data, rank 0.331) |
-| 7 | RAG sidebar agent | in progress | WIP | Code and 3 tests done; dev-database check pending (HANDOFF.md) |
-| 8 | Daily fetch loop (steps 1 to 9) | in progress | WIP | Adapters, agents, worker and 7 tests done; several scraped sources without parser; backfill checkpoint pending (HANDOFF.md) |
-| 9 | API for the UI teammate | todo | | |
-| 10 | Hardening and demo readiness | todo | | |
+| 7 | RAG sidebar agent | done (code and checks; phase commit not made yet) | 0c4645f (WIP) | 3 RAG tests passed; every plan item present (index, hybrid search function, 7 tools, citation check, edits as proposals); dev database: index rebuild 1,206 case + 13,105 signal + 5,000 audit-event chunks (after the taxonomy re-seed); decisions in changes.md 7.1 to 7.3 |
+| 8 | Daily fetch loop (steps 1 to 9) | in progress | 0c4645f (WIP) | Built: polite client, worker, four agents, adapters for APIs, feeds, app store, XenForo forums, magazines, kbb, downloads; 7 tests passed. Missing: adapters for motor-talk, pistonheads, carcomplaints, autoscout24, ams, autobild, adac-autotest, automobile-magazine, teknikens-varld, google-play, google-trends and press pages without feeds; the on-demand predecessor research endpoint; the backfill checkpoint (needs Reddit OAuth and a YouTube key) |
+| T | Fixed taxonomy (between phases 8 and 9) | done (not committed yet) | | 98 tests passed (83 + 15 seed). Seed: 11 car areas, 11 aspect groups, 219 topics + `other`; 11,214 signals mapped by BMW label, 2,557 wait for the LLM classifier; 116 price signals out of scope. Cases: 1,206 (612 topic + aspect groups, 35 split), 19 % singletons, 376 of 2,378 case-line pairs opened by rule, 0 market conflicts; 32,400 case scores for 10 configs. Topics only from BMW labels or the LLM classifier (no similarity guess); LLM classification and eval pending the key. See changes.md, section Taxonomy |
+| 9 | API for the UI teammate | todo | | Only `/health` exists in `app/main.py` |
+| 10 | Hardening and demo readiness | todo | | Not started (no dump script, no audit chain report, F70 / Europe not run end to end) |
 
 Every phase ends with a commit `Completed phase N: <title>` pushed to `main`, and its row updated here.
 
 ## Open issues
 
-- Phase 2 checkpoint: the review CSVs in `backend/seed/review/` wait for the team review (option-list extraction, feature catalog, VFC topic -> car area). They are imported as candidates until then (changes.md 2.2).
-- 666 unclassified feedback rows stay quarantined until the LLM classifier runs (needs `OPENAI_API_KEY`).
+- Phase 2 checkpoint: the review CSVs in `backend/seed/review/` wait for the team review (option-list extraction, study attribute -> topic, option item -> topic). Car areas and topics are no longer reviewed there: they come from `taxonomy/`.
+- 666 feedback rows without a Feedback Type stay quarantined, and 2,557 rows without a usable VFC topic stay without a topic and in no case, until the LLM classifier runs (needs `OPENAI_API_KEY`; the case pipeline then classifies them before grouping).
+- Taxonomy eval with the LLM (dev, then test once) is pending the key.
+- Market conflicts dropped from 1 to 0 on the seed data: BMW's level-3 labels put likes mostly under `function` and usability complaints under `usability`, so the two sides of a conflict can sit in different cases. To check with the team.
 - Supabase credentials and OpenAI key not provided yet: migrations are tested on a local embedded Postgres 16 + pgvector 0.6 only; LLM steps run with the offline fallbacks until the key is in `backend/.env`.
 
 
@@ -44,7 +47,7 @@ Full design: [`database-design.md`](database-design.md) (diagram: `data-model.mm
 Changes agreed with the user in phase 0 against the first draft of this plan:
 - The case table is `case_item` (`CASE` is reserved in SQL); API and UI still say "case".
 - A case is not tied to one vehicle or config: one problem can apply to several BMW lines. Vehicles are tags in `case_vehicle`, which holds the per-vehicle state, PM rank, release fit, conflict flag and new-evidence flag. Case IDs are `CASE-0012`; requirements are per line (`REQ-G60-0012`, `REQ-G60-USA-0012` when split). Scores stay per weight profile, so per config.
-- `car_area` is a table (fixed list, confirmed in phase 2) instead of a hard-coded list.
+- `car_area` is a table (the 11 car areas of the fixed taxonomy in `taxonomy/`) instead of a hard-coded list.
 - Option-list pages are stored as `source_record` rows (`source_id = option_list`), so equipment facts are quotable like every other source.
 - `site_slug` key includes the slug (some sites have several pages per car).
 
@@ -65,23 +68,24 @@ Changes agreed with the user in phase 0 against the first draft of this plan:
 - Pre-seeding: everything in `All-context/02-data-provided-by-pm/raw/` (3 feedback files, customer study, sales volumes, 3 option-list PDFs) is imported into the tables created in phase 1, read-only from `raw/`, each file also stored in the `raw-records` bucket.
 - **Registry seed** (parse `fetching-sources.md` once into YAML, reviewed, then load): `source_registry`, `competitor`, `site_slug`, `search_term`, vehicle generations / `on_sale_since`.
 - **Portfolio** → `vehicle`. **Sales** → `data_record` (identical RoW values flagged `suspect`).
-- **Study** → `study_score` (CN_EU means normalized; US distributions → normalized mean + dissatisfied share).
-- **BMW feedback** → `source_record` per verbatim ID + one `signal` per topic row (kind/severity from Feedback Type, market via fetching-sources 7.4, `BEVE` → `BEV`, source C prefix stripped, `evidence_role = bmw_customer`). Unclassified rows: LLM fills kind/severity.
-- **VFC topic → car area mapping** (team-confirmed CSV): car area for seed signals and test set for agent tagging.
-- **Option lists** (once, together with the user): pdfplumber word positions + LLM vision on hard pages + checks (cells = variants, prices, unique codes) → review CSV → `vehicle_feature`; tech data → `data_record`.
-- **Feature catalog**: LLM proposes from VFC topics + option items + study attributes → review CSV → team confirms → `feature` + `feature_mapping`.
-- Checks: 2,128 / 4,000 / 4,000 verbatims; per-type counts match `02-data-provided-by-pm/README.md`; every row audited.
+- **Fixed taxonomy** (`taxonomy/taxonomy.json`, not reviewed in the seed; only a human changes it in `taxonomy/`): 11 car areas → `car_area`, 11 aspect groups → `aspect_group`, 219 topics plus the fallback `other` → `feature` (one row per topic, `feature.topic_id`), BMW's VFC level-2 labels and aliases → `feature_mapping`.
+- **Study** → `study_score` (CN_EU means normalized; US distributions → normalized mean + dissatisfied share), linked to topics through the review CSV `study_attributes.csv`.
+- **BMW feedback** → `source_record` per verbatim ID + one `signal` per topic row (kind/severity from Feedback Type, market via fetching-sources 7.4, `BEVE` → `BEV`, source C prefix stripped, `evidence_role = bmw_customer`). Topic and aspect group by lookup from the VFC level-2 and level-3 labels (`classified_by = bmw_label`); the car area is derived from the topic. Aspect group `price` is tagged out of scope.
+- Rows the labels cannot place are classified from the text by the LLM (`feedback_classify@v2`, closed lists): rows without a Feedback Type (kind/severity) and rows labelled `no_class_found` or general enquiry (topic and aspect group). Without a key they wait: no kind means quarantine, no topic means in no case.
+- **Option lists** (once, together with the user): pdfplumber word positions + LLM vision on hard pages + checks (cells = variants, prices, unique codes) → review CSV → `vehicle_feature`, linked to topics through the review CSV `option_features.csv`; tech data → `data_record`.
+- Checks: 2,128 / 4,000 / 4,000 verbatims; per-type counts match `02-data-provided-by-pm/README.md`; 11 car areas, 11 aspect groups, 219 topics + `other`; every stored car area is the car area of its topic; every row audited.
 
 ## Phase 3 — Signal contract and validation gate
-- Pydantic `Signal` (fixed core + `extra`, versioned).
-- Gate: schema → record exists + hash → quote found in `text_original` → duplicate / near-duplicate → source filter (hidden) → competitor fact dated → vehicle role from `on_sale_since` (predecessor tagged) → scope tag.
+- Pydantic `Signal` (fixed core + `extra`, versioned; `signal@2`): agents send `topic_id` and `aspect_group`, never a car area.
+- Gate: schema → record exists + hash → quote found in `text_original` → kind / severity consistent → topic and aspect group exist in the stored lists (car area derived from the topic) → duplicate / near-duplicate → source known → competitor fact dated → vehicle role from `on_sale_since` (predecessor tagged) → scope tag (pricing, incl. aspect group `price`, regulation, homologation).
 - Quarantine view with counts per agent; PM delete = tombstone.
-- Summary embeddings (OpenAI). Eval: agent car-area tagging accuracy vs the VFC mapping.
+- Review queue `taxonomy_proposal` (view `taxonomy_review`) for signals with topic `other` or low confidence; a topic is never created automatically.
+- Summary embeddings (OpenAI). Eval: the LLM classifier against BMW's own labels (`taxonomy/eval/gold.csv`, scored by `taxonomy/eval/score.py`); tune on dev, run test once.
 
 ## Phase 4 — Cases
-- Feature link (feature_hint embedding → catalog; no match → candidate feature for the PM).
-- Initial clustering of seed signals per feature (HDBSCAN); LLM writes case title + problem body.
-- Incremental assignment of new signals; stable IDs; merge / split via `case_lineage`.
+- Signals without a topic go through the LLM classifier before grouping (`signals.reclassify`); a topic is never matched by similarity.
+- Grouping: one case per topic + aspect group, across all BMW lines. Only groups with `case_split_min_signals` (50) signals or more are split further by similarity (agglomerative, cosine threshold), never across a topic. Topic `other` is never grouped. LLM writes case title + problem body.
+- Incremental assignment of new signals to the case of their topic + aspect group (nearest case when the group was split); stable IDs; merge / split via `case_lineage`.
 - Threshold tuning script with a report on the seed data.
 - Figures: distinct BMW customers per market + powertrain, opinions, capped reach, study score, equipment today, competitor offer (`data_record`) and competitor evidence (`evidence_role = competitor` signals), trend.
 - Tags (scope, brand fit, segment); conflict flag (≥ 5 distinct customers per side).
@@ -131,12 +135,12 @@ Changes agreed with the user in phase 0 against the first draft of this plan:
 - Audit chain report for one requirement: source record → signal → case → score → PM decisions → requirement → approval.
 
 ## Verification
-- `pytest` units: normalizers, gate checks, quote matching, cost bands, rank math, append-only audit, stale-save rejection.
-- Seed count checks against the data README; registry load checked against the sources file (number of source IDs, competitors).
-- Eval scripts with numbers: car-area tagging accuracy, clustering threshold report.
+- `pytest` units: normalizers, gate checks (incl. unknown topic and aspect group), quote matching, review queue for `other`, grouping by topic + aspect group, cost bands, rank math, append-only audit, stale-save rejection.
+- Seed count checks against the data README and the taxonomy (11 car areas, 11 aspect groups, 219 topics; 11,214 rows mapped by BMW label); registry load checked against the sources file (number of source IDs, competitors).
+- Eval scripts with numbers: topic classification against BMW's labels (`app.signals.eval_taxonomy`: invalid labels must be 0, topic hit@1 / precision / recall, car-area precision / recall), case threshold report.
 - Adapter smoke tests per access type on one BMW model + one competitor (recorded responses for CI).
 - End-to-end on G60 / USA: seed → cases → scores → confirm a case via API → requirement → RAG answer with citations → audit chain printed; repeat on F70 / Europe with only a config change.
 
 ## Prerequisites from the user
 - OpenAI API key and Supabase project (URL, service key) in `backend/.env`; Reddit OAuth app and YouTube Data API key for step 2.
-- One joint session for the option-list review and the feature-catalog / car-area mapping confirmation.
+- One joint session for the option-list review and the confirmation of the two topic mappings (study attributes, option-list items).

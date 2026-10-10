@@ -24,6 +24,7 @@ BMW values: trustworthy sources, transparent reasoning, thoughtful prioritizatio
 - `database-design.md`: database design (tables, columns, rules) for Supabase Postgres + pgvector. **Source of truth for tables and fields.**
 - `data-model.mmd`: diagram of `database-design.md` (Mermaid ER).
 - `changes.md`: every decision changed during implementation, with reason and who decided.
+- `taxonomy/`: the fixed taxonomy (11 car areas, 219 topics, 11 aspect groups), its build script and the classifier eval. **Source of truth for the classification.** Only a human changes it.
 - `backend/`: the brain (FastAPI, migrations in `backend/supabase/migrations/`, tests in `backend/tests/`). Run tests with `cd backend && uv run pytest` (embedded local Postgres, no network).
 - `layers.mmd`: BMW's process slide as a diagram, for reference only (not our architecture).
 - `All-context/README.md`: index of all material. Read first.
@@ -62,12 +63,19 @@ Environment note: system Python 3.12 has `pypdf`; `pandas` is broken (numpy ABI 
 ## Core concepts: Signal, Case, Requirement
 Chain: **Signal → Case (problem) → PM confirms → Requirement (solution) → PM approves → engineering.** Every step is logged with actor, timestamp, before/after and rationale.
 
-**Signal** (every piece of evidence; formerly called "finding"): one statement about one feature from one source record (a customer verbatim, a review sentence, a competitor fact, a trend). Versioned JSON with exact quote (must be found in the stored source record), short English summary (≤ 20 words), market, car area, vehicle role, author hash and reach. Invalid signals go to a visible quarantine.
+**Signal** (every piece of evidence; formerly called "finding"): one statement about one feature from one source record (a customer verbatim, a review sentence, a competitor fact, a trend). Versioned JSON with exact quote (must be found in the stored source record), short English summary (≤ 20 words), market, topic, aspect group, car area, vehicle role, author hash and reach. Invalid signals go to a visible quarantine.
+
+**Fixed taxonomy (`taxonomy/`).** Every signal carries three closed facets; agents can only pick from BMW's own labels and never invent a theme:
+- **Topic** (219, BMW's VFC level 2). The topic is the feature: one `feature` row per topic. It is the hidden link to equipment, study and cost.
+- **Aspect group** (11, grouped from VFC level 3): function, usability, reliability, performance, efficiency_range, design, comfort, space, quality, sound, price. Neutral, so likes and complaints share a group. `price` is tagged out of scope and stays visible.
+- **Car area** (11): what the PM sees and filters by. Always derived from the topic in code, never predicted.
+- BMW rows get topic and aspect group by lookup from their VFC labels; rows labelled `no_class_found` or general enquiry are classified from the text. Web signals: the LLM picks from the closed lists (strict enums).
+- `other` is the only way out: it goes to a review queue (`taxonomy_proposal`) and no topic is ever created automatically.
 
 Competitor signals (e.g. complaints about the E-Class) attach to the BMW case of the same feature as competitor evidence; they feed the competitor gap and never count as BMW customers.
 
-**Case = a problem, composed of a group of signals.** One specific topic about one feature, as customers and the market see it: what is wrong, missing or valued. Never what to build.
-- Example: "Front seat ventilation too weak" (feature: seat ventilation, car area: Interior).
+**Case = a problem, composed of a group of signals.** One topic and one aspect group, as customers and the market see it: what is wrong, missing or valued. Never what to build. Each case sits under one topic and so under one car area; a car area holds many cases.
+- Example: "Front seat ventilation too weak" (topic: Seats, ventilate / heat; aspect group: performance; car area: Seats).
 - Usually groups many signals, each linked to its quote and source.
 - Holds all opinions (complaints, wishes, likes), counted per market and powertrain, so market conflicts become visible.
 - **Not tied to one vehicle.** A problem can come from several BMW lines and series (shared Baukasten features, the My BMW app). The vehicles it applies to are tags (`case_vehicle`); lifecycle state, PM rank and release fit are per vehicle, because each line has its own PM. Case IDs carry no vehicle (`CASE-0012`); the table is `case_item` (`CASE` is reserved in SQL).
@@ -90,10 +98,10 @@ Competitor signals (e.g. complaints about the E-Class) attach to the BMW case of
 
 ## Pipeline (steps in `architecture.mmd`)
 0. **Configuration:** vehicle + market (valid only if sales > 0), competitor set (default, AI suggests, PM confirms), brand profile (versioned assumption, PM-editable), source filter, several weight profiles per vehicle with a compare view.
-1. **Seed (one-time, logged):** option lists (extracted once by the team and verified, page as source), portfolio (segment, generation, markets), sales (2030 forecast = market weight), customer study (raw + normalized 0..1 + US dissatisfied share), BMW feedback Excel converted to signals (car area via topic mapping), feature catalog linking topics, option codes and study attributes (mappings confirmed by the team; later new features go to the PM). Predecessor-generation research only on demand when the PM flags a removed feature.
+1. **Seed (one-time, logged):** option lists (extracted once by the team and verified, page as source), portfolio (segment, generation, markets), sales (2030 forecast = market weight), customer study (raw + normalized 0..1 + US dissatisfied share), BMW feedback Excel converted to signals (car area via topic mapping), the fixed taxonomy as the feature catalog (one feature per topic), with option codes and study attributes mapped to topic IDs (these two mappings confirmed by the team). Predecessor-generation research only on demand when the PM flags a removed feature.
 2. **Daily fetch loop:** Python worker + cron, four agents (competitor, customer/public feedback, trends, innovation scout), daily budget with priority (features with open cases first, rest rotates). Sources, categories A to J and record format: `fetching-sources.md` (sections 3 and 7). Scope v1: fetch-order steps 1 to 9 (steps 10 to 13 later). Depth: one backfill over all pages, then daily incremental runs that stop at already-stored records. A general search provider is only needed for discovery and stays pluggable.
-3. **Signal JSON + validation gate:** schema, stored record, quote found, duplicates, source filter, dated competitor facts. Rejected → quarantine (PM can delete: content purged, tombstone kept). Agents tag car area from a fixed list (no separate classifier). Older-generation signals kept and tagged. Original quote + English translation for non-English sources. Schema has fixed core fields + `extra`, versioned.
-4. **Cases:** link signal to feature (vector search on feature hint), then to a case inside the feature (summary embeddings, OpenAI embeddings, threshold tuned on seed data), stable IDs, merges/splits logged. Figures and tags per case. Conflict flag when one market is mostly negative and another mostly positive, each with ≥ 5 distinct customers (PM-tunable).
+3. **Signal JSON + validation gate:** schema, stored record, quote found, duplicates, source filter, dated competitor facts. Rejected → quarantine (PM can delete: content purged, tombstone kept). Agents pick topic and aspect group from the fixed taxonomy; the car area is derived from the topic (no separate classifier). Older-generation signals kept and tagged. Original quote + English translation for non-English sources. Schema has fixed core fields + `extra`, versioned.
+4. **Cases:** group signals by topic + aspect group ("Seats + comfort" and "Seats + reliability" are separate cases); only large groups are split further by similarity (summary embeddings, OpenAI embeddings, threshold tuned on seed data), never across a topic. Stable IDs, merges/splits logged. Figures and tags per case. Conflict flag when one market is mostly negative and another mostly positive, each with ≥ 5 distinct customers (PM-tunable).
 5. **Case score** (no cost), computed per weight profile, so per config (vehicle + market), from the signals of that vehicle; defaults: distinct customers 0.25, severity 0.20, satisfaction gap 0.15, competitor gap 0.15, market volume 0.10, removed vs predecessor 0.05, reach 0.05 (capped, log, per market), trend 0.05; brand fit multiplier (fits 1.0, neutral 0.8, off-brand 0.5). Rationale text generated from the factor breakdown.
 6. **PM workspace:** notification toast (new open case, new evidence, conflict, failed run), case board, case page with RAG sidebar, PM confirms case.
 7. **Requirement generation** from confirmed cases (see concept above).
@@ -113,7 +121,8 @@ End filters on the case and requirement boards: market, car area / category, sta
 ## Rejected options (do not re-propose)
 - A separate confidence axis in the score (evidence level is display only).
 - A graph database.
-- A separate car-area classifier step (Jev); agents tag car area.
+- A separate car-area classifier step (Jev); the car area is derived from the topic.
+- Free-text themes, an own car-area list or a merged feature catalog; agents never create a topic (fixed taxonomy from BMW's VFC labels).
 - Treating the case as the solution; the case is the problem.
 - An "exploration level" setting and a "project type" setting (replaced by: no case without signals; the release-fit filter).
 
@@ -125,7 +134,7 @@ End filters on the case and requirement boards: market, car area / category, sta
 - **Market mismatch:** feedback mostly US (G60/G70) or UK/JP (F70), option lists German, study markets differ by sheet.
 - **Skewed coverage:** F70 one source and ICE only; no study sample sizes; no feedback dates.
 - **Hallucinated sources** would destroy traceability: every claim must point to a stored source record.
-- **Clustering noise:** unclassified and mislabelled BMW rows; threshold must be tuned and measured.
+- **Clustering noise:** unclassified and mislabelled BMW rows; countered by grouping on topic + aspect group, the similarity threshold only splits large groups and must be tuned and measured.
 - **Volume bias:** loud or off-brand signals ranked too high; distinct customers, capped reach and brand fit counter it.
 - **Scope drift** into engineering specs when setting targets.
 - **Arbitrary-looking scores** unless every factor is shown and tunable.

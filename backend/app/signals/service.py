@@ -3,7 +3,7 @@ PM actions on the quarantine. Agents call ``ingest``; they never write cases."""
 
 from __future__ import annotations
 
-from app import audit
+from app import audit, taxonomy
 from app.llm.embeddings import get_embedder
 from app.signals.gate import check, load_context
 
@@ -41,6 +41,7 @@ def ingest(conn, proposals: list[dict], *, actor: str, run_id=None, prompt_versi
     rows = [{c: r.get(c) for c in columns} for r in rows]
     stored = audit.insert_many_returning(conn, "signal", rows, actor=actor, run_id=run_id,
                                          rationale="signal through the validation gate")
+    queue_taxonomy_review(conn, actor=actor, run_id=run_id)
     return {
         "valid": sum(1 for r in stored if r["validation"] == "valid"),
         "quarantined": sum(1 for r in stored if r["validation"] == "quarantined"),
@@ -48,6 +49,22 @@ def ingest(conn, proposals: list[dict], *, actor: str, run_id=None, prompt_versi
         "dropped_reasons": dropped,
         "rows": stored,
     }
+
+
+def queue_taxonomy_review(conn, *, actor: str, run_id=None) -> int:
+    """Put valid signals with topic ``other`` or a low-confidence topic into the
+    review queue (once each). A human resolves them; no topic is created here."""
+    rows = conn.execute(
+        "select s.id, f.topic_id, s.extra->>'other_suggestion' as suggestion from signal s"
+        " join feature f on f.id = s.feature_id"
+        " where s.validation = 'valid' and (f.topic_id = %s or s.classification_confidence = 'low')"
+        " and not exists (select 1 from taxonomy_proposal p where p.signal_id = s.id)",
+        (taxonomy.OTHER,),
+    ).fetchall()
+    return audit.insert_many(conn, "taxonomy_proposal", [
+        {"signal_id": r["id"], "suggested_name": r["suggestion"],
+         "reason": "other" if r["topic_id"] == taxonomy.OTHER else "low_confidence"} for r in rows
+    ], actor=actor, run_id=run_id, rationale="classifier could not place the signal with confidence")
 
 
 def delete_quarantined(conn, signal_id: str, *, actor: str, rationale: str) -> dict:
@@ -77,9 +94,13 @@ def release(conn, signal_id: str, changes: dict, *, actor: str, rationale: str) 
     if current is None or current["validation"] != "quarantined":
         raise ValueError("signal is not quarantined")
     proposal = {k: current[k] for k in (
-        "record_id", "kind", "severity", "summary", "quote", "quote_en", "car_area", "feature_hint", "evidence_role",
+        "record_id", "kind", "severity", "summary", "quote", "quote_en", "aspect_group", "classified_by",
+        "classification_confidence", "feature_hint", "evidence_role",
         "market", "market_basis", "vehicle", "chassis_code", "vehicle_role", "powertrain", "customer_ref", "reach",
         "reach_unit", "data_record_id", "extra") if current.get(k) is not None}
+    if current.get("feature_id"):
+        proposal["topic_id"] = conn.execute("select topic_id from feature where id = %s",
+                                            (current["feature_id"],)).fetchone()["topic_id"]
     if current.get("competitor_id"):
         proposal["competitor_id"] = str(current["competitor_id"])
     proposal.update(changes)
@@ -87,9 +108,13 @@ def release(conn, signal_id: str, changes: dict, *, actor: str, rationale: str) 
     result = check(proposal, ctx)
     if not result.valid:
         raise ValueError(f"still fails the gate: {result.reason}")
-    update = {k: result.row[k] for k in ("kind", "severity", "summary", "quote", "car_area", "market",
-                                         "market_basis", "vehicle_role", "scope_tag", "extra")}
+    update = {k: result.row.get(k) for k in (
+        "kind", "severity", "summary", "quote", "feature_id", "car_area", "aspect_group", "classified_by",
+        "classification_confidence", "taxonomy_version", "market", "market_basis", "vehicle_role", "scope_tag",
+        "extra")}
     update.update(validation="valid", reject_reason=None)
     update["embedding"] = get_embedder().embed([embedding_text(result.row)])[0]
-    return audit.update(conn, "signal", {"id": signal_id}, update, actor=actor, rationale=rationale,
-                        action="release")
+    released = audit.update(conn, "signal", {"id": signal_id}, update, actor=actor, rationale=rationale,
+                            action="release")
+    queue_taxonomy_review(conn, actor=actor)
+    return released
