@@ -8,7 +8,7 @@ TUM.ai hackathon project for the BMW Group challenge "AI for Product Decision Ma
 
 - **Signal:** every piece of evidence: one statement about one feature from one source (BMW feedback, a review, a competitor fact, a trend), with the exact quote and source link. Competitor signals (e.g. complaints about the E-Class) attach to the BMW case of the same feature as competitor evidence and never count as BMW customers.
 - **Case:** a problem as customers and the market see it, for example "front seat ventilation too weak". A case is composed of a group of signals, keeps all opinions per market, can apply to several BMW lines, and has an importance score but no cost.
-- **Requirement:** generated after the PM confirms a case. It states what BMW will build, with a measurable target, a release target (next generation, current car update or OTA) and a rough cost. One per case, or one per market when markets differ.
+- **Requirement:** generated after the PM confirms a case. It states what BMW will build, with a measurable target, a release target (next generation, current car update or OTA) and a rough cost. One per confirmed case and BMW line, optionally split per market when markets differ.
 
 A daily background loop fetches web evidence (v1: fetch steps 1 to 9 of the source list; one backfill over all pages, then daily incremental runs). The PM works the cases and requirements on Notion-like pages with a RAG assistant that cites its sources. Boards filter by market, car area / category, state, source type and release fit (current car update, next generation, OTA; judged by an LLM from the case size, the PM can override).
 

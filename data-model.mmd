@@ -153,7 +153,7 @@ erDiagram
         text content_type "owner, expert, press, news, bmw_internal"
         text url
         text raw_ref "untouched raw response"
-        text content_hash "unique"
+        text content_hash "indexed, not unique"
         timestamptz published_at
         text author_hash
         text chassis_code
@@ -252,7 +252,7 @@ erDiagram
         text cost_size "S, M, L"
         text cost_source "option_price, ai_estimate, pm, engineering"
         text status "draft, in_discussion, approved, rejected, deleted"
-        float rank_score "case score x cost multiplier"
+        float rank_score "cache for the default weight profile; per profile see view requirement_rank"
         int manual_rank
     }
     PAGE_VERSION {
