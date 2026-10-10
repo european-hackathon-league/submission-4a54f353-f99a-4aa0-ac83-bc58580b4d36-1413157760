@@ -1,0 +1,154 @@
+flowchart TB
+    %% =========================================================
+    %% BMW Requirements Platform: target architecture
+    %% Brain = background pipeline (always running, no PM needed)
+    %% PM Workspace = where the PM uses the brain
+    %% Dotted arrows to AUDIT = every step writes an audit event
+    %% =========================================================
+
+    %% ---------- 0. Configuration ----------
+    subgraph CFG ["0 · Configuration (per vehicle + market, never hardcoded)"]
+        direction LR
+        CF1["Vehicle + market<br>e.g. G60 / US, F70 / UK"]
+        CF2["Competitor set<br>e.g. Mercedes E-Class, Audi A6, Tesla, Xiaomi"]
+        CF3["BMW brand profile<br>sporty, driving dynamics, design, efficiency<br>editable by PM"]
+        CF4["Source filter<br>include / exclude source types<br>e.g. only current customers"]
+        CF5["PM weight profile<br>e.g. budget vs speed vs comfort<br>changing it re-ranks all cases"]
+    end
+
+    %% ---------- 1. Seeding ----------
+    subgraph SEED ["1 · Seed the database once (baseline)"]
+        direction LR
+        B1["Current BMW model = predecessor of successor<br>option lists PDF: standard / optional equipment"]
+        B2["BMW portfolio<br>F70, G60, G68, G70<br>shared Baukasten features"]
+        B3["Sales volumes<br>EU / CN / US / RoW, 2024, 2025, 2030"]
+        B4["Customer study 2025<br>satisfaction per attribute + market"]
+        B5["Feature catalog<br>canonical features linking<br>VFC topics, option codes, study attributes"]
+        B1 & B2 & B3 & B4 --> B5
+    end
+
+    %% ---------- 2. Background agent loop ----------
+    subgraph LOOP ["2 · Never-ending fetch loop (scheduler, runs in background)"]
+        direction LR
+        A1["Competitor agent<br>spec pages, launches, benchmarks"]
+        A2["Customer + public feedback agent<br>BMW feedback Excel first batch,<br>reviews, forums, YouTube, social"]
+        A3["Trends agent<br>product + global trends, market reports"]
+        A4["Innovation scout<br>other industries, suppliers, CES,<br>luxury brands"]
+    end
+
+    SNAP[("Source snapshot store<br>raw page / file row, URL, retrieved_at,<br>content hash: the citation target")]
+
+    subgraph NORM ["3 · Finding record (JSON contract)"]
+        direction TB
+        J1["finding JSON<br>id · agent · source_type · url or file+row<br>market · vehicle · powertrain<br>summary: very short problem statement<br>quote: exact excerpt from snapshot<br>kind: complaint / wish / like / competitor / trend / innovation<br>reach · retrieved_at"]
+        J2{"Validation gate<br>schema ok? quote found in snapshot?<br>duplicate? source filter?"}
+        J1 --> J2
+    end
+
+    %% ---------- 4. Classify + cluster ----------
+    subgraph SC ["4 · Classify and cluster into existing database"]
+        direction TB
+        S1["LLM classifier<br>topic in VFC taxonomy, feature catalog link,<br>severity, scope: in / out, brand + segment fit"]
+        S2["Vector search pgvector<br>attach to existing theme<br>or open new theme"]
+        S3["Theme<br>distinct customers per market + powertrain,<br>reach, satisfaction, equipment today, competitor offer"]
+        S4["Conflict detector<br>market A wants X, market B rejects X<br>→ surfaced, never resolved by AI"]
+        S1 --> S2 --> S3 --> S4
+    end
+
+    %% ---------- 5. Case creation ----------
+    subgraph RD ["5 · Requirement reasoning: create or update cases"]
+        direction TB
+        R1["Requirement agent<br>reasons over themes + baseline + competitors<br>creates case or adds evidence to existing case"]
+        R2["Case specification<br>description, metric + target e.g. range 600 or 700 mi,<br>acceptance criteria, assumptions + uncertainties,<br>evidence level: BMW data / web / assumption"]
+        R3["Fast classifier: Jev small LLM<br>car area: Exterior · Interior · Powertrain ·<br>Driver assistance · Infotainment · Charging · ..."]
+        R4{"Case already decided?"}
+        R5["Flag for PM review<br>new evidence or outdated target<br>never overwrite"]
+        R1 --> R2 --> R3 --> R4
+        R4 -- "yes" --> R5
+    end
+
+    %% ---------- 6. Scoring ----------
+    subgraph PR ["6 · Scoring and prioritization"]
+        direction TB
+        P1["Factor calculation<br>distinct customers · review reach capped, log, per market<br>severity: defect / hard to use > wish ·<br>competitor gap · market volume · cost rough estimate<br>removed vs predecessor · brand fit"]
+        P2["Priority score<br>weighted sum with PM weight profile<br>factor breakdown stored per score version"]
+        P3["Ranked case list"]
+        P1 --> P2 --> P3
+    end
+
+    %% ---------- 7. PM workspace ----------
+    subgraph PM ["7 · PM workspace (human in the loop, multi-PM)"]
+        direction TB
+        U1["Case board<br>ranked list, filters: market, car area,<br>source type, evidence level, status"]
+        U2["Traceability view<br>case → themes → findings → quote → source link<br>score breakdown + history"]
+        U3["RAG chatbot<br>discuss a case, ask why, what-if weights<br>answers cite finding + source IDs"]
+        U4["Drag up / down<br>manual reorder = PM override<br>reason required, auto rescoring never moves it"]
+        U5["Edit · challenge · reject<br>chat proposals need PM confirm"]
+        U6{"PM approves?"}
+        U1 --> U2
+        U1 --> U3
+        U1 --> U4
+        U1 --> U5 --> U6
+        U4 --> U6
+    end
+
+    %% ---------- 8. Handover + documentation ----------
+    subgraph DOC ["8 · Handover and documentation"]
+        direction TB
+        D1["Send to engineering<br>export e.g. top 10 to codebeamer / Jira<br>with arguments: complaint, wish, competition, cost"]
+        D2["Requirement documentation<br>versioned, incl. rejected cases + reason<br>'declined years ago, why?' stays answerable"]
+        D3["Engineering feedback<br>feasible / not feasible<br>next scope"]
+        D1 --> D2
+        D1 -.-> D3
+    end
+
+    %% ---------- Storage + audit (cross-cutting) ----------
+    DB[("Supabase Postgres + pgvector<br>sources · findings · themes · features ·<br>cases · scores · decisions · embeddings")]
+    AUDIT[("Audit event log, append-only<br>actor AI agent or PM · timestamp ·<br>object · before / after · rationale<br>incl. views + exports")]
+    RAGIDX[("RAG index<br>snapshots, findings, cases,<br>decisions, audit events")]
+
+    %% ---------- Main flow ----------
+    CFG --> SEED
+    SEED --> DB
+    CFG --> LOOP
+    A1 & A2 & A3 & A4 --> SNAP
+    SNAP --> J1
+    J2 -- "valid" --> S1
+    J2 -- "rejected, logged" --> AUDIT
+    S4 --> R1
+    DB <--> S2
+    R4 -- "no" --> P1
+    R5 --> U1
+    CF5 --> P2
+    P3 --> U1
+    U6 -- "yes" --> D1
+    U6 -- "no / edit" --> P1
+    D3 -.-> U1
+    D2 --> DB
+
+    %% ---------- RAG wiring ----------
+    DB --> RAGIDX
+    AUDIT --> RAGIDX
+    SNAP --> RAGIDX
+    RAGIDX <--> U3
+
+    %% ---------- Continuous loop ----------
+    DB -. "next cycle: re-check existing cases" .-> LOOP
+
+    %% ---------- Audit wiring: every step logs ----------
+    SEED -.-> AUDIT
+    SC -.-> AUDIT
+    RD -.-> AUDIT
+    PR -.-> AUDIT
+    PM -.-> AUDIT
+    DOC -.-> AUDIT
+
+    %% ---------- Styling ----------
+    classDef ai fill:#e8f0fe,stroke:#1c69d4,color:#000
+    classDef human fill:#fff4e5,stroke:#e08a00,color:#000
+    classDef store fill:#eef7ee,stroke:#2e7d32,color:#000
+    classDef gate fill:#fdecea,stroke:#c62828,color:#000
+    class A1,A2,A3,A4,S1,S2,S4,R1,R2,R3,P1,P2,J1 ai
+    class U1,U2,U3,U4,U5,CF3,CF4,CF5 human
+    class DB,AUDIT,RAGIDX,SNAP store
+    class J2,R4,U6 gate
