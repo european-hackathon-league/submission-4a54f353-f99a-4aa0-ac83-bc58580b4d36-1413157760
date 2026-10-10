@@ -1,0 +1,219 @@
+"""Daily fetch loop: python -m app.fetch.worker [--backfill] [--steps 1-9]
+
+For every enabled source of the requested fetch steps (source_registry), and
+every subject (BMW lines first when they have open cases, then competitors):
+fetch -> store raw response + records (audited) -> agents propose signals ->
+validation gate -> feature / case linking -> figures -> rescoring ->
+notifications. One agent_run per source. New evidence on a confirmed case only
+raises its flag. ``--dry-run`` writes the source list and the expected request
+volume (phase 8 checkpoint) without fetching.
+
+Run daily with cron, e.g. ``0 3 * * * cd backend && uv run python -m app.fetch.worker``.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import traceback
+
+from app import audit, db
+from app.config import BACKEND_DIR
+from app.fetch import agents, subjects as subjects_mod
+from app.fetch.adapters import api, downloads, feeds, scrape  # noqa: F401  (registers adapters)
+from app.fetch.adapters.base import ADAPTERS, FetchContext, FetchResult, NotConfigured
+from app.fetch.http import BudgetExhausted, PoliteClient
+
+PLAN_REPORT = BACKEND_DIR / "reports" / "fetch_plan.md"
+
+# Rough requests per subject (incremental, backfill) for the dry-run estimate.
+ESTIMATE = {
+    "wikipedia": (1, 1), "wikidata": (1, 1), "nhtsa-vpic": (4, 4), "fueleconomy": (4, 4),
+    "nhtsa-complaints": (12, 12), "nhtsa-recalls": (12, 12), "reddit": (16, 160), "youtube-comments": (20, 200),
+    "tmc": (10, 2000), "genesis-owners": (10, 2000), "lucid-owners": (10, 400), "kbb": (2, 2),
+}
+
+
+def parse_steps(text: str) -> list[int]:
+    out = []
+    for part in text.split(","):
+        a, _, b = part.partition("-")
+        out += list(range(int(a), int(b or a) + 1))
+    return out
+
+
+def _sources(conn, steps: list[int], only: list[str] | None) -> list[dict]:
+    rows = conn.execute("select * from source_registry where enabled and fetch_step = any(%s) order by fetch_step,"
+                        " source_id", (steps,)).fetchall()
+    return [r for r in rows if not only or r["source_id"] in only]
+
+
+def _store(conn, result: FetchResult, actor: str, run_id) -> list[dict]:
+    new = audit.insert_many_returning(conn, "source_record", result.records, actor=actor, key="record_id",
+                                      run_id=run_id, on_conflict_do_nothing=True,
+                                      rationale="fetched record (raw response in storage)")
+    data = [d for d in result.data_records if d["value"] is not None or d["value_text"]]
+    audit.insert_many(conn, "data_record", data, actor=actor, key="record_id", run_id=run_id,
+                      on_conflict_do_nothing=True, rationale="fetched data record")
+    return new
+
+
+def run_agents(conn, records: list[dict], run_id) -> dict:
+    from app.signals import service
+
+    features = [r["name"] for r in conn.execute("select name from feature where status <> 'rejected'").fetchall()]
+    areas = [r["code"] for r in conn.execute("select code from car_area").fetchall()]
+    totals = {"valid": 0, "quarantined": 0, "dropped": 0}
+    for record in records:
+        proposals, model, prompt_version = agents.extract(record, features, areas)
+        if not proposals:
+            continue
+        out = service.ingest(conn, proposals, actor=agents.agent_for(record), run_id=run_id,
+                             prompt_version=prompt_version, model=model)
+        for k in totals:
+            totals[k] += out[k]
+    return totals
+
+
+def fetch_source(conn_factory, client: PoliteClient, source: dict, subjects: list, backfill: bool,
+                 with_agents: bool) -> dict:
+    sid = source["source_id"]
+    with conn_factory() as conn:
+        run_id = conn.execute("insert into agent_run (agent, mode, params) values (%s, %s, %s) returning id",
+                              (f"fetch:{sid}", "backfill" if backfill else "incremental",
+                               json.dumps({"step": source["fetch_step"]}))).fetchone()["id"]
+    ctx = FetchContext(client=client, backfill=backfill, run_id=run_id)
+    cursor = dict(source["last_cursor"] or {})
+    summary = {"source": sid, "records": 0, "signals": {}, "requests": 0, "notes": []}
+    status, error = "ok", None
+    try:
+        results: list[FetchResult] = []
+        if sid in feeds.SHARED:
+            results.append(feeds.SHARED[sid](ctx, source, subjects, cursor))
+        elif (source["access"] or "").startswith("Download"):
+            results.append(downloads.fetch_downloads(ctx, source, subjects, cursor))
+        elif sid in ADAPTERS:
+            for s in subjects:
+                results.append(ADAPTERS[sid](ctx, source, s, cursor))
+        else:
+            raise NotConfigured(f"no adapter for {sid} (access {source['access']})")
+        with conn_factory() as conn:
+            new_records = []
+            for r in results:
+                new_records += _store(conn, r, f"fetch:{sid}", run_id)
+                cursor.update(r.cursor)
+                summary["requests"] += r.requests
+                summary["notes"] += r.notes
+            summary["records"] = len(new_records)
+            if with_agents and new_records:
+                summary["signals"] = run_agents(conn, new_records, run_id)
+            changes = {"last_cursor": cursor}
+            if backfill:
+                import datetime as dt
+
+                changes["backfill_done_at"] = dt.datetime.now(dt.timezone.utc)
+            audit.update(conn, "source_registry", {"source_id": sid}, changes, actor="system", run_id=run_id,
+                         rationale="fetch cursor after run")
+    except NotConfigured as exc:
+        status, error = "partial", str(exc)
+        summary["notes"].append(error)
+    except BudgetExhausted as exc:
+        status, error = "partial", str(exc)
+        summary["notes"].append(error)
+    except Exception as exc:  # one failing source must not stop the loop
+        status, error = "failed", f"{exc!r}\n{traceback.format_exc()[-1500:]}"
+    with conn_factory() as conn:
+        sig = summary["signals"] or {}
+        conn.execute("update agent_run set status = %s, ended_at = now(), error = %s, records_fetched = %s,"
+                     " signals_valid = %s, signals_quarantined = %s, params = params || %s where id = %s",
+                     (status, error, summary["records"], sig.get("valid", 0), sig.get("quarantined", 0),
+                      json.dumps({"requests": summary["requests"], "notes": summary["notes"][:20]}), run_id))
+        if status == "failed":
+            audit.insert(conn, "notification", {"type": "run_failed", "object_type": "agent_run",
+                                                "object_id": str(run_id), "message": f"fetch {sid} failed: {exc_text(error)}"},
+                         actor="system")
+    summary["status"] = status
+    return summary
+
+
+def exc_text(error: str | None) -> str:
+    return (error or "").split("\n", 1)[0][:200]
+
+
+def dry_run(steps: list[int], vehicles: list[str] | None, only: list[str] | None) -> str:
+    with db.transaction() as conn:
+        sources = _sources(conn, steps, only)
+        subjects = subjects_mod.load(conn, vehicles)
+    lines = ["# Fetch plan (dry run)", "",
+             f"Steps {steps[0]} to {steps[-1]}; {len(subjects)} subjects "
+             f"({sum(1 for s in subjects if s.kind == 'vehicle')} BMW lines, "
+             f"{sum(1 for s in subjects if s.kind == 'competitor')} competitors).", "",
+             "| Step | Source | Access | Adapter | Requests incremental | Requests backfill | Needs |",
+             "|---|---|---|---|---|---|---|"]
+    tot_i = tot_b = 0
+    for s in sources:
+        sid = s["source_id"]
+        if sid in feeds.SHARED:
+            inc, back = (1, 1) if sid != "app-store" else (17, 170)
+            adapter_name = "feed"
+        elif (s["access"] or "").startswith("Download"):
+            inc = back = 0
+            adapter_name = "download folder"
+        elif sid in ADAPTERS and ADAPTERS[sid] is not scrape.pending:
+            per = ESTIMATE.get(sid, (1, 1))
+            n = len([x for x in subjects if sid not in scrape.MAGAZINES and sid != "kbb" or x.slugs.get(sid)])
+            inc, back = per[0] * n, per[1] * n
+            adapter_name = ADAPTERS[sid].__name__
+        else:
+            inc = back = 0
+            adapter_name = "not built yet"
+        needs = {"reddit": "Reddit OAuth app", "youtube-comments": "YouTube Data API key"}.get(sid, "")
+        tot_i += inc
+        tot_b += back
+        lines.append(f"| {s['fetch_step']} | `{sid}` | {s['access']} | {adapter_name} | {inc} | {back} | {needs} |")
+    lines += ["", f"Total: about {tot_i} requests per incremental run, about {tot_b} for the one-time backfill "
+              "(capped at 200 list pages per forum and subject; daily budget FETCH_DAILY_REQUEST_BUDGET).",
+              "", "Politeness: robots.txt respected, at least 2 s between requests per host, retries with backoff, "
+              "raw responses stored before parsing."]
+    PLAN_REPORT.parent.mkdir(parents=True, exist_ok=True)
+    PLAN_REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return str(PLAN_REPORT)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--backfill", action="store_true")
+    parser.add_argument("--steps", default="1-9")
+    parser.add_argument("--sources", default="")
+    parser.add_argument("--vehicles", default="")
+    parser.add_argument("--budget", type=int, default=None)
+    parser.add_argument("--no-agents", action="store_true")
+    parser.add_argument("--no-cases", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+    steps = parse_steps(args.steps)
+    only = [s for s in args.sources.split(",") if s] or None
+    vehicles = [v for v in args.vehicles.split(",") if v] or None
+    if args.dry_run:
+        print(dry_run(steps, vehicles, only))
+        return
+    with db.transaction() as conn:
+        sources = _sources(conn, steps, only)
+        subjects = subjects_mod.load(conn, vehicles)
+    client = PoliteClient(budget=args.budget)
+    for source in sources:
+        if source["delay_seconds"]:
+            client.default_delay = max(client.default_delay, float(source["delay_seconds"]))
+        print(fetch_source(db.transaction, client, source, subjects, args.backfill, not args.no_agents))
+    if not args.no_cases:
+        from app.cases import pipeline
+        from app.scoring import score
+
+        print(pipeline.run(initial=False))
+        with db.transaction() as conn:
+            for cfg in conn.execute("select id from config where active").fetchall():
+                score.score_config(conn, cfg["id"])
+
+
+if __name__ == "__main__":
+    main()

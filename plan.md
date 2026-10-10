@@ -10,9 +10,9 @@
 | 3 | Signal contract and validation gate | done | 4cf8b03 | 14 gate tests passed (+ foundation, seed, review-fix tests); all 13,105 valid seed signals embedded (local provider); car-area eval: heuristic baseline 34.7 % on 300 verbatims, LLM eval pending OPENAI_API_KEY |
 | 4 | Cases | done | 7051b60 | 6 case tests passed; seed data (local embedder, threshold 0.15): 1,322 cases, 712 spanning several lines, 293 opened per line, 1 market conflict; threshold report in backend/reports/clustering_thresholds.md |
 | 5 | Scoring | done | 1c23f9f | 9 tests passed (scoring + cases); seed data: 29,584 case scores for 10 configs x 4 profiles in 15 s; G60 / USA: 6 cases in the top 10 under every profile |
-| 6 | Requirements | done | see next phase | 4 requirement tests passed (+ case tests); seed data: confirming the top G60 / USA case generated REQ-G60-0930 (26 customers, study satisfaction 0.74, evidence bmw_data, rank 0.331) |
-| 7 | RAG sidebar agent | todo | | |
-| 8 | Daily fetch loop (steps 1 to 9) | todo | | |
+| 6 | Requirements | done | 8f6b836 | 4 requirement tests passed (+ case tests); seed data: confirming the top G60 / USA case generated REQ-G60-0930 (26 customers, study satisfaction 0.74, evidence bmw_data, rank 0.331) |
+| 7 | RAG sidebar agent | in progress | WIP | Code and 3 tests done; dev-database check pending (HANDOFF.md) |
+| 8 | Daily fetch loop (steps 1 to 9) | in progress | WIP | Adapters, agents, worker and 7 tests done; several scraped sources without parser; backfill checkpoint pending (HANDOFF.md) |
 | 9 | API for the UI teammate | todo | | |
 | 10 | Hardening and demo readiness | todo | | |
 
