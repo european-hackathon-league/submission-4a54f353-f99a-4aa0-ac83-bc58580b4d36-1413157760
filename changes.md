@@ -98,3 +98,14 @@ Reviewer findings on commits `8d9d1e8` (phase 0) and `6dfc8e2` (phase 1). Migrat
 | 5.5 | Board order: manual ranks first (by rank), then score. Rescoring never moves an overridden case; the board flags `score_moved` when its score changed by 0.1 or more since the previous computation. | "PM can override by dragging, with a reason"; rescoring flags instead of moving. | Claude |
 | 5.6 | Requirement rank on read uses the same rule as the SQL view `requirement_rank` from the review fixes: missing cost counts as 1.0 (`cost_missing`). | One definition in SQL and Python. | Claude |
 | 5.7 | Template case titles ignore more filler words ("problem", "mentioned", "dealer", ...). | Better offline titles; the LLM writer replaces them once the key is set. | Claude |
+
+## Phase 6: requirements
+
+| # | Change | Reason | Decided by |
+|---|---|---|---|
+| 6.1 | Markets "clearly differ" = the line's case has the market-conflict flag; then one requirement per market with at least `conflict_min_customers` customers (`REQ-G60-USA-0930`, `REQ-G60-CN-0930`), else one per line (`REQ-G60-0930`). The number is the case number. Market codes in IDs: USA, CN, EU, RoW. | Uses the same statistic the PM sees on the case; IDs trace back to the case at a glance. | Claude |
+| 6.2 | Cost: the lowest option price of the feature on the line (DE option list) mapped to S (< 500 EUR), M (< 2,000 EUR), L; without a price the LLM estimate (`ai_estimate`), and offline the middle band M marked as a placeholder in the assumptions. PM edits set `cost_source = pm`, engineer edits `engineering`. | Cost is only a rough prioritization factor (CLAUDE.md); the option price is the best customer-facing proxy we have. | Claude |
+| 6.3 | Offline template requirement (`requirement_template@v1`): metric and today's value from the study when the feature has a study attribute, otherwise from complaint counts; every target written as an assumption to be agreed. | No invented targets without an LLM or competitor data. | Claude |
+| 6.4 | Status flow draft -> in_discussion -> approved / rejected (rejected back to draft possible); only a PM (`pm:` actor) approves; reject and delete need a reason; delete is a tombstone (title and body purged, status `deleted`). | "PM approves; engineers edit" (CLAUDE.md). | Claude |
+| 6.5 | `requirement.rank_score` is filled at generation as the default-profile cache (R0.2); boards rank per requested profile on read and show market-specific requirements only under their own market's config. | One requirement can appear in several profiles; the cache never decides the order. | Claude |
+| 6.6 | Release-fit rule refined: OTA only for features that are mostly software (navigation, apps, digital key, voice, ...), not for hardware in software areas (wireless charging pad, speakers, displays, cameras). | The first rule put wireless charging into OTA because of its car area. | Claude |

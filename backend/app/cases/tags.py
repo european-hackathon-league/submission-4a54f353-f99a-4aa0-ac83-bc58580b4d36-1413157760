@@ -17,7 +17,12 @@ from pydantic import BaseModel
 from app.llm import prompts
 from app.llm.client import LLMUnavailable, get_llm, llm_available
 
-SOFTWARE_AREAS = {"infotainment", "connected_services"}
+# Features that are mostly software and can change over the air (hardware such as
+# wireless charging pads, speakers, displays or USB ports cannot).
+SOFTWARE = re.compile(r"app|digital key|remote|software|ota|esim|wifi|connected|navigation|map|traffic|voice|"
+                      r"assistant|operating concept|idrive|carplay|android auto|mirroring|bluetooth|driver profile|"
+                      r"in-car apps|my modes|functions on demand|radio|instrument cluster|wake-up", re.I)
+HARDWARE = re.compile(r"charging|audio|speaker|display|head-up|usb|camera|controller|gesture|seat|steering", re.I)
 SMALL_ITEMS = re.compile(r"\b(colou?r|paint|wheel|rim|trim|upholster|material|cupholder|floor mat|usb|"
                          r"storage|mirror|light)\w*", re.I)
 LUXURY = re.compile(r"massage|rear seat entertainment|automatic doors|executive|theatre|bowers|night vision|"
@@ -44,8 +49,9 @@ def rule_segment(feature: str) -> str:
 def rule_release_fit(feature: str, car_area: str, defects: int, customers: int) -> tuple[str, str]:
     """Software-only areas -> OTA; small equipment changes -> current car update;
     everything else (hardware, packaging, chassis) -> next generation."""
-    if car_area in SOFTWARE_AREAS:
-        return "ota", f"rule-based fallback: {car_area} is mostly software, can ship over the air"
+    if SOFTWARE.search(feature) and not HARDWARE.search(feature) and car_area in (
+            "infotainment", "connected_services", "driver_assistance", "driving_dynamics"):
+        return "ota", f"rule-based fallback: {feature} is mostly software, can ship over the air"
     if SMALL_ITEMS.search(feature) and defects == 0:
         return "current_car", "rule-based fallback: small equipment or trim change fits a mid-life update"
     return "next_gen", (f"rule-based fallback: {car_area} change touches hardware; "
