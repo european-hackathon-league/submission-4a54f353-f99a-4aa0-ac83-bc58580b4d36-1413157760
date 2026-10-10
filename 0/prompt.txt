@@ -1,0 +1,74 @@
+claude we are in the final hackathon by ehl TUM.ai hackathon and we are finalists you would guide us along the process and help us design the real product that will win us the race i will provide you with all the informations needed in order to be aware of every aspect of this challenge:
+
+
+<pasted_content id="0d3a">
+Your mission
+
+Build an AI-powered application that ingests heterogeneous data, derives customer requirements for a vehicle, prioritizes them, and puts a product manager in the loop at the decisions that matter.
+
+Your app should be able to:
+•    Ingest the provided data and enrich it with structured knowledge from the web.
+•    Extract signals such as recurring complaints, unmet needs, competitor advantages and market trends, each linked to its sources.
+•    Derive requirements from those findings: clear, actionable, customer-facing and realistic.
+•    Prioritize them with a logic you define and can explain.
+•    Involve the PM to approve, reject, edit or challenge requirements and their rationale and evidence behind them. 
+•    Record everything in an audit trail (is a complete, chronological record of all actions, changes, and access events within a system or data environment).
+About the Scope
+
+In scope:
+•    Customer requirements on the product: features, equipment, comfort, space, usability, infotainment and digital services, design and quality perception, driving experience, range and charging as experienced by the customer, variant and package offering, etc.
+
+Out of scope:
+•    Regulatory and homologation requirements (e.g.: safety, emissions, type approval)
+•    Technical and engineering requirements (e.g.: component specs, architecture, supplier topics)
+•    Pricing, business case and cost calculation (you may use cost or effort as a rough prioritization factor)
+Make it yours!
+Demonstrate your application at least for one derivative in onbe market but avoid designing it as a one-off: it should be adaptable to other BMW vehicles and markets. The remaining datasets and scenarios are available for optional testing. 
+We know the challenge is broad. Focus on the parts where your team can make the strongest contribution. You might go deep on web research and turn external information into usable evidence, or on integrating and interpreting the provided BMW data. You do not need to develop every capability to the same depth. Be creative, but show how your chosen focus connects to the overall path from evidence to a PM decision.
+</pasted_content id="0d3a">
+
+
+
+<pasted_content id="0d3a">
+Expected Deliverables
+
+A concept and demonstrable prototype of an AI-powered product requirements application that processes heterogeneous inputs, derives product requirements, supports prioritization, and integrates human review.
+
+A structured sample list of derived product requirements. Each requirement should include a unique identifier, a clear and actionable description, its linked findings and sources, a priority or score, the applied prioritization rationale, an evidence level, the key future-facing assumptions and uncertainties and its current decision status.
+
+A clearly defined end-to-end workflow showing how inputs are processed into proposed and prioritized requirements, which activities the AI performs autonomously, and where human review is mandatory.
+
+A demonstrable audit trail that makes each requirement traceable from its underlying findings and sources through consolidation, scoring, prioritization, and human decision-making. It should record relevant changes to requirement content, scores, priorities, evidence, and status, including who or what initiated each change, when it occurred, and the documented rationale.
+
+Important: Teams are free to choose their technical approach, architecture, prioritization logic, and user experience. The deliverables describe the capabilities and outcomes that should be demonstrated, not a prescribed solution design. Deliverables may be presented as one integrated solution or as a combination of connected concepts, prototypes, models, and visualizations.
+</pasted_content id="0d3a">
+
+
+start by initialising the claude.md file and by understanding the whole goal that we want to achieve dont start the technical side dont start programming anything just reading understanding and assimilating and then we'll start brainstorming.
+In the project folder you are in youll find the layers.mmd file which is a mermaid graph that helps understand the steps in different layers.
+Your goal is:
+-identify all the layers that we need to work on
+-identify all the research questions that we need to solve before starting the implementations
+-identify all the problems that we could face
+stay superfitial for now dont dive into details and keep it short and concise
+
+---
+
+okay now i just added a new folder which is the data folder read it and understand its structures and read their md file and with that update the claude.md file and answer whichever questions needs to be answered when it comes to research questions you found and also recheck the problems that we might solve that have to be reconsidered or added 
+after finishing that please go the data folder and if there is something unnecessary or unusuble or just some slop and garbage i mean in the text remove it just clean everything and remove redundancy
+
+---
+
+add git ignore file and ignore the claude.md file
+
+---
+
+okay commit and push in one sentense please as a commit message
+
+---
+
+yes it is private
+
+---
+
+bro the .claude the .entire is a personal thing dont put it remove the last commit and ignore in the gitignore and readd it
