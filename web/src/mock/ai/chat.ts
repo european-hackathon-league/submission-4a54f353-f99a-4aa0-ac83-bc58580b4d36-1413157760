@@ -48,7 +48,7 @@ export function scriptedReply(
   const studies = signals.filter((s) => s.sourceType === "bmw_study");
   const competitors = signals.filter((s) => s.kind === "competitor_fact");
   const out: ScriptedReply = { text: "", citations: [], proposals: [], newSignals: [] };
-  const use = (s: Signal) => {
+  const citeRef = (s: Signal) => {
     if (!out.citations.some((x) => x.ref === s.id)) out.citations.push(cite(s));
     return `[${s.id}]`;
   };
@@ -103,7 +103,7 @@ export function scriptedReply(
       });
       out.newSignals.push(s);
     });
-    out.text = `I ran a research job for **${marketLabel[market as "CN"]}** (${specs.length} queries, mock run). Two new signals were added to this case:\n\n- ${out.newSignals[0].summary} ${use(out.newSignals[0])}\n- ${out.newSignals[1].summary} ${use(out.newSignals[1])}\n\nBoth are trust D/C web sources, so they count as weak evidence. They are now in the Signals tab and the score will update.`;
+    out.text = `I ran a research job for **${marketLabel[market as "CN"]}** (${specs.length} queries, mock run). Two new signals were added to this case:\n\n- ${out.newSignals[0].summary} ${citeRef(out.newSignals[0])}\n- ${out.newSignals[1].summary} ${citeRef(out.newSignals[1])}\n\nBoth are trust D/C web sources, so they count as weak evidence. They are now in the Signals tab and the score will update.`;
     return out;
   }
 
@@ -123,7 +123,7 @@ export function scriptedReply(
         decidedAt: undefined,
       }),
     );
-    out.text = `Here is a SMART draft based on ${signals.length} signals ${top.map(use).join(" ")}. Targets marked *assumption* still need engineering. Accept the proposal below to create it as a **Draft** requirement linked to this case.`;
+    out.text = `Here is a SMART draft based on ${signals.length} signals ${top.map(citeRef).join(" ")}. Targets marked *assumption* still need engineering. Accept the proposal below to create it as a **Draft** requirement linked to this case.`;
     return out;
   }
 
@@ -165,7 +165,7 @@ export function scriptedReply(
         changes: [{ field: "metrics", before: r.metrics, after }],
         citations: competitors.map((s) => s.id),
       });
-      out.text = `Proposed change: **${metric.question}** ${metric.target} → **${newTarget}**.${competitors.length ? ` Benchmarks for context: ${competitors.map((s) => `${s.summary} ${use(s)}`).join("; ")}.` : ""} Accept to apply; the edit is logged with your rationale.`;
+      out.text = `Proposed change: **${metric.question}** ${metric.target} → **${newTarget}**.${competitors.length ? ` Benchmarks for context: ${competitors.map((s) => `${s.summary} ${citeRef(s)}`).join("; ")}.` : ""} Accept to apply; the edit is logged with your rationale.`;
       return out;
     }
   }
@@ -174,7 +174,7 @@ export function scriptedReply(
   const add = content.match(/^(?:please )?add (?:a note|this|that)?:?\s*(.+)$/i);
   if (add && objectType === "case") {
     const note = add[1].trim();
-    const after = c.bodyMd.replace("## Decision log", `## Decision log\n\n- ${nowIso.slice(0, 10)} · ${note}`);
+    const after = c.bodyMd.replace("## Decision log", `## Decision log\n\n- ${nowIso.slice(0, 10)} · ${note}`).replace("\n\n_No decisions yet._", "");
     out.proposals.push({ objectType: "case", objectId, source: "chat", kind: "body", summary: `Add to decision log: ${note}`, changes: [{ field: "bodyMd", before: c.bodyMd, after }], citations: [] });
     out.text = "I prepared the edit to the page. Accept it to apply.";
     return out;
@@ -187,10 +187,10 @@ export function scriptedReply(
     const study = studies[0];
     out.text = [
       `**Argument sheet · ${c.featureName}**`,
-      complaint ? `- **Complaint:** ${complaint.summary} ${use(complaint)}` : "- **Complaint:** none in the data",
-      wish ? `- **Wish:** ${wish.summary} ${use(wish)}` : "- **Wish:** none explicit",
-      study ? `- **Study:** ${study.summary} ${use(study)}` : "- **Study:** no linked attribute",
-      competitors.length ? `- **Competition:** ${competitors.map((s) => `${s.summary} ${use(s)}`).join("; ")}` : `- **Competition:** ${c.figures.competitorOffer.join("; ") || "not researched"}`,
+      complaint ? `- **Complaint:** ${complaint.summary} ${citeRef(complaint)}` : "- **Complaint:** none in the data",
+      wish ? `- **Wish:** ${wish.summary} ${citeRef(wish)}` : "- **Wish:** none explicit",
+      study ? `- **Study:** ${study.summary} ${citeRef(study)}` : "- **Study:** no linked attribute",
+      competitors.length ? `- **Competition:** ${competitors.map((s) => `${s.summary} ${citeRef(s)}`).join("; ")}` : `- **Competition:** ${c.figures.competitorOffer.join("; ") || "not researched"}`,
       `- **Markets:** ${c.figures.perMarket.map((m) => `${marketLabel[m.market]} ${m.customers} customers${m.salesShare2030 ? ` (${pct(m.salesShare2030)} of 2030 volume)` : ""}`).join(", ")}`,
       `- **Brand fit:** ${c.brandFit.value.toFixed(2)}, ${c.brandFit.reason}`,
       r ? `- **Cost:** ${r.cost.size} · ${r.cost.eurBand} (${r.cost.source.replace("_", " ")})` : "- **Cost:** decided on the requirement",
@@ -207,8 +207,8 @@ export function scriptedReply(
     out.text = [
       `With your weights (**${profile.name}**) the case scores **${score.toFixed(2)}**. The biggest contributions:`,
       ...topF.map(([f, v], i) => `${i + 1}. **${factorLabel[f as keyof typeof factorLabel]}** ${c.factors[f as keyof typeof c.factors].toFixed(2)} × weight → +${v.toFixed(2)}`),
-      top[0] ? `\nStrongest customer evidence: ${top.map((s) => use(s)).join(" ")}.` : "",
-      studies[0] ? `Study: ${studies[0].summary} ${use(studies[0])}.` : "",
+      top[0] ? `\nStrongest customer evidence: ${top.map((s) => citeRef(s)).join(" ")}.` : "",
+      studies[0] ? `Study: ${studies[0].summary} ${citeRef(studies[0])}.` : "",
       `Evidence level is **${c.evidenceLevel}** and kept separate from the score.`,
       c.figures.perMarket.some((m) => m.market === "US" && m.customers > 0) && c.figures.perMarket.every((m) => m.market === "US" || m.customers < 3)
         ? "Caveat: the verbatims are almost all from the US; Europe is the biggest market by volume."
@@ -234,14 +234,14 @@ export function scriptedReply(
     ]
       .filter(Boolean)
       .join("\n");
-    studies.slice(0, 2).forEach(use);
+    studies.slice(0, 2).forEach(citeRef);
     return out;
   }
 
   // --- Competitors ---
   if (/compet|benchmark|rival|mercedes|tesla|xiaomi|audi|nio|li auto/.test(msg)) {
     out.text = competitors.length
-      ? `Competitor facts on file:\n${competitors.map((s) => `- ${s.competitor ?? s.sourceName}: ${s.summary} (trust ${s.trust}${s.trust === "E" ? ", announcement = assumption" : ""}) ${use(s)}`).join("\n")}\n\nToday's car: ${c.figures.equipmentToday}.`
+      ? `Competitor facts on file:\n${competitors.map((s) => `- ${s.competitor ?? s.sourceName}: ${s.summary} (trust ${s.trust}${s.trust === "E" ? ", announcement = assumption" : ""}) ${citeRef(s)}`).join("\n")}\n\nToday's car: ${c.figures.equipmentToday}.`
       : `No structured competitor facts in this case yet. Known offers: ${c.figures.competitorOffer.join("; ") || "none"}. Ask me to *research competitors* to run the competitor agent.`;
     return out;
   }
@@ -250,7 +250,7 @@ export function scriptedReply(
   out.text = [
     `**${c.title}**`,
     c.summary,
-    `Evidence: ${signals.length} signals (${signals.filter((s) => s.sourceType === "bmw_feedback").length} BMW verbatims, ${studies.length} study rows, ${signals.filter((s) => s.synthetic).length} web/synthetic). Strongest: ${top.map(use).join(" ") || "—"}.`,
+    `Evidence: ${signals.length} signals (${signals.filter((s) => s.sourceType === "bmw_feedback").length} BMW verbatims, ${studies.length} study rows, ${signals.filter((s) => s.synthetic).length} web/synthetic). Strongest: ${top.map(citeRef).join(" ") || "—"}.`,
     "You can ask me: *why is this ranked high*, *compare markets*, *competitors*, *draft a requirement*, *what should I ask engineering*, *research what owners say*, or *prepare an argument sheet*.",
   ].join("\n\n");
   return out;

@@ -50,6 +50,7 @@ const heroDrafts: Record<string, Draft[]> = {
   ],
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- the real agent will use the dataset (RAG)
 export function draftRequirements(c: Case, d: Dataset): Draft[] {
   if (heroDrafts[c.id]) return heroDrafts[c.id];
   const markets = c.markets.filter((m) => m !== "unknown").map((m) => marketLabel[m]).join(", ");

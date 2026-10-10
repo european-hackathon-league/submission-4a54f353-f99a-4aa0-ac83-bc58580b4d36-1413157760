@@ -74,7 +74,7 @@ export function extractFromNote(c: Case, questions: OpenQuestion[], requirements
   // Next steps → add to the case's decision log.
   const next = lines.find((l) => /^next\b|to do|action/i.test(l));
   if (next) {
-    const after = c.bodyMd.replace("## Decision log", `## Decision log\n\n- Meeting: ${next}`);
+    const after = c.bodyMd.replace("## Decision log", `## Decision log\n\n- Meeting: ${next}`).replace("\n\n_No decisions yet._", "");
     proposals.push({
       objectType: "case",
       objectId: c.id,

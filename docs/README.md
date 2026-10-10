@@ -22,7 +22,7 @@ BMW-Challenge/
 ├── 02-data/                  Provided BMW data: raw/, processed/ (CSV), insights, equipment
 ├── 03-meetings/              Meeting summaries (raw/ holds the transcripts)
 ├── 04-team-notes/            Our own brainstorming
-└── 05-solution/              Our solution design: scope/focus and end-to-end flow
+└── 05-solution/              Our solution design: scope/focus, end-to-end flow, UX decisions
 ```
 
 ### 01-challenge: the task
@@ -72,6 +72,7 @@ Read the summaries first. Transcripts are machine-generated, noisy and not speak
 | [`scope-and-focus.md`](05-solution/scope-and-focus.md) | Scope boundaries, demo focus (recommended: G60, US + EU/China contrast), workstreams W1–W10 with priority, depth profile, team split, definition of done |
 | [`end-to-end-flow.md`](05-solution/end-to-end-flow.md) | Data → PM decision across BMW's 5 stages: diagram, gates A–D, data objects, scoring logic, screens, AI/human boundaries, worked example |
 | [`web-intelligence-loop.md`](05-solution/web-intelligence-loop.md) | **Our differentiator:** the agent loop that fetches reviews, YouTube, Reddit, Chinese sites and competitor facts (Exa + YouTube API + OpenAI), traceability, monitoring alerts, per-PM workspaces (China PM / RoW PM) on one data layer, build plan |
+| [`ux-and-collaboration.md`](05-solution/ux-and-collaboration.md) | **UX decisions of the demo (`web/`):** personas and org model, Signals → Case → Requirement → Planned feature lifecycles, case outcomes (refer, innovation pool, park, merge…), taxonomy, context pack, screens, AI-as-proposals |
 
 ## Recurring themes across the material
 - **Human in the loop, no black box:** every recommendation shows its source, market and evidence. The PM accepts, edits or rejects.

@@ -1500,15 +1500,6 @@ paths:
                       - brand_fit
                   additionalProperties:
                     type: number
-                  required:
-                    - customers
-                    - severity
-                    - satisfaction_gap
-                    - competitor_gap
-                    - market_volume
-                    - regression
-                    - trend
-                    - brand_fit
                 series:
                   type: string
                   enum:
