@@ -1,0 +1,26 @@
+okay read the claude md file and read the data folder to understand what this project about and tell me what questions we need to solve and what problems we should be aware of
+
+---
+
+1. the demo target is not our question right now since we want the plateform to work in general.
+2. we will need to go deep in everything so be ready for that
+3. the scoring formulas depends on the number of customers complaing about it, the the impact of the reviews that have been on that feature, the cost and more we need to discuss it but just later
+4. the evidence level will be like a weight that participate finally in the prioritization score 
+now we need to discuss layer by layer based on the layer.mmd file in order to decide the architectural designs and the data structures that we will usee in order to make this work and continue answering the other questions
+
+dont forget to argue with with everything i state or i give i mean dont be a yes man when you find constraints i didnt pay attention to or having a bad idea based on your judgement to tell me
+
+---
+
+impcat of reviews means reach
+for prioritazation is importance remmove this confidence ai slop
+i think a supabase may be more practical with the vector extension
+its the priority decision after the relevance and classification of information fetched
+
+---
+
+okay let me tell you what is the architectural decision and i want you to create a mermaid graph based on what i say and what the challenge demands 
+before you make any decisions i want you to read whatever i will give you to understand how we are solving the problem
+we starting by populating a data base based on the previous bmw models the bmw portfolio and the sales volume and then create a never ending loop of agents responsible for fetching information based on the competitors ; customer and public feedback, the product global trends and one for and also make it in clear format like json by makign the agent summarize in veryy short text what is the problem about and the source exactly if there is a link  and feed it to an LLM model that classifies and clusters in the already existing database according to under certain cl and then reason about all these new informations can create potential requirementss by using specific meters and specifications and setting up specific criteria and classify also using jev fastly under the different parts of the car if it has a relation with exterior interior powertrain and then score and throughout this process calculating the prioritazation scores based on the impact of the reviews that caused this case creation adn then prioritize the cases based on these scores and at the end the prodcut manager (human) could approve or change the order by taking that case list and sliding it up to make it more important or down for less and if he approves a case it'll be sent to the engineer team and add this requirement to the doccumentation 
+it must include traceability when presenting the cases and sophisticated rag system since the product manager can discuss the matter of a case to change something into it 
+before creating this please read the new 2 md files i just added in the folder and take everything into consideration to create the final plan and then create the final uml diagram with all the details i stated if you have any question ask them here while youre doing the job
