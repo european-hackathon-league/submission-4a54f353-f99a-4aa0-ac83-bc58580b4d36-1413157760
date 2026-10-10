@@ -53,8 +53,22 @@ erDiagram
         bool collision_safe
     }
     CAR_AREA {
-        text code PK "fixed list, team-confirmed"
+        text code PK "11 areas of the fixed taxonomy"
         text name
+        text description
+    }
+    ASPECT_GROUP {
+        text code PK "function ... price (11)"
+        text description
+    }
+    TAXONOMY_PROPOSAL {
+        uuid id PK
+        uuid signal_id FK
+        text suggested_name
+        text reason "other, low_confidence"
+        text status "open, mapped_to_existing, accepted_new_topic, dismissed"
+        uuid resolved_feature_id FK
+        text decided_by
     }
     BRAND_PROFILE {
         uuid id PK
@@ -87,9 +101,13 @@ erDiagram
     %% ---------- Baseline ----------
     FEATURE {
         uuid id PK
-        text name "Seat ventilation"
+        text topic_id "taxonomy slug: seat_massage, other"
+        text name "BMW VFC level 2 label"
         text car_area FK
-        text status "confirmed, candidate"
+        text hint
+        text_array vfc_level2 "label + aliases"
+        text taxonomy_version
+        text status "confirmed"
         vector embedding
     }
     FEATURE_MAPPING {
@@ -181,9 +199,13 @@ erDiagram
         text evidence_role "bmw_customer, competitor, market"
         text kind "complaint, wish, like, competitor_fact, trend, innovation"
         text severity "defect, difficult_to_use, wish, none"
-        text_array car_area
+        uuid feature_id FK "the topic"
+        text aspect_group FK
+        text_array car_area "derived from the topic"
+        text classified_by "bmw_label, llm, pm"
+        text classification_confidence "high, medium, low"
+        text taxonomy_version
         text feature_hint
-        uuid feature_id FK
         text case_id FK
         text summary "max 20 words EN"
         text quote "exact excerpt of text_original"
@@ -199,7 +221,8 @@ erDiagram
     %% ---------- Cases and requirements ----------
     CASE_ITEM {
         text id PK "CASE-0012, not tied to one vehicle"
-        uuid feature_id FK
+        uuid feature_id FK "the topic"
+        text aspect_group FK
         text title "the problem"
         text body_md "Notion-like page"
         int body_version
@@ -333,6 +356,9 @@ erDiagram
     COMPETITOR ||--o{ SIGNAL : "competitor evidence"
     COMPETITOR ||--o{ DATA_RECORD : "specs of"
     FEATURE ||--o{ SIGNAL : about
+    ASPECT_GROUP ||--o{ SIGNAL : "aspect of"
+    ASPECT_GROUP ||--o{ CASE_ITEM : "aspect of"
+    SIGNAL ||--o| TAXONOMY_PROPOSAL : "review queue"
     FEATURE ||--o{ CASE_ITEM : groups
     CASE_ITEM ||--o{ SIGNAL : "composed of"
     CASE_ITEM ||--|{ CASE_VEHICLE : "applies to"

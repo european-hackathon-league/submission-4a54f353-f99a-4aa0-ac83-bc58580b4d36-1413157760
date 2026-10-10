@@ -3,19 +3,23 @@
 import pytest
 
 from app import audit
-from app.cases import cluster, feature_link, figures, lifecycle, pipeline
+from app.cases import cluster, figures, lifecycle, pipeline
 from app.llm.embeddings import get_embedder
-from app.signals import service
+from app.llm import client as llm_client
+from app.signals import reclassify, service
 
-VENT = "Seat heating and ventilation"
+VENT = "Seats, ventilate / heat"
+TOPICS = {VENT: "seating_ventilate_heat", "Navigation system": "navigation"}
 FACTORS = ("distinct_customers", "severity", "satisfaction_gap", "competitor_gap", "market_volume",
            "removed_vs_predecessor", "reach", "trend")
 
 
 @pytest.fixture
 def world(conn):
-    for code in ("seats", "infotainment", "general"):
+    for code in ("seats", "infotainment_hmi"):
         audit.insert(conn, "car_area", {"code": code, "name": code}, actor="seed:test", key="code")
+    for code in ("performance", "reliability", "comfort"):
+        audit.insert(conn, "aspect_group", {"code": code}, actor="seed:test", key="code")
     for code in ("reddit", "bmw_sales"):
         audit.insert(conn, "source_registry", {"source_id": code, "name": code}, actor="seed:test", key="source_id")
     for v in ("G60", "G70"):
@@ -27,15 +31,16 @@ def world(conn):
             }, actor="seed:test", key="record_id")
     emb = get_embedder()
     ids = {}
-    for name, area in ((VENT, "seats"), ("Navigation system", "infotainment")):
-        ids[name] = audit.insert(conn, "feature", {"name": name, "car_area": area, "status": "confirmed",
+    for name, area in ((VENT, "seats"), ("Navigation system", "infotainment_hmi")):
+        ids[name] = audit.insert(conn, "feature", {"name": name, "topic_id": TOPICS[name], "car_area": area,
+                                                   "status": "confirmed", "taxonomy_version": "test",
                                                    "embedding": emb.embed([name])[0]}, actor="seed:test")["id"]
+    audit.insert(conn, "feature", {"name": "Other", "topic_id": "other", "status": "confirmed"}, actor="seed:test")
     competitor = audit.insert(conn, "competitor", {"bmw_vehicle": "G60", "brand": "Mercedes-Benz",
                                                    "model": "E-Class"}, actor="seed:test")
     cfg = audit.insert(conn, "config", {"name": "G60 / USA", "vehicle": "G60", "market": "USA",
                                         "thresholds": {"open_min_customers": 10, "conflict_min_customers": 5,
-                                                       "similarity_case": {"local": 0.3},
-                                                       "similarity_feature": {"local": 0.3}}},
+                                                       "similarity_case": {"local": 0.3}}},
                        actor="seed:test")
     profiles = {}
     for name, weights in (("balanced", FACTORS), ("customers only", ("distinct_customers",))):
@@ -52,8 +57,9 @@ def world(conn):
                                                  "content_hash": rid, "author_hash": rid, "market": market},
                          actor="agent:feedback", key="record_id")
             proposals.append({"record_id": rid, "kind": kind, "severity": severity, "summary": text[:60],
-                              "quote": text, "car_area": ["seats" if feature == VENT else "infotainment"],
-                              "feature_hint": feature, "vehicle": vehicle, "market": market,
+                              "quote": text, "topic_id": TOPICS[feature],
+                              "aspect_group": "performance" if feature == VENT else "reliability",
+                              "vehicle": vehicle, "market": market,
                               "customer_ref": rid, "evidence_role": role, **extra})
 
     add(12, "G60", "USA", "The front seat ventilation is too weak in hot weather", "complaint", "difficult_to_use", VENT)
@@ -69,10 +75,61 @@ def world(conn):
 
 
 def _run_cases(conn):
-    feature_link.link(conn, min_similarity=0.3)
+    reclassify.run(conn)
     cluster.initial(conn, 0.3)
     for r in conn.execute("select id from case_item").fetchall():
         pipeline.update_case(conn, r["id"])
+
+
+def test_case_per_topic_and_aspect_group(world):
+    """Likes and complaints about the same aspect share one case; another aspect is another case."""
+    conn = world["conn"]
+    audit.insert(conn, "source_record", {"record_id": "reddit-comfort", "source_id": "reddit", "content_hash": "c",
+                                         "text_original": "The ventilated front seats are comfortable on long trips"},
+                 actor="agent:feedback", key="record_id")
+    for topic, aspect, quote in ((TOPICS[VENT], "comfort", "ventilated front seats are comfortable"),
+                                 ("other", "comfort", "comfortable on long trips"),
+                                 (None, None, "The ventilated front seats")):
+        out = service.ingest(conn, [{"record_id": "reddit-comfort", "kind": "like", "severity": "none",
+                                     "summary": quote, "quote": quote, "topic_id": topic, "aspect_group": aspect,
+                                     "vehicle": "G60", "customer_ref": "comfort"}], actor="agent:feedback")
+        assert out["valid"] == 1, out
+    pending = "select feature_id, case_id, classified_by, aspect_group, car_area from signal" \
+              " where quote = 'The ventilated front seats'"
+    # Without an LLM a signal without a topic waits: no topic is guessed and it is in no case.
+    _run_cases(conn)
+    assert conn.execute(pending).fetchone() == {"feature_id": None, "case_id": None, "classified_by": None,
+                                                "aspect_group": None, "car_area": []}
+    # With the LLM classifier it gets topic and aspect group from the closed lists, then joins its case.
+    llm_client.set_llm(llm_client.FakeLLM({"feedback_classify": lambda v: {"items": [{
+        "row": 0, "kind": "like", "severity": "none", "topic_id": TOPICS[VENT], "aspect_group": "comfort",
+        "confidence": "high", "other_suggestion": "", "summary": "Ventilated front seats liked"}]}}))
+    assert reclassify.run(conn)["updated"] == 1
+    cluster.incremental(conn, 0.3)
+    classified = conn.execute(pending).fetchone()
+    assert classified["classified_by"] == "llm" and classified["car_area"] == ["seats"]
+    assert classified["feature_id"] == world["features"][VENT] and classified["case_id"] is not None
+    cases = conn.execute(
+        "select c.aspect_group, count(*) n, count(distinct s.kind) kinds from case_item c"
+        " join signal s on s.case_id = c.id where c.feature_id = %s group by c.id order by 1",
+        (world["features"][VENT],)).fetchall()
+    assert cases == [{"aspect_group": "comfort", "n": 2, "kinds": 1},
+                     {"aspect_group": "performance", "n": 23, "kinds": 2}]
+    # Topic "other" waits in the review queue and is in no case.
+    other = conn.execute("select s.case_id from signal s join feature f on f.id = s.feature_id"
+                         " where f.topic_id = 'other'").fetchone()
+    assert other["case_id"] is None
+    assert conn.execute("select count(*) n from taxonomy_review").fetchone()["n"] == 1
+
+
+def test_large_group_is_split_by_similarity(world):
+    conn = world["conn"]
+    out = cluster.initial(conn, 0.99, split_min=20)
+    # 23 seat-ventilation signals >= 20: split; the 3 navigation signals stay one case.
+    assert out["groups"] == 2 and out["split_groups"] == 1 and out["cases"] > 2
+    nav = conn.execute("select count(*) n from case_item where feature_id = %s",
+                       (world["features"]["Navigation system"],)).fetchone()["n"]
+    assert nav == 1
 
 
 def test_feature_link_and_case_spans_lines(world):
@@ -138,9 +195,8 @@ def test_new_evidence_on_confirmed_case_only_flags(world):
                  actor="agent:feedback", key="record_id")
     service.ingest(conn, [{"record_id": "reddit-new", "kind": "complaint", "severity": "defect",
                            "summary": "Navigation loses route", "quote": "Navigation map routing loses the route",
-                           "car_area": ["infotainment"], "feature_hint": "Navigation system", "vehicle": "G70",
+                           "topic_id": "navigation", "aspect_group": "reliability", "vehicle": "G70",
                            "customer_ref": "new"}], actor="agent:feedback")
-    feature_link.link(conn, min_similarity=0.3)
     result = cluster.incremental(conn, 0.3)
     assert result["attached"] == 1
     after = conn.execute("select title, body_md from case_item where id = %s", (nav["id"],)).fetchone()

@@ -1,12 +1,10 @@
 # Case clustering: threshold report
 
-Embedding provider: `local:hash1536`. Signals: 11095 in 153 features. Open rule: >= 10 distinct customers per line.
+Embedding provider: `local:hash1536`. Signals: 11091 in 612 topic + aspect groups. Only the 35 groups with >= 50 signals are split by similarity; every other group is one case. Open rule: >= 10 distinct customers per line.
 
 | Cosine threshold | Cases | Singletons | Median size | Largest | Cohesion | Would open |
 |---|---|---|---|---|---|---|
-| 0.15 | 1304 | 30% | 2.0 | 446 | 0.758 | 139 |
-| 0.20 | 2660 | 45% | 2.0 | 419 | 0.852 | 110 |
-| 0.25 | 4200 | 65% | 1.0 | 311 | 0.920 | 88 |
-| 0.30 | 5527 | 76% | 1 | 233 | 0.952 | 74 |
-| 0.35 | 6608 | 80% | 1.0 | 147 | 0.965 | 51 |
-| 0.40 | 7547 | 83% | 1 | 77 | 0.974 | 39 |
+| 0.10 | 759 | 12% | 6 | 606 | 0.637 | 156 |
+| 0.15 | 1206 | 19% | 4.0 | 279 | 0.694 | 153 |
+| 0.20 | 1914 | 34% | 2.0 | 256 | 0.781 | 138 |
+| 0.30 | 3417 | 66% | 1 | 161 | 0.898 | 126 |

@@ -2,7 +2,7 @@
 
 The extraction is reviewed with the team (phase 2 checkpoint): ``write_review``
 writes ``backend/seed/review/option_list_<vehicle>.csv`` (item x variant) and
-``option_features.csv`` (item -> proposed feature). The load reads the review
+``option_features.csv`` (item -> proposed topic). The load reads the review
 CSVs, so corrections made there are what lands in the database.
 """
 
@@ -24,70 +24,70 @@ FILES = {
     "G70": "option-list_G70_7-series_2026-07.pdf",
 }
 
-# German option-list wording -> feature of the catalog (first match wins).
+# German option-list wording -> topic ID of the taxonomy (first match wins).
 ITEM_FEATURES: list[tuple[str, str]] = [
-    (r"sitzbelüftung|sitzheizung", "Seat heating and ventilation"),
-    (r"massage", "Seat massage"),
-    (r"sitzverstellung|memory|lordosen", "Seat adjustment and memory"),
-    (r"sitze\b|sportsitze|komfortsitze|multifunktionssitze", "Seat comfort"),
-    (r"lenkradheizung", "Heated steering wheel"),
-    (r"standheizung|standklima|standlüftung", "Auxiliary heating"),
-    (r"klimaautomatik|klima", "Climate control"),
-    (r"head-up", "Head-Up Display"),
-    (r"harman|bowers|lautsprecher|sound system|hifi", "Audio system"),
-    (r"dab-tuner|radio", "Radio"),
-    (r"wireless charging|kabellos", "Wireless phone charging"),
-    (r"esim", "Personal eSIM"),
-    (r"wlan|hotspot", "WiFi hotspot"),
-    (r"digital key", "Digital Key"),
-    (r"komfortzugang", "Comfort Access"),
-    (r"heckklappe", "Trunk lid operation"),
-    (r"autobahn|highway", "Highway Assistant"),
-    (r"driving assistant professional|aktive geschwindigkeitsregelung|tempomat", "Adaptive cruise control"),
-    (r"spurwechsel", "Lane change assistant"),
-    (r"spurverlassen", "Lane departure warning"),
-    (r"frontkollision|heckkollision", "Front collision warning"),
-    (r"querverkehr|linksabbiege", "Cross traffic warning"),
-    (r"speed limit", "Speed limit assistant"),
-    (r"remote 3d", "Remote 3D View"),
-    (r"surround view|panoramaansicht|3d view", "Surround view camera"),
-    (r"rückfahrkamera", "Rear view camera"),
-    (r"park distance|einparkhilfe|parken-anfahr", "Park Distance Control"),
-    (r"parking assistant|parkassistent|rangierassistent|reversing assistant", "Parking assistant"),
-    (r"driving assistant", "Driver assistance overall"),
-    (r"drive recorder|anti-diebstahl-rekorder", "Drive recorder"),
-    (r"innenraumkamera", "Interior camera"),
-    (r"glasdach|schiebedach|sky lounge", "Panorama glass roof"),
-    (r"fernlicht", "High-beam assistant"),
-    (r"scheinwerfer|laserlicht|nebel|lichtpaket|rückleuchten", "Exterior lighting"),
-    (r"ambient|iconic glow|lichtkontur|welcome", "Ambient lighting"),
-    (r"reifenreparatur|reifenpannen", "Tire repair kit"),
-    (r"reifendruck", "Tire pressure monitoring"),
-    (r"leichtmetallräder|aerodynamikräder|räder|reifen|felgen", "Wheels and tires"),
-    (r"fahrwerk|luftfederung|dämpf", "Suspension and damping"),
-    (r"lenkung", "Steering"),
-    (r"getriebe|steptronic", "Transmission"),
-    (r"ladekabel", "Charging cable"),
-    (r"ac-laden|laden|ladeleistung", "Charging the high-voltage battery"),
-    (r"iconicsounds|sound electric|abgasanlage", "Engine sound"),
-    (r"anhänger", "Towing"),
-    (r"alarmanlage", "Anti-theft alarm"),
-    (r"durchlade|gepäckraum|kofferraum", "Luggage space"),
-    (r"sonnenschutz|rollo", "Sun protection"),
-    (r"ablage", "Storage compartments"),
-    (r"lenkrad", "Steering wheel"),
-    (r"leder|alcantara|polster|veganza|merino|applikation|interieurleiste|dachhimmel|clarity", "Upholstery and interior materials"),
-    (r"außenspiegel", "Exterior mirrors"),
-    (r"theatre|fond.*entertainment|fondbildschirm", "Rear seat entertainment"),
-    (r"automatische türbetätigung|automatic doors|türen", "Automatic doors"),
-    (r"soft.?close", "Door opening and closing"),
-    (r"akustik", "Interior quietness"),
-    (r"gestik", "Gesture control"),
-    (r"night vision", "Night vision"),
-    (r"garagentor", "Interior mirror and garage door opener"),
-    (r"live cockpit|curved display|navigation", "Infotainment system overall"),
-    (r"lackierung|metallic|uni |exterieurpaket|spoiler|carbon|shadow line|schriftzug|kidney|niere", "Exterior design"),
-    (r"travel & comfort", "Interior comfort"),
+    (r"sitzbelüftung|sitzheizung", "seating_ventilate_heat"),
+    (r"massage", "seat_massage"),
+    (r"sitzverstellung|memory|lordosen", "seat_memory"),
+    (r"sitze\b|sportsitze|komfortsitze|multifunktionssitze", "seats"),
+    (r"lenkradheizung", "heated_steering_wheel"),
+    (r"standheizung|standklima|standlüftung", "auxiliary_heater_function"),
+    (r"klimaautomatik|klima", "vehicle_climatization"),
+    (r"head-up", "head_up_display"),
+    (r"harman|bowers|lautsprecher|sound system|hifi", "audio_mode_sound"),
+    (r"dab-tuner|radio", "radio_function"),
+    (r"wireless charging|kabellos", "mobile_device_wireless_charging"),
+    (r"esim", "personal_esim"),
+    (r"wlan|hotspot", "wifi_hotspot"),
+    (r"digital key", "digital_key"),
+    (r"komfortzugang", "comfort_access"),
+    (r"heckklappe", "trunk_lid_open_close"),
+    (r"autobahn|highway", "highway_assistant"),
+    (r"driving assistant professional|aktive geschwindigkeitsregelung|tempomat", "active_cruise_control"),
+    (r"spurwechsel", "lane_change_assistant"),
+    (r"spurverlassen", "lane_departure_warning"),
+    (r"frontkollision|heckkollision", "front_collision_warning"),
+    (r"querverkehr|linksabbiege", "cross_traffic_warning_rear_with_brake_intervention"),
+    (r"speed limit", "speed_limit_assistant"),
+    (r"remote 3d", "remote_3d_view_my_bmw_app_mini_app"),
+    (r"surround view|panoramaansicht|3d view", "surround_view"),
+    (r"rückfahrkamera", "rear_view_camera"),
+    (r"park distance|einparkhilfe|parken-anfahr", "park_distance_control_pdc"),
+    (r"parking assistant|parkassistent|rangierassistent|reversing assistant", "parking_assistant"),
+    (r"driving assistant", "driver_assistance_automated_driving_overall_technology"),
+    (r"drive recorder|anti-diebstahl-rekorder", "drive_recorder"),
+    (r"innenraumkamera", "interior_camera"),
+    (r"glasdach|schiebedach|sky lounge", "panorama_glass_roof"),
+    (r"fernlicht", "high_beam_assistant"),
+    (r"scheinwerfer|laserlicht|nebel|lichtpaket|rückleuchten", "exterior_lighting"),
+    (r"ambient|iconic glow|lichtkontur|welcome", "ambient_light"),
+    (r"reifenreparatur|reifenpannen", "tirefit"),
+    (r"reifendruck", "tire_pressure_control"),
+    (r"leichtmetallräder|aerodynamikräder|räder|reifen|felgen", "wheels_tires"),
+    (r"fahrwerk|luftfederung|dämpf", "cushioning_damping_vehicle"),
+    (r"lenkung", "steering"),
+    (r"getriebe|steptronic", "transmission"),
+    (r"ladekabel", "charging_cable"),
+    (r"ac-laden|laden|ladeleistung", "charge_high_voltage_battery"),
+    (r"iconicsounds|sound electric|abgasanlage", "engine_acoustics_engine_sound"),
+    (r"anhänger", "towing_eye"),
+    (r"alarmanlage", "anti_theft_alarm_system"),
+    (r"durchlade|gepäckraum|kofferraum", "luggage_compartment"),
+    (r"sonnenschutz|rollo", "sun_protection"),
+    (r"ablage", "storage_compartments"),
+    (r"lenkrad", "steering_wheel"),
+    (r"leder|alcantara|polster|veganza|merino|applikation|interieurleiste|dachhimmel|clarity", "upholstery_interior_trim"),
+    (r"außenspiegel", "exterior_rearview_mirror"),
+    (r"theatre|fond.*entertainment|fondbildschirm", "rear_seat_entertainment"),
+    (r"automatische türbetätigung|automatic doors|türen", "automatic_doors"),
+    (r"soft.?close", "door_open_close"),
+    (r"akustik", "interior_acoustics"),
+    (r"gestik", "gesture_control"),
+    (r"night vision", "night_vision"),
+    (r"garagentor", "garage_door_opener"),
+    (r"live cockpit|curved display|navigation", "connecteddrive_and_infotainment_overall_technology"),
+    (r"lackierung|metallic|uni |exterieurpaket|spoiler|carbon|shadow line|schriftzug|kidney|niere", "exterior_design"),
+    (r"travel & comfort", "interior_comfort"),
 ]
 
 # Customer-facing tech data (CLAUDE.md scope: range and charging as experienced, space, performance).
@@ -185,7 +185,7 @@ def write_review(vehicles=("F70", "G60", "G70")) -> dict[str, int]:
     if not fpath.exists():
         with open(fpath, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            w.writerow(["item_name", "proposed_feature", "proposed_by", "confirmed"])
+            w.writerow(["item_name", "proposed_topic", "proposed_by", "confirmed"])
             for name, feature in sorted(names.items()):
                 w.writerow([name, feature, PROPOSED_BY, ""])
     counts["distinct_items"] = len(names)
@@ -199,7 +199,7 @@ def _read_csv(name: str) -> list[dict]:
 
 
 def load(conn, run_id, feature_ids: dict[str, str], vehicles=("F70", "G60", "G70")) -> dict[str, int]:
-    item_feature_map = {r["item_name"]: r["proposed_feature"] for r in _read_csv("option_features.csv")}
+    item_feature_map = {r["item_name"]: r["proposed_topic"] for r in _read_csv("option_features.csv")}
     counts = {"pages": 0, "vehicle_feature": 0, "tech": 0, "option_codes": 0}
     for vehicle in vehicles:
         raw_ref = store_raw_file(FILES[vehicle])

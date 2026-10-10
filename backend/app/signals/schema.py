@@ -1,4 +1,4 @@
-"""The signal contract: one statement about one feature from one source record.
+"""The signal contract: one statement about one topic from one source record.
 
 Fixed core fields plus ``extra`` (source-specific), versioned by SCHEMA_VERSION.
 Agents produce ``SignalIn``; the validation gate turns it into a stored row
@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = "signal@1"
+SCHEMA_VERSION = "signal@2"
 
 Market = Literal["USA", "China", "Europe", "Rest of World", "unknown"]
 Kind = Literal["complaint", "wish", "like", "competitor_fact", "trend", "innovation"]
@@ -35,7 +35,12 @@ class SignalIn(BaseModel):
     summary: str = Field(min_length=3, description="English, at most 20 words")
     quote: str = Field(min_length=2, description="exact excerpt of the record text_original")
     quote_en: str | None = None
-    car_area: list[str] = Field(min_length=1)
+    # Closed taxonomy: the gate checks both against the stored lists and derives the
+    # car area from the topic. No topic = waits for the LLM classifier.
+    topic_id: str | None = None
+    aspect_group: str | None = None
+    classification_confidence: Literal["high", "medium", "low"] | None = None
+    classified_by: Literal["bmw_label", "llm", "pm"] | None = None
     feature_hint: str | None = None
     evidence_role: EvidenceRole = "bmw_customer"
     market: Market = "unknown"

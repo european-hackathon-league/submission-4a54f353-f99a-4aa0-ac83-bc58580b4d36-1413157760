@@ -10,8 +10,8 @@ from app.llm.client import FakeLLM, Usage, current_usage, strict_schema
 from app.llm.embeddings import LocalEmbedder, cosine
 
 EXPECTED_TABLES = {
-    "vehicle", "competitor", "source_registry", "site_slug", "search_term", "car_area", "brand_profile",
-    "app_user", "agent_run", "source_record", "data_record", "config", "weight_profile", "feature",
+    "vehicle", "competitor", "source_registry", "site_slug", "search_term", "car_area", "aspect_group",
+    "taxonomy_proposal", "brand_profile", "app_user", "agent_run", "source_record", "data_record", "config", "weight_profile", "feature",
     "feature_mapping", "vehicle_feature", "study_score", "case_item", "case_vehicle", "case_lineage",
     "signal", "case_score", "requirement", "page_version", "decision", "chat_message", "notification",
     "rag_chunk", "audit_event",

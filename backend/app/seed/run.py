@@ -10,9 +10,8 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
-from collections import Counter
 
-from app import audit, db
+from app import audit, db, taxonomy
 from app.llm.client import Usage, current_usage
 from app.seed import catalog, catalog_proposal, loaders, option_load, readers, registry
 
@@ -30,8 +29,8 @@ PROFILES = [
 ]
 DEFAULT_THRESHOLDS = {
     "open_min_customers": 10, "conflict_min_customers": 5, "conflict_negative_share": 0.6,
-    "similarity_feature": {"openai": 0.45, "local": 0.30}, "similarity_case": {"openai": 0.55, "local": 0.15},
-    "reach_cap": 100000, "competitor_gap_min_rivals": 1,
+    "similarity_case": {"openai": 0.55, "local": 0.15},
+    "case_split_min_signals": 50, "reach_cap": 100000, "competitor_gap_min_rivals": 1,
 }
 BRAND_PROFILE_V1 = """# BMW brand profile (assumption, version 1)
 
@@ -86,12 +85,12 @@ def _run(agent: str, fn, *args, force: bool = False):
 def step_reference(conn, run):
     n_areas = catalog.load_car_areas(conn)
     counts = registry.load(conn)
-    return {"car_areas": n_areas, **counts}
+    return {"car_areas": n_areas, "taxonomy": taxonomy.version(), **counts}
 
 
 def step_features(conn, run):
     ids = catalog.load_features(conn)
-    return {"features": len(ids)}
+    return {"topics": len(ids)}
 
 
 def step_configs(conn, run):
@@ -133,10 +132,8 @@ def step_configs(conn, run):
 
 
 def write_review_files() -> dict:
-    fb = [r for v in readers.FEEDBACK_FILES for r in readers.read_feedback(v)]
-    topics = Counter(r.topic_l2 if r.topic_l2 else "None" for r in fb)
     attrs = list(dict.fromkeys(s.attribute for s in readers.read_study()))
-    return {"catalog": catalog_proposal.write_review_files(topics, attrs), "options": option_load.write_review()}
+    return {"catalog": catalog_proposal.write_review_files(attrs), "options": option_load.write_review()}
 
 
 def seed_all(force: bool = False) -> dict:
@@ -148,8 +145,7 @@ def seed_all(force: bool = False) -> dict:
     out["study"] = _run("seed:study", loaders.load_study, force=force)
 
     def options(conn, run):
-        ids = {r["name"]: str(r["id"]) for r in conn.execute("select id, name from feature").fetchall()}
-        return option_load.load(conn, run, ids)
+        return option_load.load(conn, run, catalog.topic_ids(conn))
 
     out["options"] = _run("seed:option_list", options, force=force)
     out["feedback"] = _run("seed:feedback", loaders.load_feedback, force=force)

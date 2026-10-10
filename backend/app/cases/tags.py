@@ -50,7 +50,7 @@ def rule_release_fit(feature: str, car_area: str, defects: int, customers: int) 
     """Software-only areas -> OTA; small equipment changes -> current car update;
     everything else (hardware, packaging, chassis) -> next generation."""
     if SOFTWARE.search(feature) and not HARDWARE.search(feature) and car_area in (
-            "infotainment", "connected_services", "driver_assistance", "driving_dynamics"):
+            "infotainment_hmi", "connectivity_digital", "driver_assistance", "dynamics_powertrain"):
         return "ota", f"rule-based fallback: {feature} is mostly software, can ship over the air"
     if SMALL_ITEMS.search(feature) and defects == 0:
         return "current_car", "rule-based fallback: small equipment or trim change fits a mid-life update"

@@ -1,7 +1,7 @@
 """Validation gate: every proposed signal passes these checks before it counts.
 
 Order (plan.md phase 3): schema -> record exists -> quote found in the record ->
-kind / severity / car area consistent -> duplicate -> source known -> competitor
+kind / severity / topic / aspect group consistent -> duplicate -> source known -> competitor
 fact dated -> vehicle role from on_sale_since -> scope tag.
 
 A failed check quarantines the signal with the reason; it is stored (visible in
@@ -33,11 +33,12 @@ _QUOTES = {"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-
 @dataclass
 class GateContext:
     records: dict[str, dict]
-    car_areas: set[str]
+    topics: dict[str, dict]  # topic_id -> feature row (id, car_area, taxonomy_version)
+    aspect_groups: set[str]
     sources: set[str]
     on_sale_since: dict[str, dt.date]
     competitors: set[str]
-    existing: set[tuple] = field(default_factory=set)  # (record_id, kind, quote, feature_hint)
+    existing: set[tuple] = field(default_factory=set)  # (record_id, kind, quote, topic or feature_hint)
     authored: dict[tuple, str] = field(default_factory=dict)  # (source_id, author_hash, quote) -> record_id
 
 
@@ -61,8 +62,9 @@ def load_context(conn, record_ids: set[str]) -> GateContext:
     authored = {}
     if record_ids:
         for s in conn.execute(
-            "select s.record_id, s.kind, s.quote, s.feature_hint, r.source_id, r.author_hash from signal s"
-            " join source_record r using (record_id)"
+            "select s.record_id, s.kind, s.quote, coalesce(f.topic_id, s.feature_hint) as feature_hint,"
+            " r.source_id, r.author_hash from signal s"
+            " join source_record r using (record_id) left join feature f on f.id = s.feature_id"
             " where s.validation = 'valid' and (s.record_id = any(%s) or r.author_hash in"
             " (select author_hash from source_record where record_id = any(%s) and author_hash is not null))",
             (list(record_ids), list(record_ids)),
@@ -72,7 +74,10 @@ def load_context(conn, record_ids: set[str]) -> GateContext:
                 authored[(s["source_id"], s["author_hash"], normalize(s["quote"] or ""))] = s["record_id"]
     return GateContext(
         records=records,
-        car_areas={r["code"] for r in conn.execute("select code from car_area").fetchall()},
+        topics={r["topic_id"]: r for r in conn.execute(
+            "select id, topic_id, car_area, taxonomy_version from feature where topic_id is not null"
+            " and status <> 'rejected'").fetchall()},
+        aspect_groups={r["code"] for r in conn.execute("select code from aspect_group").fetchall()},
         sources={r["source_id"] for r in conn.execute("select source_id from source_registry").fetchall()},
         on_sale_since={r["code"]: r["on_sale_since"] for r in conn.execute(
             "select code, on_sale_since from vehicle where on_sale_since is not null").fetchall()},
@@ -144,7 +149,12 @@ def check(raw: dict, ctx: GateContext, *, run_id=None, prompt_version=None, mode
         first = exc.errors()[0]
         return _quarantine(row, f"schema: {'.'.join(map(str, first['loc']))}: {first['msg']}")
 
-    row = {**base, **sig.model_dump()}
+    row = {**base, **sig.model_dump(exclude={"topic_id"})}
+    row["feature_id"], row["car_area"] = None, []
+    bad_aspect = sig.aspect_group is not None and sig.aspect_group not in ctx.aspect_groups
+    if bad_aspect:  # not storable in the column; kept in extra for the quarantine view
+        row["aspect_group"] = None
+        row["extra"] = {**row["extra"], "proposed_aspect_group": sig.aspect_group}
     row["validation"] = "valid"
     row["reject_reason"] = None
 
@@ -161,12 +171,20 @@ def check(raw: dict, ctx: GateContext, *, run_id=None, prompt_version=None, mode
     row["quote"] = span
     row["quote_start"] = record["text_original"].find(span)
 
-    # 4. Consistency of kind, severity and car area.
+    # 4. Consistency of kind and severity; topic and aspect group from the closed lists.
     if not severity_fits_kind(sig.kind, sig.severity):
         return _quarantine(row, f"severity {sig.severity} does not fit kind {sig.kind}")
-    unknown = [a for a in sig.car_area if a not in ctx.car_areas]
-    if unknown:
-        return _quarantine(row, f"unknown car area {unknown[0]}")
+    if sig.topic_id is not None:
+        topic = ctx.topics.get(sig.topic_id)
+        if topic is None:
+            return _quarantine(row, f"unknown topic {sig.topic_id}")
+        # The car area is derived from the topic, never taken from the agent.
+        row["feature_id"] = topic["id"]
+        row["car_area"] = [topic["car_area"]] if topic["car_area"] else []
+        row["taxonomy_version"] = topic["taxonomy_version"]
+        row["classified_by"] = sig.classified_by or "llm"
+    if bad_aspect:
+        return _quarantine(row, f"unknown aspect group {sig.aspect_group}")
     if sig.evidence_role == "competitor" and (not sig.competitor_id or sig.competitor_id not in ctx.competitors):
         # Stored as market evidence so it can never count as a competitor fact by accident.
         row["extra"] = {**row["extra"], "proposed_evidence_role": "competitor"}
@@ -174,7 +192,7 @@ def check(raw: dict, ctx: GateContext, *, run_id=None, prompt_version=None, mode
         return _quarantine(row, "competitor signal without a known competitor_id")
 
     # 5. Duplicates: same record, kind, quote and feature; or the same author posting the same text elsewhere.
-    key = (record_id, sig.kind, normalize(span), normalize(sig.feature_hint or ""))
+    key = (record_id, sig.kind, normalize(span), normalize(sig.topic_id or sig.feature_hint or ""))
     if key in ctx.existing:
         return _quarantine(row, "duplicate of an existing signal on the same record")
     if record["author_hash"]:
@@ -207,8 +225,9 @@ def check(raw: dict, ctx: GateContext, *, run_id=None, prompt_version=None, mode
     elif row["vehicle_role"] == "unknown" and record["vehicle_role"] != "unknown":
         row["vehicle_role"] = record["vehicle_role"]
 
-    # 9. Scope tag (kept valid, tagged).
-    row["scope_tag"] = "out_of_scope" if OUT_OF_SCOPE.search(f"{sig.summary} {span}") else "in_scope"
+    # 9. Scope tag (kept valid, tagged). Aspect group price is pricing, which is out of scope.
+    out = sig.aspect_group == "price" or OUT_OF_SCOPE.search(f"{sig.summary} {span}")
+    row["scope_tag"] = "out_of_scope" if out else "in_scope"
     row["published_at"] = published
     return GateResult(row, True)
 

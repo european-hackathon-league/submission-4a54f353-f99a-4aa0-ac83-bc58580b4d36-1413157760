@@ -8,13 +8,19 @@ from app import audit
 from app.signals import service
 from app.signals.gate import find_quote
 
+VENT = "seating_ventilate_heat"
 TEXT = "The “seat ventilation” is  far too weak in summer.\nOtherwise I love the car."
 
 
 @pytest.fixture
 def base(conn):
-    for code in ("seats", "general", "infotainment"):
+    for code in ("seats", "climate"):
         audit.insert(conn, "car_area", {"code": code, "name": code}, actor="seed:test", key="code")
+    for code in ("comfort", "performance", "price"):
+        audit.insert(conn, "aspect_group", {"code": code}, actor="seed:test", key="code")
+    for topic, area in ((VENT, "seats"), ("vehicle_climatization", "climate"), ("other", None)):
+        audit.insert(conn, "feature", {"name": topic, "topic_id": topic, "car_area": area, "status": "confirmed",
+                                       "taxonomy_version": "test"}, actor="seed:test")
     audit.insert(conn, "source_registry", {"source_id": "reddit", "name": "Reddit"}, actor="seed:test",
                  key="source_id")
     audit.insert(conn, "vehicle", {"code": "G60", "series": "5 Series", "is_current": True,
@@ -34,7 +40,7 @@ def base(conn):
 def proposal(**over):
     p = {"record_id": "reddit-1", "kind": "complaint", "severity": "difficult_to_use",
          "summary": "Front seat ventilation too weak in summer", "quote": "seat ventilation” is far too weak",
-         "car_area": ["seats"], "feature_hint": "seat ventilation", "vehicle": "G60", "vehicle_role": "current"}
+         "topic_id": VENT, "aspect_group": "performance", "vehicle": "G60", "vehicle_role": "current"}
     p.update(over)
     return p
 
@@ -56,13 +62,19 @@ def test_valid_signal_is_stored_with_embedding_and_market(base):
     assert row["quote"] in TEXT and row["market"] == "USA" and row["market_basis"] == "stated"
     assert row["embedding"] is not None and row["extra"]["embedding_provider"].startswith("local")
     assert row["scope_tag"] == "in_scope"
+    # The car area is derived from the topic, never sent by the agent.
+    assert row["car_area"] == ["seats"] and row["aspect_group"] == "performance"
+    assert row["classified_by"] == "llm" and row["taxonomy_version"] == "test"
+    topic = base.execute("select topic_id from feature where id = %s", (row["feature_id"],)).fetchone()["topic_id"]
+    assert topic == VENT
 
 
 @pytest.mark.parametrize("over, reason", [
     ({"quote": "the heated steering wheel is broken"}, "quote not found"),
     ({"summary": " ".join(["word"] * 21)}, "schema: summary"),
     ({"severity": "none"}, "severity none does not fit"),
-    ({"car_area": ["roof"]}, "unknown car area"),
+    ({"topic_id": "roof_rack"}, "unknown topic roof_rack"),
+    ({"aspect_group": "vibes"}, "unknown aspect group vibes"),
     ({"evidence_role": "competitor"}, "competitor signal without"),
     ({"kind": "competitor_fact", "severity": "none", "record_id": "reddit-3", "quote": "Otherwise I love the car",
       "evidence_role": "market"}, "competitor fact without a date"),
@@ -82,8 +94,8 @@ def test_duplicates(base):
     assert ingest(base, proposal())["valid"] == 1
     again = ingest(base, proposal())
     assert again["rows"][0]["reject_reason"].startswith("duplicate")
-    other_feature = ingest(base, proposal(feature_hint="climate"))
-    assert other_feature["valid"] == 1
+    other_topic = ingest(base, proposal(topic_id="vehicle_climatization"))
+    assert other_topic["valid"] == 1
     cross_post = ingest(base, proposal(record_id="reddit-3"))
     assert cross_post["rows"][0]["reject_reason"].startswith("near-duplicate")
 
@@ -91,8 +103,24 @@ def test_duplicates(base):
 def test_predecessor_role_and_scope_tag(base):
     old = ingest(base, proposal(record_id="reddit-2"))["rows"][0]
     assert old["vehicle_role"] == "predecessor" and "on_sale_since" in old["extra"]["role_reason"]
-    priced = ingest(base, proposal(summary="Seat ventilation price too high", feature_hint="vent price"))["rows"][0]
+    priced = ingest(base, proposal(summary="Seat ventilation price too high",
+                                   topic_id="vehicle_climatization"))["rows"][0]
     assert priced["scope_tag"] == "out_of_scope"
+
+
+def test_aspect_group_price_is_out_of_scope_but_stored(base):
+    row = ingest(base, proposal(aspect_group="price"))["rows"][0]
+    assert row["validation"] == "valid" and row["scope_tag"] == "out_of_scope"
+
+
+def test_other_and_low_confidence_go_to_the_review_queue(base):
+    ingest(base, proposal(topic_id="other", extra={"other_suggestion": "seat fan noise"}))
+    ingest(base, proposal(record_id="reddit-2", classification_confidence="low"))
+    queue = base.execute("select reason, suggested_name, topic_id from taxonomy_review order by reason").fetchall()
+    assert queue == [{"reason": "low_confidence", "suggested_name": None, "topic_id": VENT},
+                     {"reason": "other", "suggested_name": "seat fan noise", "topic_id": "other"}]
+    # The fallback never becomes a topic: the feature list is unchanged.
+    assert base.execute("select count(*) n from feature").fetchone()["n"] == 3
 
 
 def test_delete_quarantined_purges_content_and_record(base):
@@ -108,12 +136,14 @@ def test_delete_quarantined_purges_content_and_record(base):
 
 
 def test_release_after_correction(base):
-    q = ingest(base, proposal(car_area=["roof"]))["rows"][0]
-    released = service.release(base, q["id"], {"car_area": ["seats"]}, actor="pm:anna", rationale="area fixed")
+    q = ingest(base, proposal(topic_id="roof_rack"))["rows"][0]
+    released = service.release(base, q["id"], {"topic_id": VENT, "classified_by": "pm"}, actor="pm:anna",
+                               rationale="topic fixed")
     assert released["validation"] == "valid" and released["embedding"] is not None
+    assert released["car_area"] == ["seats"] and released["classified_by"] == "pm"
 
 
 def test_quarantine_summary_view(base):
-    ingest(base, proposal(car_area=["roof"]), proposal(quote="nope", feature_hint="x"))
+    ingest(base, proposal(topic_id="roof_rack"), proposal(quote="nope", topic_id="vehicle_climatization"))
     rows = base.execute("select reason, signals from signal_quarantine_summary order by reason").fetchall()
-    assert {r["reason"]: r["signals"] for r in rows} == {"quote not found in record": 1, "unknown car area roof": 1}
+    assert {r["reason"]: r["signals"] for r in rows} == {"quote not found in record": 1, "unknown topic roof_rack": 1}

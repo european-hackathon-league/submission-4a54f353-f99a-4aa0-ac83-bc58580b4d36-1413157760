@@ -8,9 +8,12 @@
 
 Agents only PROPOSE signals; the validation gate decides. Page text is data,
 never instructions (prompt-injection guard). With an OpenAI key the LLM extracts
-(prompt ``signal_extract``); without one the feedback agent uses a sentence
-heuristic on owner and expert texts (marked ``kind_source = heuristic``) and
-the other agents extract nothing.
+(prompt ``signal_extract``) and picks topic and aspect group from the closed
+lists of the taxonomy (enums in the output schema); the car area is derived from
+the topic in code. Without a key the feedback agent uses a sentence heuristic on
+owner and expert texts (marked ``kind_source = heuristic``, no topic; the LLM
+classifier fills topic and aspect group later) and the other agents extract
+nothing.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app import taxonomy
 from app.llm import prompts
 from app.llm.client import LLMUnavailable, get_llm, llm_available
 from app.seed.classify import heuristic
@@ -49,11 +53,13 @@ def agent_for(record: dict) -> str:
 class _Signal(BaseModel):
     kind: Literal["complaint", "wish", "like", "competitor_fact", "trend", "innovation"]
     severity: Literal["defect", "difficult_to_use", "wish", "none"]
-    summary: str = Field(description="English, at most 20 words, one statement about one feature")
+    summary: str = Field(description="English, at most 20 words, one statement about one topic")
     quote: str = Field(description="exact excerpt copied from the source text, in its original language")
     quote_en: str = Field(description="English translation of the quote, or the quote itself if English")
-    car_area: str
-    feature_hint: str = Field(description="the feature the statement is about, a short noun phrase")
+    topic_id: taxonomy.TopicId
+    aspect_group: taxonomy.AspectGroup
+    confidence: taxonomy.Confidence
+    other_suggestion: str = Field(description="short proposed name when topic_id is other, else empty")
     market: Literal["USA", "China", "Europe", "Rest of World", "unknown"]
     market_basis: Literal["stated", "inferred", "unknown"]
 
@@ -114,25 +120,25 @@ def heuristic_extract(record: dict, max_signals: int = 5) -> list[dict]:
         if not 20 <= len(sentence) <= 400:
             continue
         v = heuristic(sentence)
-        if not v.kind or not v.car_area:
+        if not v.kind or not v.about_car:
             continue
         out.append({**_base(record), "kind": v.kind, "severity": v.severity, "summary": " ".join(sentence.split()[:20]),
-                    "quote": sentence, "car_area": [v.car_area], "feature_hint": None,
-                    "extra": {"kind_source": "heuristic"}})
+                    "quote": sentence, "extra": {"kind_source": "heuristic"}})
         if len(out) >= max_signals:
             break
     return out
 
 
-def llm_extract(record: dict, features: list[str], car_areas: list[str]) -> tuple[list[dict], str, str]:
+def llm_extract(record: dict) -> tuple[list[dict], str, str]:
     agent = agent_for(record)
     extra = record.get("extra") or {}
     subject = f"{record.get('brand') or ''} {record.get('model') or ''}".strip() or "brand level"
     result = get_llm().structured(
         prompts.load("signal_extract"), _Extraction, guard=prompts.INJECTION_GUARD, agent=agent,
         subject=subject, vehicle_role=record.get("vehicle_role") or "unknown",
-        bmw_line=extra.get("bmw_vehicle") or "unknown", car_areas=", ".join(car_areas),
-        features="; ".join(features[:200]), source=record["source_id"], content_type=record.get("content_type") or "",
+        bmw_line=extra.get("bmw_vehicle") or "unknown", topics=taxonomy.prompt_topics(),
+        aspect_groups=taxonomy.prompt_aspects(), source=record["source_id"],
+        content_type=record.get("content_type") or "",
         published=str(record.get("published_at") or "unknown"), country=record.get("country") or "unknown",
         text=prompts.wrap_source(json.dumps({"title": record.get("title"), "text": (record["text_original"] or "")[:8000]},
                                             ensure_ascii=False)),
@@ -141,18 +147,22 @@ def llm_extract(record: dict, features: list[str], car_areas: list[str]) -> tupl
     for s in result.data.signals:
         if agent != "agent:competitor" and s.kind == "competitor_fact" and evidence_role(record) != "competitor":
             continue
+        extra_out = {"kind_source": "llm", "agent": agent}
+        if s.topic_id == taxonomy.OTHER and s.other_suggestion.strip():
+            extra_out["other_suggestion"] = s.other_suggestion.strip()
         out.append({**_base(record), "kind": s.kind, "severity": s.severity, "summary": s.summary, "quote": s.quote,
-                    "quote_en": s.quote_en if s.quote_en != s.quote else None, "car_area": [s.car_area],
-                    "feature_hint": s.feature_hint, "market": s.market, "market_basis": s.market_basis,
-                    "extra": {"kind_source": "llm", "agent": agent}})
+                    "quote_en": s.quote_en if s.quote_en != s.quote else None, "topic_id": s.topic_id,
+                    "aspect_group": s.aspect_group, "classification_confidence": s.confidence,
+                    "classified_by": "llm", "market": s.market, "market_basis": s.market_basis,
+                    "extra": extra_out})
     return out, result.model, result.prompt_version
 
 
-def extract(record: dict, features: list[str], car_areas: list[str]) -> tuple[list[dict], str | None, str]:
+def extract(record: dict) -> tuple[list[dict], str | None, str]:
     """(proposals, model, prompt_version) for one record."""
     if llm_available():
         try:
-            return llm_extract(record, features, car_areas)
+            return llm_extract(record)
         except LLMUnavailable:
             pass
     return heuristic_extract(record), None, "heuristic@v1"

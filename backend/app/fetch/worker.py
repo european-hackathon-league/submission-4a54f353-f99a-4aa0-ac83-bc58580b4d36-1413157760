@@ -61,11 +61,9 @@ def _store(conn, result: FetchResult, actor: str, run_id) -> list[dict]:
 def run_agents(conn, records: list[dict], run_id) -> dict:
     from app.signals import service
 
-    features = [r["name"] for r in conn.execute("select name from feature where status <> 'rejected'").fetchall()]
-    areas = [r["code"] for r in conn.execute("select code from car_area").fetchall()]
     totals = {"valid": 0, "quarantined": 0, "dropped": 0}
     for record in records:
-        proposals, model, prompt_version = agents.extract(record, features, areas)
+        proposals, model, prompt_version = agents.extract(record)
         if not proposals:
             continue
         out = service.ingest(conn, proposals, actor=agents.agent_for(record), run_id=run_id,

@@ -1,6 +1,7 @@
 """Case pipeline: python -m app.cases.pipeline [--initial]
 
-feature link -> clustering (initial or incremental) -> figures -> tags ->
+LLM classification of signals without a topic -> grouping by topic + aspect
+group (initial or incremental) -> figures -> tags ->
 conflict flag -> open rules. One agent_run per run; every write audited.
 """
 
@@ -11,6 +12,7 @@ import json
 
 from app import audit, db
 from app.cases import cluster, feature_link, figures, lifecycle, tags
+from app.signals import reclassify
 
 ACTOR = "agent:cases"
 
@@ -76,17 +78,22 @@ def run(initial: bool = False) -> dict:
                               (ACTOR, "backfill" if initial else "incremental")).fetchone()["id"]
     with db.transaction() as conn:
         th = thresholds_for(conn)
-        link = feature_link.link(conn, min_similarity=feature_link.threshold(th, "similarity_feature", 0.45),
-                                 run_id=run_id)
+        # Signals that still have no topic go through the LLM classifier (closed lists). Without an
+        # OpenAI key they wait: a topic is never guessed.
+        classified = reclassify.run(conn)
         sim = feature_link.threshold(th, "similarity_case", 0.55)
-        grouped = (cluster.initial if initial else cluster.incremental)(conn, sim, run_id=run_id)
+        if initial:
+            grouped = cluster.initial(conn, sim, run_id=run_id,
+                                      split_min=int(th.get("case_split_min_signals", cluster.SPLIT_MIN)))
+        else:
+            grouped = cluster.incremental(conn, sim, run_id=run_id)
         profile = conn.execute("select body_md from brand_profile order by version desc limit 1").fetchone()
         touched = [r["id"] for r in conn.execute(
             "select distinct c.id from case_item c join signal s on s.case_id = c.id"
             " where s.updated_at >= (select started_at from agent_run where id = %s)", (run_id,)).fetchall()]
         opened = sum(update_case(conn, cid, run_id=run_id, brand_profile=profile["body_md"] if profile else "")
                      ["opened"] for cid in touched)
-        result = {"link": link, "cluster": grouped, "cases_updated": len(touched), "opened": opened,
+        result = {"classify": classified, "cluster": grouped, "cases_updated": len(touched), "opened": opened,
                   "provider": feature_link.provider_key(), "similarity_case": sim}
         conn.execute("update agent_run set status = 'ok', ended_at = now(), params = %s where id = %s",
                      (json.dumps(result, default=str), run_id))

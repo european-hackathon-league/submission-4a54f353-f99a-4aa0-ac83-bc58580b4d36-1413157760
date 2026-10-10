@@ -1,9 +1,11 @@
-"""Kind / severity / car area for BMW feedback rows without a Feedback Type.
+"""Kind / severity / topic / aspect group for BMW feedback rows that lack a
+Feedback Type or a usable VFC topic (``no_class_found``, general enquiry).
 
-With an OpenAI key the LLM classifies (prompt ``feedback_classify``). Without
-one, a transparent keyword heuristic runs (changes.md 2.4); its verdicts are
-marked ``kind_source = heuristic`` and can be re-run with the LLM later. Rows
-the heuristic cannot decide stay quarantined instead of being guessed.
+With an OpenAI key the LLM classifies (prompt ``feedback_classify``); topic and
+aspect group are enums of the fixed taxonomy, so it cannot invent one. Without a
+key, a transparent keyword heuristic decides kind and severity only (changes.md
+2.4); its verdicts are marked ``kind_source = heuristic`` and can be re-run with
+the LLM later. The heuristic never guesses a topic: those rows wait for the LLM.
 """
 
 from __future__ import annotations
@@ -15,23 +17,26 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app import taxonomy
 from app.llm import prompts
 from app.llm.client import LLMUnavailable, get_llm, llm_available
-from app.seed.catalog_proposal import CAR_AREAS
 
 HEURISTIC_VERSION = "heuristic@v1"
-CAR_AREA_CODES = [c for c, _, _ in CAR_AREAS]
 
 
 @dataclass
 class Verdict:
     kind: str | None
     severity: str | None
-    car_area: str | None
     summary: str | None
     source: str
     model: str | None
     prompt_version: str | None
+    topic_id: str | None = None
+    aspect_group: str | None = None
+    confidence: str | None = None
+    other_suggestion: str | None = None
+    about_car: bool = False  # heuristic only: the text names a part of the car
 
 
 _DEFECT = re.compile(r"\b(broke|broken|fail(ed|s|ure)?|malfunction\w*|error|not work\w*|doesn'?t work|stopped "
@@ -45,22 +50,17 @@ _LIKE = re.compile(r"\b(love\w*|great|excellent|happy|enjoy\w*|amazing|pleased|i
                    r"best|awesome|comfortable|smooth|beautiful|good|nice|satisfied|wonderful|brilliant|superb)\b", re.I)
 _NEGATION = re.compile(r"\b(not|n't|never|no)\s+(\w+\s+){0,2}$", re.I)
 
-_AREA_WORDS = [
-    ("range_charging", r"\b(range|charg\w*|battery|kwh|wallbox|supercharg\w*|ev)\b"),
-    ("infotainment", r"\b(screen|display|idrive|infotainment|navigation|nav|carplay|android auto|bluetooth|"
-                     r"audio|sound system|speaker|radio|voice|head-?up|hud|menu)\b"),
-    ("connected_services", r"\b(app|my bmw|digital key|remote|update|ota|connected|subscription)\b"),
-    ("driver_assistance", r"\b(cruise|lane|assist\w*|parking|camera|sensor|blind spot|autopilot)\b"),
-    ("seats", r"\b(seat\w*|lumbar|massage|headrest)\b"),
-    ("climate", r"\b(air ?con\w*|a/c|climate|heater|heating|ventilat\w*|cool\w*)\b"),
-    ("driving_dynamics", r"\b(handl\w*|ride|steer\w*|brak\w*|suspension|cornering|corner|grip|chassis)\b"),
-    ("powertrain", r"\b(engine|power|acceleration|accelerat\w*|gear\w*|transmission|fuel|mpg|exhaust|torque)\b"),
-    ("access_cargo", r"\b(boot|trunk|luggage|door\w*|key|lock\w*|cargo)\b"),
-    ("interior", r"\b(interior|cabin|material\w*|leather|storage|cupholder\w*|space|legroom|dashboard)\b"),
-    ("exterior", r"\b(exterior|design|looks|paint|wheel\w*|tyre\w*|tire\w*|mirror\w*)\b"),
-    ("lighting", r"\b(light\w*|headlight\w*|lamp\w*)\b"),
-    ("quality", r"\b(build quality|quality|noise|reliab\w*)\b"),
-]
+# Words that name a part of the car. Only a relevance filter for the offline
+# heuristic; it never sets a topic or a car area.
+_CAR_WORDS = re.compile(
+    r"\b(range|charg\w*|battery|kwh|wallbox|screen|display|idrive|infotainment|navigation|nav|carplay|"
+    r"android auto|bluetooth|audio|sound system|speaker|radio|voice|head-?up|hud|menu|app|my bmw|digital key|"
+    r"remote|update|ota|connected|subscription|cruise|lane|assist\w*|parking|camera|sensor|blind spot|seat\w*|"
+    r"lumbar|massage|headrest|air ?con\w*|a/c|climate|heater|heating|ventilat\w*|cool\w*|handl\w*|ride|"
+    r"steer\w*|brak\w*|suspension|corner\w*|grip|chassis|engine|power|accelerat\w*|gear\w*|transmission|"
+    r"fuel|mpg|exhaust|torque|boot|trunk|luggage|door\w*|key|lock\w*|cargo|interior|cabin|material\w*|leather|"
+    r"storage|cupholder\w*|space|legroom|dashboard|exterior|design|looks|paint|wheel\w*|tyre\w*|tire\w*|"
+    r"mirror\w*|light\w*|headlight\w*|lamp\w*|quality|noise|reliab\w*)\b", re.I)
 
 
 def _hits(pattern: re.Pattern, text: str) -> int:
@@ -83,15 +83,18 @@ def heuristic(text: str) -> Verdict:
         kind, severity = "like", "none"
     else:
         kind = severity = None
-    area = next((code for code, pat in _AREA_WORDS if re.search(pat, text, re.I)), None)
-    return Verdict(kind, severity, area, None, "heuristic", None, HEURISTIC_VERSION)
+    return Verdict(kind, severity, None, "heuristic", None, HEURISTIC_VERSION,
+                   about_car=bool(_CAR_WORDS.search(text)))
 
 
 class _Item(BaseModel):
     row: int
     kind: Literal["complaint", "wish", "like", "none"]
     severity: Literal["defect", "difficult_to_use", "wish", "none"]
-    car_area: str = Field(description="one code from the fixed car-area list")
+    topic_id: taxonomy.TopicId
+    aspect_group: taxonomy.AspectGroup
+    confidence: taxonomy.Confidence
+    other_suggestion: str = Field(description="short proposed name when topic_id is other, else empty")
     summary: str = Field(description="English, at most 20 words, one statement about one feature")
 
 
@@ -103,21 +106,23 @@ def _llm_batch(rows) -> dict[int, Verdict]:
     prompt = prompts.load("feedback_classify")
     payload = [{"row": r.excel_row, "text": r.text} for r in rows]
     result = get_llm().structured(
-        prompt, _Batch, car_areas=", ".join(CAR_AREA_CODES), guard=prompts.INJECTION_GUARD,
+        prompt, _Batch, topics=taxonomy.prompt_topics(), aspect_groups=taxonomy.prompt_aspects(),
+        guard=prompts.INJECTION_GUARD,
         items=prompts.wrap_source(json.dumps(payload, ensure_ascii=False)),
     )
     out = {}
     for item in result.data.items:
         kind = None if item.kind == "none" else item.kind
-        area = item.car_area if item.car_area in CAR_AREA_CODES else None
         summary = " ".join(item.summary.split()[:20]) if kind else None
-        out[item.row] = Verdict(kind, item.severity if kind else None, area, summary, "llm", result.model,
-                                result.prompt_version)
+        out[item.row] = Verdict(kind, item.severity if kind else None, summary, "llm", result.model,
+                                result.prompt_version, topic_id=item.topic_id, aspect_group=item.aspect_group,
+                                confidence=item.confidence,
+                                other_suggestion=item.other_suggestion.strip() or None)
     return out
 
 
 def classify_rows(rows, batch_size: int = 25) -> dict[int, Verdict]:
-    """excel_row -> Verdict for every unclassified row."""
+    """excel_row -> Verdict for every row that needs a classification from its text."""
     verdicts: dict[int, Verdict] = {}
     if llm_available():
         try:

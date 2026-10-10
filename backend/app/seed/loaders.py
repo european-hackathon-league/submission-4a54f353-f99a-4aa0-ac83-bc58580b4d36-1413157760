@@ -10,13 +10,14 @@ from __future__ import annotations
 import hashlib
 from collections import defaultdict
 
-from app import audit, storage
+from app import audit, storage, taxonomy
 from app.config import RAW_DATA_DIR
 from app.seed import readers
 from app.seed.classify import classify_rows
-from app.seed.catalog import mapping, vfc_car_areas
+from app.seed.catalog import mapping, topic_ids
+from app.signals import service
 
-SCHEMA_VERSION = "signal@1"
+SCHEMA_VERSION = "signal@2"
 
 POWERTRAIN = {"ICE": "ICE", "PHEV": "PHEV", "BEVE": "BEV", "BEV": "BEV"}
 EUROPE = {"GB", "DE", "FR", "IT", "ES", "NL", "SE", "NO", "AT", "BE", "CH", "DK", "FI", "IE", "PT", "PL", "CZ",
@@ -105,9 +106,9 @@ def _summary(kind: str, severity: str, l2: str | None, l3: str | None) -> str:
 
 
 def load_feedback(conn, run_id, vehicles=("F70", "G60", "G70")) -> dict[str, int]:
-    vfc_features = mapping(conn, "vfc_topic")
-    areas = vfc_car_areas()
-    counts = {"records": 0, "signals": 0, "quarantined": 0}
+    features = topic_ids(conn)
+    version = taxonomy.version()
+    counts = {"records": 0, "signals": 0, "quarantined": 0, "taxonomy_review": 0}
     for vehicle in vehicles:
         raw_ref = store_raw_file(readers.FEEDBACK_FILES[vehicle])
         rows = readers.read_feedback(vehicle)
@@ -138,44 +139,56 @@ def load_feedback(conn, run_id, vehicles=("F70", "G60", "G70")) -> dict[str, int
                                                 key="record_id", run_id=run_id,
                                                 rationale="BMW customer feedback verbatim (provided Excel)")
 
-        unclassified = [r for r in rows if r.feedback_type not in FEEDBACK_TYPES]
+        # Rows without a BMW Feedback Type or without a usable VFC topic are classified from the text.
+        unclassified = [r for r in rows if r.feedback_type not in FEEDBACK_TYPES
+                        or not taxonomy.topic_for_label(r.topic_l2)]
         verdicts = classify_rows(unclassified)
         signals = []
         for r in rows:
             _, answer = readers.split_question(r.text)
-            l2 = r.topic_l2 if r.topic_l2 and r.topic_l2 != "no_class_found" else None
-            area = areas.get(r.topic_l2 or "None", "general")
+            topic, aspect = taxonomy.topic_for_label(r.topic_l2), taxonomy.aspect_for_label(r.topic_l3)
+            l2 = r.topic_l2 if topic else None
+            classified_by, confidence = ("bmw_label", "high") if topic else (None, None)
             extra = {"vfc_level2": r.topic_l2, "vfc_level3": r.topic_l3, "feedback_type": r.feedback_type,
                      "excel_row": r.excel_row, "bmw_source": r.source}
+            v = verdicts.get(r.excel_row)
+            model = pv = None
+            if topic is None and v and v.topic_id:
+                # Meta label (no_class_found, general enquiry): topic and aspect group from the text.
+                topic, aspect, classified_by, confidence = v.topic_id, v.aspect_group or aspect, "llm", v.confidence
+                model, pv = v.model, v.prompt_version
+                if v.other_suggestion:
+                    extra["other_suggestion"] = v.other_suggestion
             if r.feedback_type in FEEDBACK_TYPES:
                 kind, severity = FEEDBACK_TYPES[r.feedback_type]
                 extra["kind_source"] = "bmw_label"
-                summary, validation, reason, model, pv = _summary(kind, severity, l2, r.topic_l3), "valid", None, None, None
+                summary, validation, reason = _summary(kind, severity, l2, r.topic_l3), "valid", None
             else:
-                v = verdicts[r.excel_row]
                 kind, severity, extra["kind_source"] = v.kind, v.severity, v.source
                 model, pv = v.model, v.prompt_version
-                if v.car_area and area == "general":
-                    area = v.car_area
                 summary = v.summary or (_summary(kind, severity, l2, r.topic_l3) if kind else None)
                 validation = "valid" if kind else "quarantined"
                 reason = None if kind else "unclassified: no BMW feedback type and no classifier verdict"
+            area = taxonomy.car_area_of(topic)
             signals.append({
                 "record_id": f"bmw_feedback-{r.verbatim_id}", "run_id": run_id, "schema_version": SCHEMA_VERSION,
                 "prompt_version": pv, "model": model, "customer_ref": r.verbatim_id,
                 "market": country_to_market(r.country), "market_basis": "stated" if r.country else "unknown",
                 "vehicle": vehicle, "chassis_code": r.chassis, "vehicle_role": "current",
                 "evidence_role": "bmw_customer", "powertrain": POWERTRAIN.get(r.engine or "", "unknown"),
-                "kind": kind, "severity": severity, "car_area": [area], "feature_hint": l2,
-                "feature_id": vfc_features.get(r.topic_l2) if r.topic_l2 else None,
+                "kind": kind, "severity": severity, "car_area": [area] if area else [], "feature_hint": l2,
+                "feature_id": features.get(topic) if topic else None, "aspect_group": aspect,
+                "classified_by": classified_by, "classification_confidence": confidence,
+                "taxonomy_version": version if topic else None,
                 "summary": summary, "quote": answer, "quote_start": r.text.find(answer),
-                "reach": None, "reach_unit": "none", "scope_tag": _scope(r.topic_l3),
+                "reach": None, "reach_unit": "none", "scope_tag": _scope(aspect),
                 "extra": extra, "validation": validation, "reject_reason": reason,
             })
         stored = audit.insert_many(conn, "signal", signals, actor="seed:feedback", run_id=run_id,
                                    rationale="one signal per classified topic row of the BMW feedback Excel")
         counts["signals"] += stored
         counts["quarantined"] += sum(1 for s in signals if s["validation"] == "quarantined")
+    counts["taxonomy_review"] = service.queue_taxonomy_review(conn, actor="seed:feedback", run_id=run_id)
     return counts
 
 
@@ -183,6 +196,6 @@ def _series(vehicle: str) -> str:
     return {"F70": "1 Series", "G60": "5 Series", "G70": "7 Series"}.get(vehicle, vehicle)
 
 
-def _scope(l3: str | None) -> str:
-    # Price-performance topics are pricing, which is out of scope (CLAUDE.md).
-    return "out_of_scope" if l3 and "price-performance" in l3.lower() else "in_scope"
+def _scope(aspect_group: str | None) -> str:
+    # Aspect group price is pricing, which is out of scope (CLAUDE.md); the signal stays visible.
+    return "out_of_scope" if aspect_group == "price" else "in_scope"

@@ -2,6 +2,10 @@
 
 State on 2026-10-10, end of the session. Read `CLAUDE.md`, `plan.md` (progress table), `changes.md` (every decision with reason), `database-design.md` first. The user supervises; Devin reviews every phase commit.
 
+## Update 2026-10-11: fixed taxonomy (not committed yet)
+
+The fixed taxonomy in `taxonomy/` is adopted (changes.md, section Taxonomy; migration `0011_taxonomy.sql`; `app/taxonomy.py`). A topic is a `feature` row, signals carry topic + aspect group, the car area is derived, cases are grouped by topic + aspect group, `other` goes to `taxonomy_review`. Topics come only from BMW labels or the LLM classifier: the case pipeline calls `signals.reclassify` before grouping, and without a key signals without a topic wait (no similarity guess). Signal proposals now send `topic_id` and `aspect_group` instead of `car_area` (`signal@2`). The dev database was rebuilt from scratch with it. `app.signals.eval_car_area` is replaced by `app.signals.eval_taxonomy`. `docs/` from the frontend branch was merged into `All-context/`. Phase 7 is complete except for its phase commit (changes.md 7.1 to 7.3 are written).
+
 ## Done and pushed (each verified, see plan.md)
 
 | Phase | Commit | Summary |
@@ -43,6 +47,6 @@ State on 2026-10-10, end of the session. Read `CLAUDE.md`, `plan.md` (progress t
 ## Still waiting for the user
 
 - `backend/.env`: Supabase URL, service-role key, `SUPABASE_DB_URL`, `OPENAI_API_KEY` (nothing has run against Supabase or OpenAI yet; all LLM steps use offline fallbacks and the local embedder).
-- Team review of the phase 2 CSVs in `backend/seed/review/` (option lists, feature catalog, VFC topic -> car area).
+- Team review of the phase 2 CSVs in `backend/seed/review/` (option lists, study attribute -> topic, option item -> topic).
 - Reddit OAuth app and YouTube Data API key (phase 8 checkpoint).
-- With the OpenAI key: re-run `app.signals.reclassify` (666 quarantined + heuristic seed rows), re-embed (`app.signals.embed --provider-change`), re-tune the case threshold (`app.cases.tune`, the OpenAI value 0.55 is untuned), run `app.signals.eval_car_area` for the LLM accuracy.
+- With the OpenAI key: run `app.cases.pipeline` (it classifies the 666 quarantined rows and the 2,557 rows without a topic first), re-embed (`app.signals.embed --provider-change`), re-tune the case threshold (`app.cases.tune`, the OpenAI value 0.55 is untuned), run `app.signals.eval_taxonomy --split dev` (then `--split test` once) for the LLM accuracy.
