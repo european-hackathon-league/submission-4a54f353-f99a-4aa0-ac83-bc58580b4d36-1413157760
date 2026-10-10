@@ -1,0 +1,52 @@
+flowchart LR
+    %% Subgraph styling to group columns
+    subgraph SA ["Situation analysis"]
+        direction LR
+        Base["Baseline:<br>Previous BMW model<br>BMW portfolio<br>Sales volume"]
+        subgraph SA_R [" "]
+            direction TB
+            C1["Competition"]
+            C2["Customer / public feedback"]
+            C3["Product and global trends"]
+        end
+    end
+
+    subgraph SC ["Structure & context"]
+        direction TB
+        S1["Classify, cluster, contextualize<br>AI standardizes findings, identifies duplicates, groups themes and connects insights"]
+        S2["All potential requirements (0/1)<br>▪ BEV powertrain<br>▪ Cooler<br>▪ Seat ventilation<br>▪ ...<br>↓<br>Implement requirement?"]
+    end
+
+    subgraph RD ["Requirements definition"]
+        direction LR
+        subgraph RD_L [" "]
+            direction TB
+            R1["Specification and quantification<br>Define measurable targets and acceptance criteria"]
+            R2["Metric specification<br>▪ Range: 600 or 700 mi?<br>▪ Cooler for how many bottles?<br>▪ Seat ventilation: fast enough?<br>▪ ..."]
+        end
+        subgraph RD_R [" "]
+            direction TB
+            E1["Exterior"]
+            E2["Interior"]
+            E3["Powertrain"]
+            E4["Driver assistance"]
+            E5["..."]
+        end
+    end
+
+    subgraph PR ["Prioritization"]
+        direction TB
+        P1["Customer"]
+        P2["Business"]
+        P3["..."]
+    end
+
+    subgraph DO ["Documentation"]
+        D1["Requirements tracking"]
+    end
+
+    %% Connections between main stages
+    SA --> SC
+    SC --"○"--> RD
+    RD --> PR
+    PR --> DO
