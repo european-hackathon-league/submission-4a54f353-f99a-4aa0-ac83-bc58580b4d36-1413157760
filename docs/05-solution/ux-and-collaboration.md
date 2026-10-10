@@ -37,6 +37,7 @@ Every status change needs a reason and writes an audit event. The AI only create
 - **Type:** new feature, fix/improve, performance target, quality perception, market variant, brand differentiator, regression
 - **Change depth (rough effort proxy):** trim/option, part/module, platform/powertrain, software/OTA
 - **Scope:** global, Rest of World, China
+- **Signal topic:** every signal carries one of 219 fixed topics (BMW VFC level 2) that maps to exactly one car area. Agents classify into this list and never invent themes; see [`taxonomy/`](../../taxonomy/README.md).
 
 ## 4. The case as "markdown + JSON"
 Each case has structured fields plus a page with fixed sections: problem, who is affected, evidence, today's car, competitors, brand fit, options, decision log. The **context pack** shows what the AI and the PM work from:

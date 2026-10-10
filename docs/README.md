@@ -50,12 +50,15 @@ BMW-Challenge/
 | `processed/` | Agent-readable CSV and text built by `scripts/build_processed.py` |
 
 ### 03-meetings: what was said (all on 10.10.2026)
+Thomas's demo feedback (last row) is the most recent input; where it conflicts with older notes on UI scope, it wins.
+
 | Meeting | Summary | Transcript |
 |---|---|---|
 | Team discussion, 14:24 (German): continuous loop, competitor agent, brand fit | [summary](03-meetings/2026-10-10_1424_team-discussion-de_summary.md) | [raw](03-meetings/raw/2026-10-10_1424_team-discussion-de_transcript.md) |
 | Team discussion with BMW contact, 14:39 (English): no black box, graph data layer, exploration setting | [summary](03-meetings/2026-10-10_1439_team-discussion-en_summary.md) | [raw](03-meetings/raw/2026-10-10_1439_team-discussion-en_transcript.md) |
 | Group PM interview, 16:05–16:46: workflow, weighting, traceability, source filtering | [summary + cleaned transcript](03-meetings/2026-10-10_1605_pm-interview-group_summary.md) | (included in the summary) |
 | Interview with Patrick (PM, about 24 min): prioritization signals, China PM, Codebeamer top 10, shared platform | [summary](03-meetings/2026-10-10_pm-interview-patrick_summary.md) | [raw](03-meetings/raw/2026-10-10_pm-interview-patrick_transcript.md) |
+| Demo feedback from Thomas (BMW AI engineer, about 26 min): one kanban for cases, fixed taxonomy, less is more, no colleague chat, pitch as collaboration platform | [summary + cleaned transcript](03-meetings/2026-10-10_2308_thomas-demo-feedback_summary.md) | [raw](03-meetings/raw/2026-10-10_2308_thomas-demo-feedback_transcript.md) |
 
 Read the summaries first. Transcripts are machine-generated, noisy and not speaker-labelled.
 

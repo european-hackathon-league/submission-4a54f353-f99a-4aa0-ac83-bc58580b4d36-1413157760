@@ -68,16 +68,16 @@ export const requirementStatusLabel: Record<RequirementStatus, string> = {
 };
 
 export const carAreaLabel: Record<CarArea, string> = {
-  exterior_design: "Exterior & design",
+  exterior_design: "Exterior, design & lighting",
   interior_comfort: "Interior & comfort",
   seats: "Seats",
   climate: "Climate",
   infotainment_hmi: "Infotainment & HMI",
   connectivity_digital: "Connectivity & digital",
-  driver_assistance: "Driver assistance",
+  driver_assistance: "Driver assistance & safety",
   dynamics_powertrain: "Driving dynamics & powertrain",
-  range_charging: "Range & charging",
-  practicality: "Practicality",
+  range_charging: "Range, charging & refuelling",
+  practicality: "Practicality & access",
   quality_materials: "Quality & materials",
 };
 
