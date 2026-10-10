@@ -25,16 +25,45 @@ def _supabase():
     return create_client(s.supabase_url, s.supabase_service_role_key).storage.from_(s.raw_bucket)
 
 
+class RawRecordConflict(RuntimeError):
+    """raw_ref already holds different bytes. Raw evidence is immutable: use a
+    content-addressed or versioned raw_ref (e.g. include sha256 or the fetch date)."""
+
+
 def put(raw_ref: str, data: bytes, content_type: str = "application/octet-stream") -> str:
-    """Store raw bytes under raw_ref (idempotent) and return raw_ref."""
+    """Store raw bytes under raw_ref, write-once, and return raw_ref.
+
+    Same ref with identical bytes is accepted (idempotent re-runs); same ref
+    with different bytes raises RawRecordConflict and never overwrites.
+    """
     settings = get_settings()
     if settings.storage_backend == "supabase":
-        _supabase().upload(raw_ref, data, {"content-type": content_type, "upsert": "true"})
-    else:
-        path = _local_path(raw_ref)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
+        bucket = _supabase()
+        try:
+            bucket.upload(raw_ref, data, {"content-type": content_type, "upsert": "false"})
+        except Exception as upload_error:  # most likely "already exists": compare instead of overwriting
+            try:
+                existing = bucket.download(raw_ref)
+            except Exception:
+                raise upload_error
+            _check_same(raw_ref, existing, data)
+        return raw_ref
+    path = _local_path(raw_ref)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(path, "xb") as fh:  # exclusive create: never replaces an existing file
+            fh.write(data)
+    except FileExistsError:
+        _check_same(raw_ref, path.read_bytes(), data)
     return raw_ref
+
+
+def _check_same(raw_ref: str, existing: bytes, data: bytes) -> None:
+    if existing != data:
+        raise RawRecordConflict(
+            f"raw_ref {raw_ref} already holds different bytes (sha256 {sha256(existing)[:12]} vs"
+            f" {sha256(data)[:12]}); raw evidence is immutable, use a versioned raw_ref"
+        )
 
 
 def get(raw_ref: str) -> bytes:

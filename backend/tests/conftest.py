@@ -22,8 +22,7 @@ def _admin(uri: str) -> psycopg.Connection:
 
 
 def _with_db(uri: str, name: str) -> str:
-    base, _, _ = uri.rpartition("/")
-    return f"{base}/{name}"
+    return db.with_database(uri, name)
 
 
 @pytest.fixture(scope="session")

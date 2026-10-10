@@ -52,26 +52,51 @@ class Usage:
 current_usage: contextvars.ContextVar[Usage | None] = contextvars.ContextVar("llm_usage", default=None)
 
 
+class UnsupportedSchema(ValueError):
+    """The output model cannot be expressed as an OpenAI strict schema."""
+
+
+_SUBSCHEMA_MAPS = ("properties", "$defs", "definitions", "patternProperties")
+
+
 def strict_schema(model: type[BaseModel]) -> dict:
-    """Pydantic JSON schema -> OpenAI strict schema (all fields required, no extras)."""
+    """Pydantic JSON schema -> OpenAI strict schema (all fields required, no extras).
+
+    Open dicts (``dict``, ``dict[str, str]``, models without fields) cannot be
+    expressed in strict mode; they raise UnsupportedSchema instead of silently
+    becoming an always-empty object. Use a list of key/value models instead.
+    """
     schema = model.model_json_schema()
 
-    def fix(node: Any) -> Any:
-        if isinstance(node, dict):
-            node.pop("default", None)
-            node.pop("title", None)
-            if node.get("type") == "object" or "properties" in node:
-                props = node.get("properties", {})
-                node["required"] = list(props.keys())
-                node["additionalProperties"] = False
-            for value in node.values():
-                fix(value)
-        elif isinstance(node, list):
-            for value in node:
-                fix(value)
-        return node
+    def fix(node: Any, path: str) -> None:
+        if isinstance(node, list):
+            for i, value in enumerate(node):
+                fix(value, f"{path}[{i}]")
+            return
+        if not isinstance(node, dict):
+            return
+        node.pop("default", None)
+        node.pop("title", None)
+        if node.get("type") == "object" or "properties" in node:
+            props = node.get("properties") or {}
+            extra = node.get("additionalProperties")
+            if not props or extra not in (None, False) or node.get("patternProperties"):
+                raise UnsupportedSchema(
+                    f"{model.__name__}: open object at {path or '/'} (dict or model without fields) is not"
+                    " supported by OpenAI strict schemas; use a list of key/value items"
+                )
+            node["required"] = list(props.keys())
+            node["additionalProperties"] = False
+        for key, value in node.items():
+            if key in _SUBSCHEMA_MAPS and isinstance(value, dict):
+                # Maps of name -> schema: the names are field names, not schema keywords.
+                for name, sub in value.items():
+                    fix(sub, f"{path}/{key}/{name}")
+            else:
+                fix(value, f"{path}/{key}")
 
-    return fix(schema)
+    fix(schema, "")
+    return schema
 
 
 class LLM(Protocol):

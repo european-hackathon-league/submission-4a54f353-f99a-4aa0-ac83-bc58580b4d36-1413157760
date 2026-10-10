@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from app import db, localdb
-from app.config import BACKEND_DIR, get_settings
+from app.config import BACKEND_DIR
 
 MIGRATIONS_DIR = BACKEND_DIR / "supabase" / "migrations"
 
@@ -20,10 +20,10 @@ def migration_files() -> list[Path]:
 
 def apply_all(url: str | None = None, verbose: bool = True) -> list[str]:
     applied_now: list[str] = []
-    is_local = url is None and not get_settings().db_url
     with db.connect(url, autocommit=True) as conn:
-        if is_local or (url and "127.0.0.1" in url):
-            localdb.create_supabase_roles(conn)
+        # Decided by the server, not by parsing the URL: create missing Supabase
+        # roles when permitted (local Postgres); a no-op on Supabase.
+        localdb.ensure_supabase_roles(conn)
         conn.execute(
             "create table if not exists schema_migrations ("
             " version text primary key, checksum text not null,"

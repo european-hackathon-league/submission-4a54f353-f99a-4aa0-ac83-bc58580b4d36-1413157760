@@ -153,7 +153,7 @@ Several per config, with a compare view.
 | `is_default` | bool | one default per config |
 | `created_by` | text | |
 
-Check: every weight ≥ 0; the scorer normalizes by the sum, so weights need not add up to exactly 1.
+Check (`weights_valid`, migration 0009): `case_weights` is a non-empty object, every weight is a JSON number (finite by definition; strings such as `"NaN"` are rejected) ≥ 0, and the sum is > 0. The scorer normalizes by the sum, so weights need not add up to exactly 1, but all-zero weights would divide by zero.
 
 ### `app_user`
 
@@ -299,7 +299,7 @@ Text records of fetching-sources 7.2. BMW feedback verbatims (`source_id = bmw_f
 | `rating_value`, `rating_scale` | numeric | |
 | `engagement` | jsonb | upvotes, likes, views, replies |
 | `extra` | jsonb | source-specific fields (BMW `Source A..D`, NHTSA `odiNumber`) |
-| `content_hash` | text unique | sha256 of source_id + normalized text; blocks duplicates |
+| `content_hash` | text, indexed (not unique) | sha256 of source_id + normalized text; duplicate-detection hint only. Records are deduplicated by their source-native identity (`record_id`, PK). Distinct customers can write identical text (G70: 4,000 verbatim IDs, 3,993 distinct texts), so equal hashes never block a record. |
 | `run_id` | uuid FK → `agent_run` | |
 | `deleted_at` | timestamptz | tombstone |
 
@@ -352,7 +352,7 @@ Named `case_item` because `CASE` is a reserved word in SQL. API and UI call it "
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | text PK | `CASE-0012`, from a sequence, stable forever |
+| `id` | text PK | `CASE-0012`, from a sequence, stable forever; four digits up to `CASE-9999`, then the plain number (`CASE-10000`) |
 | `feature_id` | uuid FK | |
 | `title` | text | the problem, never the solution |
 | `body_md` | text | Notion-like page |
@@ -427,10 +427,18 @@ The answer to a confirmed case, for one BMW line.
 | `cost_source` | text | `option_price`, `ai_estimate`, `pm`, `engineering` |
 | `cost_price_eur` | numeric | option price if it exists |
 | `status` | text | `draft`, `in_discussion`, `approved`, `rejected`, `deleted` |
-| `rank_score` | numeric | case score × cost multiplier |
+| `rank_score` | numeric | **cache only**, for the default weight profile of the config that matches `vehicle` (and `market` when split). The rank for any profile is computed on read (view `requirement_rank`) |
 | `manual_rank`, `manual_rank_reason` | int, text | |
 | `model`, `prompt_version` | text | generator |
 | `deleted_at` | timestamptz | tombstone |
+
+**Rank per weight profile (view `requirement_rank`, migration 0009).** Case scores exist per weight profile, and a
+profile belongs to one config (vehicle × market), so one stored number cannot hold every ranking. The view joins each
+live requirement to every weight profile whose config has the requirement's vehicle (and its market, when the
+requirement is split per market) and returns `rank_score = case_score_current.score × cost_multipliers[cost_size]` of
+that profile, plus `manual_rank`. A missing `cost_size` counts as 1.0 and is shown as `cost_missing`. The board and
+the compare view read this view with the requested `weight_profile_id`; `requirement.rank_score` is refreshed from the
+default profile only and is never read for another profile.
 
 ### `page_version`
 History of every Notion-like page.
@@ -522,6 +530,6 @@ Append-only.
 - **Stale saves:** page saves run `update … where body_version = :expected` and write a `page_version` row; zero updated rows means someone else saved first.
 - **Agents write signals only.** No agent code path writes `case_item`, `case_vehicle` or `requirement` content directly; the case and requirement services do, and new evidence on a confirmed case only raises `flag_new_evidence`.
 - **Config validity:** trigger on `config` checks 2030 sales > 0.
-- **Indexes:** HNSW (`vector_cosine_ops`) on every `embedding`; GIN on `rag_chunk.tsv`; btree on `signal(case_id)`, `signal(feature_id)`, `signal(market)`, `signal(vehicle)`, `signal(record_id)`, `source_record(source_id, published_at)`, `case_vehicle(vehicle, state)`; unique `source_record.content_hash`.
+- **Indexes:** HNSW (`vector_cosine_ops`) on every `embedding`; GIN on `rag_chunk.tsv`; btree on `signal(case_id)`, `signal(feature_id)`, `signal(market)`, `signal(vehicle)`, `signal(record_id)`, `source_record(source_id, published_at)`, `case_vehicle(vehicle, state)`, `source_record(content_hash)` (not unique, see `source_record`).
 - **Security:** RLS on for every table, deny-all for `anon`; `authenticated` may only `select` from `notification` (Realtime). Everything else goes through the FastAPI backend with the service role.
 - **Storage:** bucket `raw-records` holds every raw response and the provided BMW files, referenced by `raw_ref`.

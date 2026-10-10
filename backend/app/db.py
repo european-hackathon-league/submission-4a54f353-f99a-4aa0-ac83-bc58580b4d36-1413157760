@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from typing import Iterator
 
 import psycopg
+from psycopg.conninfo import make_conninfo
 from pgvector.psycopg import register_vector
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -65,3 +66,9 @@ def connect(url: str | None = None, autocommit: bool = False) -> psycopg.Connect
     conn = psycopg.connect(url or database_url(), autocommit=autocommit, prepare_threshold=None)
     _configure(conn)
     return conn
+
+
+def with_database(conninfo: str, dbname: str) -> str:
+    """The same server with another database. Works for URL, URL with query
+    parameters (Unix socket ``?host=/tmp``) and keyword conninfo alike."""
+    return make_conninfo(conninfo, dbname=dbname)
