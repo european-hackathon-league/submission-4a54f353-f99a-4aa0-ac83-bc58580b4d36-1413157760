@@ -1,0 +1,123 @@
+erDiagram
+    %% Core data model in Supabase Postgres (+ pgvector)
+    %% Chain: SOURCE -> FINDING -> THEME -> CASE -> SCORE -> DECISION, all logged in AUDIT_EVENT
+
+    CONFIG {
+        uuid id PK
+        text vehicle "e.g. G60"
+        text market "e.g. US"
+        jsonb competitor_set
+        jsonb brand_profile
+        jsonb source_filter
+    }
+    WEIGHT_PROFILE {
+        uuid id PK
+        uuid config_id FK
+        text name "e.g. focus speed, focus budget"
+        jsonb weights "factor -> weight"
+        text created_by
+    }
+    SOURCE {
+        uuid id PK
+        text source_type "bmw_feedback, study, option_list, review, social, competitor_spec, trend, innovation"
+        text location "url or file + row"
+        timestamptz retrieved_at
+        text content_hash
+        text snapshot_path
+        text credibility_class
+    }
+    FEATURE {
+        uuid id PK
+        text name "canonical, e.g. Seat ventilation"
+        text car_area "Exterior, Interior, Powertrain, ..."
+        text_array vfc_topics
+        text_array option_codes
+        text_array study_attributes
+    }
+    VEHICLE_FEATURE {
+        text vehicle
+        uuid feature_id FK
+        text availability "standard, optional, absent, removed"
+    }
+    FINDING {
+        uuid id PK
+        uuid source_id FK
+        text agent
+        text customer_ref "verbatim ID, counts distinct customers"
+        text market
+        text vehicle
+        text powertrain
+        text kind "complaint, wish, like, competitor, trend, innovation, satisfaction"
+        text summary "very short"
+        text quote "exact excerpt"
+        int reach
+        text severity
+        text scope_tag "in, out_regulatory, out_engineering, out_pricing"
+        text brand_fit
+        vector embedding
+    }
+    THEME {
+        uuid id PK
+        uuid feature_id FK
+        text title
+        text summary
+        jsonb customers_per_market
+        bool market_conflict
+    }
+    CASE {
+        text id PK "REQ-G60-US-0001"
+        int version
+        text description
+        text metric_target
+        text acceptance_criteria
+        text car_area
+        text evidence_level "bmw_data, web, assumption"
+        text assumptions
+        text status "proposed, flagged, approved, rejected, sent"
+        int manual_rank "PM override, null = by score"
+    }
+    SCORE {
+        uuid id PK
+        text case_id FK
+        uuid weight_profile_id FK
+        jsonb factors "each factor value"
+        float priority
+        timestamptz computed_at
+    }
+    DECISION {
+        uuid id PK
+        text case_id FK
+        text actor "PM user id"
+        text action "approve, reject, edit, reorder, challenge"
+        text rationale
+    }
+    CHAT_MESSAGE {
+        uuid id PK
+        text case_id FK
+        text role "pm, assistant"
+        text content
+        uuid_array cited_findings
+    }
+    AUDIT_EVENT {
+        bigint seq PK
+        timestamptz at
+        text actor "agent name or PM id"
+        text actor_type "ai, human"
+        text action
+        text object_type
+        text object_id
+        jsonb before
+        jsonb after
+        text rationale
+    }
+
+    CONFIG ||--o{ WEIGHT_PROFILE : has
+    SOURCE ||--o{ FINDING : yields
+    FEATURE ||--o{ VEHICLE_FEATURE : "offered in"
+    FEATURE ||--o{ THEME : groups
+    THEME }o--o{ FINDING : contains
+    CASE }o--o{ THEME : "derived from"
+    CASE ||--o{ SCORE : "scored as"
+    WEIGHT_PROFILE ||--o{ SCORE : weights
+    CASE ||--o{ DECISION : receives
+    CASE ||--o{ CHAT_MESSAGE : discussed
