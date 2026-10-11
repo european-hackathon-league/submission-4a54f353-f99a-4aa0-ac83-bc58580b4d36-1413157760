@@ -29,14 +29,14 @@ export function SettingsView() {
   return (
     <div>
       <PageHeader title="Settings" />
-      <div className="mx-auto grid max-w-[1280px] gap-6 p-6 xl:grid-cols-2">
+      <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)] gap-6 p-6 xl:grid-cols-2 [&>*]:min-w-0">
         <Section title="Workspace">
           <div className="space-y-6 text-sm">
             <div className="flex flex-wrap gap-2">
               <Pill t="blue">{seriesShort[ws.series]}</Pill>
               <Pill t="outline">{regionLabel[ws.region]}</Pill>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 [&>*]:min-w-0">
               <div className="space-y-1.5">
                 <Label>Project type</Label>
                 <Select value={ws.projectType} onValueChange={(v) => update.mutate({ body: { projectType: v as "lci" } })}>

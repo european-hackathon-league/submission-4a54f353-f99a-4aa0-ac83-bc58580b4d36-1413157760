@@ -190,7 +190,7 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
             </Button>
           )}
         </div>
-        <table className="w-full text-sm">
+        <table className="w-full text-sm max-md:block max-md:overflow-x-auto">
           <thead className="text-left text-xs text-muted-foreground">
             <tr>
               <th className="pb-1 font-normal">Metric question</th>

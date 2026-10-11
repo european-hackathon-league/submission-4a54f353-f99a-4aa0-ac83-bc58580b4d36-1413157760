@@ -130,7 +130,7 @@ export function CaseView() {
             <h1 className="text-title font-semibold max-md:text-2xl">{c.shortTitle}</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">{c.title}</p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <IconButton label={watching ? "Stop watching" : "Watch"} onClick={() => toggleWatch()}>
               {watching ? <EyeOff /> : <Eye />}
             </IconButton>

@@ -127,7 +127,8 @@ export function RequirementView() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="px-6 pt-6 pb-8">
-          <TabsList>
+            <TabsList className="max-w-full justify-start overflow-x-auto">
+
             <TabsTrigger value="spec">Specification</TabsTrigger>
             <TabsTrigger value="versions">Versions ({b.versions.length})</TabsTrigger>
             <TabsTrigger value="argument">Argument sheet</TabsTrigger>
@@ -170,7 +171,7 @@ export function RequirementView() {
         </Tabs>
       </div>
 
-      <aside className="sticky top-0 flex h-[calc(100dvh-3.5rem)] w-[340px] shrink-0 flex-col border-l bg-background 2xl:w-[420px]">
+      <aside className="sticky top-0 flex h-[calc(100dvh-3.5rem)] w-[340px] max-w-full shrink-0 flex-col border-l bg-background 2xl:w-[420px]">
         <div className="border-b px-4 py-3">
           <ToggleGroup type="single" size="sm" variant="outline" value={side} onValueChange={(v) => v && setSide(v as "details")} className="w-full">
             <ToggleGroupItem value="details" className="flex-1 gap-1.5">

@@ -96,7 +96,7 @@ The IDs below are the auditors' own. Duplicates found by several auditors are me
 
 ### Walkthrough dead end (verify first)
 
-- **F001:** the ripple factor slider "looks read-only, and the text didn't update" when changed programmatically. The browser story in the trace/ripple task verified the slider by real drag. **Re-check this with a real drag before treating it as a bug**: the auditor set the value via script, which doesn't fire React's input events.
+- **F001 (not a bug):** the ripple factor slider was reported as read-only. Driven with real input (`.cursor/ux-gate/slider-check.mjs`: ArrowRight ×5, and a mouse drag), it moves to 0.90, the text reads "800 km CLTC ≈ 720 km WLTP" and the 5 Series cell turns *Behind*; *Team value* resets it. The browser tool the auditors used can't operate native range inputs.
 
 ## Needs a product decision (not in any batch)
 

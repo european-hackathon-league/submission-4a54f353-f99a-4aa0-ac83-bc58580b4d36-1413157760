@@ -129,7 +129,7 @@ export function DeskView() {
   return (
     <div className="mx-auto max-w-[1280px] px-6 pt-7 pb-10">
       <h1 className="text-2xl leading-tight font-semibold text-foreground md:text-title">Good morning, {first(user.name)}</h1>
-      <div className="mt-7 grid gap-6 lg:grid-cols-2">
+      <div className="mt-7 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card icon={<Radar />} title="Agent flags" items={flags} />
         <Card icon={<KanbanSquare />} title={isHead ? "Ready to decide" : "My cases"} items={myCases} more={{ href: "/cases", label: "Board" }}>
           {!isHead && <StageBar cases={mine} />}
