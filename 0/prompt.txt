@@ -239,3 +239,7 @@ Try again
 ---
 
 its because the connection dropped
+
+---
+
+should we not to gain time start working on the wiring since this takes long time and the pull request has no merging errors?
