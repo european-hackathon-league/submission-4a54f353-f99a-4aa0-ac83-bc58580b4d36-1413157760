@@ -23,26 +23,26 @@ const sourceIcon: Record<string, LucideIcon> = {
 };
 
 const toneBorder: Record<Tone, string> = {
-  customer: "border-l-primary",
+  customer: "border-l-foreground",
   study: "border-l-chart-2",
-  web: "border-l-sky-500",
+  web: "border-l-muted-foreground",
   competitor: "border-l-chart-5",
-  fact: "border-l-muted-foreground/50",
+  fact: "border-l-ash dark:border-l-fog",
 };
 const toneFill: Record<Tone, string> = {
-  customer: "fill-primary",
+  customer: "fill-foreground",
   study: "fill-chart-2",
-  web: "fill-sky-500",
+  web: "fill-muted-foreground",
   competitor: "fill-chart-5",
-  fact: "fill-muted-foreground",
+  fact: "fill-ash dark:fill-fog",
 };
 export const sayText: Record<SayType, string> = {
   defect: "text-negative",
-  hard_to_use: "text-amber-700 dark:text-amber-400",
-  wish: "text-primary",
+  hard_to_use: "text-warning",
+  wish: "text-tone-blue-fg",
   like: "text-positive",
   complaint: "text-negative",
-  trend: "text-chart-5",
+  trend: "text-tone-violet-fg",
 };
 
 const HEADER = 30;
@@ -200,8 +200,8 @@ export function SankeyChart({
                 <path
                   key={`${l.source}>${l.target}`}
                   d={band(l, s.x + s.w, t.x)}
-                  className={cn(toneFill[l.tone], "transition-opacity duration-150 motion-reduce:transition-none")}
-                  style={{ opacity: focus ? (on ? 0.5 : 0.07) : l.tone === "fact" ? 0.18 : 0.24 }}
+                  className={cn(focus && on ? "fill-ember" : toneFill[l.tone], "transition-[opacity,fill] duration-150 motion-reduce:transition-none")}
+                  style={{ opacity: focus ? (on ? 0.45 : 0.07) : l.tone === "fact" ? 0.2 : 0.22 }}
                 />
               );
             })}
@@ -271,11 +271,11 @@ function NodeCard({
       <button
         {...common}
         className={cn(
-          "absolute flex flex-col justify-center gap-1 rounded-xl bg-foreground px-5 text-left text-background shadow-sm transition hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
-          selected && "ring-2 ring-primary",
+          "absolute flex flex-col justify-center gap-1 rounded-xl bg-foreground px-5 text-left text-background ring-offset-2 ring-offset-card transition-[box-shadow,opacity,transform] duration-150 hover:ring-2 hover:ring-border-strong motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+          selected && "ring-2 ring-ember hover:ring-ember",
         )}
       >
-        <span className="text-4xl font-semibold tabular-nums">{heroValue ?? n.value}</span>
+        <span className="text-heading font-semibold tabular-nums">{heroValue ?? n.value}</span>
         <span className="text-sm opacity-70">{n.sub}</span>
         <span className="mt-2 line-clamp-3 text-sm font-medium">{n.label}</span>
       </button>
@@ -284,9 +284,9 @@ function NodeCard({
     <button
       {...common}
       className={cn(
-        "absolute flex items-center gap-2.5 rounded-lg border bg-card px-3 text-left shadow-xs transition hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
+        "absolute flex items-center gap-2.5 rounded-lg border bg-card px-3 text-left transition-[border-color,box-shadow,opacity,transform] duration-150 hover:border-border-strong motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         n.column === 0 && cn("border-l-[3px]", toneBorder[n.tone]),
-        selected && "border-primary ring-1 ring-primary",
+        selected && "border-ember ring-1 ring-ember hover:border-ember",
         dimmed && "opacity-45",
       )}
     >
@@ -310,7 +310,7 @@ function SankeyList({ graph, onSelect, selectedId }: { graph: SankeyGraph; onSel
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1.5">
         {sources.map((n) => (
-          <button key={n.id} onClick={() => onSelect?.(n)} className="rounded-full border bg-card px-2.5 py-1 text-xs">
+          <button key={n.id} onClick={() => onSelect?.(n)} className="rounded-full border bg-card px-2.5 py-1 text-xs transition-colors duration-150 hover:border-border-strong">
             {n.label} <b className="tabular-nums">{n.value}</b>
           </button>
         ))}
@@ -320,11 +320,11 @@ function SankeyList({ graph, onSelect, selectedId }: { graph: SankeyGraph; onSel
           <button
             key={n.id}
             onClick={() => onSelect?.(n)}
-            className={cn("flex w-full items-center gap-2 rounded-lg border bg-card px-3 py-2 text-left", selectedId === n.id && "border-primary")}
+            className={cn("flex w-full items-center gap-2 rounded-lg border bg-card px-3 py-2 text-left transition-colors duration-150 hover:border-border-strong", selectedId === n.id && "border-ember ring-1 ring-ember")}
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{n.label}</span>
-              <span className="mt-1 block h-1.5 rounded-full bg-primary/30" style={{ width: `${(n.value / max) * 100}%` }} />
+              <span className="mt-1 block h-1.5 rounded-full bg-muted-foreground/40" style={{ width: `${(n.value / max) * 100}%` }} />
             </span>
             {n.say && <span className={cn("text-xs", sayText[n.say])}>{sayLabel[n.say]}</span>}
             <span className="text-sm font-semibold tabular-nums">{n.value}</span>

@@ -99,13 +99,13 @@ export function RadarView() {
           </>
         }
       >
-        <button onClick={() => setOpen({ title: "Not in a case yet", ids: loose.map((s) => s.id) })} className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm shadow-xs transition hover:border-primary/60">
+        <button onClick={() => setOpen({ title: "Not in a case yet", ids: loose.map((s) => s.id) })} className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm font-medium transition-colors duration-150 hover:border-border-strong hover:bg-recessed focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
           <Inbox className="size-4 text-muted-foreground" /> {loose.length} not in a case yet
         </button>
       </PageHeader>
-      <div className="space-y-4 p-6">
+      <div className="space-y-6 px-6 pt-6 pb-10">
         {run?.run.steps && <RunSteps key={run.run.id} res={run} onOpen={(id) => router.push(`/ripple/${id}`)} />}
-        <div className="rounded-xl border bg-card p-5 shadow-xs">
+        <div className="rounded-2xl border bg-card p-6">
           <SankeyChart graph={graph} titles={["Sources", "Car area", "Cases"]} onSelect={onNode} />
         </div>
       </div>
@@ -148,8 +148,8 @@ const STEP_MS = 450;
 function RunSteps({ res, onOpen }: { res: RefreshResponse; onOpen: (rippleId: string) => void }) {
   const steps = res.run.steps ?? [];
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-xs">
-      <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+    <div className="rounded-xl border bg-card p-5">
+      <p className="mb-3 flex items-center gap-2 text-[15px] font-semibold">
         <Activity className="size-4 text-muted-foreground" /> Agent run {res.run.id}
         <span className="text-xs font-normal text-muted-foreground">
           {res.signals.length} new · ${res.run.llmCostUsd.toFixed(2)}
@@ -159,11 +159,11 @@ function RunSteps({ res, onOpen }: { res: RefreshResponse; onOpen: (rippleId: st
         {steps.map((s, i) => (
           <li
             key={s.name}
-            className="animate-in fade-in slide-in-from-left-2 fill-mode-both rounded-lg border px-3 py-2 text-xs duration-300 motion-reduce:animate-none"
+            className="animate-in fade-in slide-in-from-left-2 fill-mode-both rounded-lg border bg-recessed px-3 py-2.5 text-xs duration-300 motion-reduce:animate-none"
             style={{ animationDelay: `${i * STEP_MS}ms` }}
           >
             <p className="flex items-center gap-1.5 font-medium">
-              {s.status === "ok" ? <CheckCircle2 className="size-3.5 text-positive" /> : s.status === "failed" ? <XCircle className="size-3.5 text-negative" /> : <span className="size-3.5 rounded-full border" />}
+              {s.status === "ok" ? <CheckCircle2 className="size-3.5 text-positive" /> : s.status === "failed" ? <XCircle className="size-3.5 text-negative" /> : <span className="size-3.5 rounded-full border border-border-strong" />}
               {i + 1}. {s.name}
             </p>
             <p className="mt-1 text-muted-foreground">{s.detail}</p>
@@ -174,7 +174,7 @@ function RunSteps({ res, onOpen }: { res: RefreshResponse; onOpen: (rippleId: st
         <div className="animate-in fade-in fill-mode-both mt-3 flex flex-wrap gap-2 duration-300 motion-reduce:animate-none" style={{ animationDelay: `${steps.length * STEP_MS}ms` }}>
           {res.ripples.map((r) => (
             <Button key={r.id} size="sm" variant={r.status === "active" ? "default" : "outline"} onClick={() => onOpen(r.id)}>
-              <Waves className="size-3.5" /> {r.summary}
+              <Waves className={r.status === "active" ? "size-3.5 text-ember" : "size-3.5"} /> {r.summary}
             </Button>
           ))}
         </div>
@@ -217,8 +217,8 @@ function QuarantinePopover({ items }: { items: { id: string; reason: string; sou
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80">
-        <p className="mb-2 text-xs text-muted-foreground">Rejected by the validation gate; never part of a case.</p>
-        <ul className="space-y-2 text-xs">
+        <p className="mb-1 text-xs text-muted-foreground">Rejected by the validation gate; never part of a case.</p>
+        <ul className="space-y-2.5 text-xs">
           {items.map((q) => (
             <li key={q.id}>
               <span className="font-medium">{q.reason}</span>

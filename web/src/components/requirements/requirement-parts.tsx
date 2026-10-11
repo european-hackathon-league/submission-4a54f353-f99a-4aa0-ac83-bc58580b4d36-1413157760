@@ -51,7 +51,7 @@ export function requirementButtons(r: Requirement, user: User): [RequirementActi
 export function TraceChain({ b }: { b: RequirementBundle }) {
   const bmw = b.signals.filter((s) => s.agent === "bmw_data").length;
   const web = b.signals.length - bmw;
-  const step = "flex min-w-0 flex-1 flex-col rounded-md border bg-card px-3 py-2";
+  const step = "flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg border bg-card px-3 py-2.5 transition-colors duration-150";
   const ripples = b.alerts.filter((a) => a.rippleId && a.status === "open");
   return (
     <div className="space-y-2">
@@ -59,9 +59,9 @@ export function TraceChain({ b }: { b: RequirementBundle }) {
         <Link
           key={a.id}
           href={`/ripple/${a.rippleId}`}
-          className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs hover:border-amber-500 dark:border-amber-800 dark:bg-amber-950/40"
+          className="flex items-start gap-2 rounded-lg border border-ember/60 bg-card px-4 py-2.5 text-xs shadow-[inset_3px_0_0_var(--color-ember)] transition-colors duration-150 hover:border-ember hover:bg-recessed"
         >
-          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-ember" />
           <span className="min-w-0 flex-1">
             <span className="font-medium">{a.title}</span>
             {a.comparison && (
@@ -71,11 +71,11 @@ export function TraceChain({ b }: { b: RequirementBundle }) {
               </span>
             )}
           </span>
-          <span className="shrink-0 font-medium text-amber-800 dark:text-amber-300">View ripple →</span>
+          <span className="shrink-0 font-medium text-foreground underline decoration-ember underline-offset-2">View ripple →</span>
         </Link>
       ))}
     <div className="flex items-stretch gap-2 text-xs">
-      <Link href={`/cases/${b.case.id}`} className={step + " hover:border-primary/50"}>
+      <Link href={`/cases/${b.case.id}`} className={step + " hover:border-border-strong hover:bg-recessed"}>
         <span className="flex items-center gap-1 text-muted-foreground">
           <MessageSquareQuote className="size-3" /> Signals
         </span>
@@ -84,17 +84,17 @@ export function TraceChain({ b }: { b: RequirementBundle }) {
         </span>
       </Link>
       <ArrowRight className="size-4 self-center text-muted-foreground" />
-      <Link href={`/cases/${b.case.id}`} className={step + " hover:border-primary/50"}>
+      <Link href={`/cases/${b.case.id}`} className={step + " hover:border-border-strong hover:bg-recessed"}>
         <span className="text-muted-foreground">Case (problem)</span>
         <span className="truncate font-medium">{b.case.id}</span>
       </Link>
       <ArrowRight className="size-4 self-center text-muted-foreground" />
-      <div className={step + " border-primary/50 bg-primary/5"}>
+      <div className={step + " border-foreground"}>
         <span className="text-muted-foreground">Requirement (solution)</span>
         <span className="truncate font-medium">{b.requirement.id}</span>
       </div>
       <ArrowRight className="size-4 self-center text-muted-foreground" />
-      <Link href={`/plan/${b.requirement.series}`} className={step + " hover:border-primary/50"}>
+      <Link href={`/plan/${b.requirement.series}`} className={step + " hover:border-border-strong hover:bg-recessed"}>
         <span className="text-muted-foreground">Planned feature</span>
         <span className="truncate font-medium">{b.plannedFeature?.name ?? "not yet"}</span>
       </Link>
@@ -117,10 +117,10 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
   const parts = r.descriptionParts.length ? r.descriptionParts : [r.description];
 
   return (
-    <div className="space-y-4 rounded-lg border bg-card p-5">
+    <div className="space-y-6 rounded-xl border bg-card p-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">
-          SMART specification <span className="ml-1 text-xs font-normal text-muted-foreground">v{r.version}</span>
+        <h3 className="text-lg leading-snug font-semibold">
+          SMART specification <span className="ml-1 text-[13px] font-normal text-muted-foreground">v{r.version}</span>
         </h3>
         {canEdit && !editing && (
           <Button
@@ -164,7 +164,7 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
       ) : (
         <>
           <ProvenanceLegend r={r} />
-          <p className="text-sm leading-7">
+          <p className="text-[15px] leading-8">
             {parts.map((t, i) => (
               <ProvText key={i} text={t} p={prov.get(`description#${i}`)} onCite={onCite} />
             ))}
@@ -183,7 +183,7 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Measurable targets</h4>
+          <h4 className="text-[13px] font-semibold text-muted-foreground">Measurable targets</h4>
           {editing && (
             <Button size="xs" variant="ghost" onClick={() => set("metrics", [...d.metrics, { id: `m${d.metrics.length + 1}`, question: "", target: "", basis: "assumption" }])}>
               <Plus className="size-3" /> Metric
@@ -191,7 +191,7 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
           )}
         </div>
         <table className="w-full text-sm">
-          <thead className="text-left text-[11px] text-muted-foreground">
+          <thead className="text-left text-xs text-muted-foreground">
             <tr>
               <th className="pb-1 font-normal">Metric question</th>
               <th className="pb-1 font-normal">Target</th>
@@ -258,7 +258,7 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
       </div>
 
       <div>
-        <h4 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Rough cost</h4>
+        <h4 className="mb-2 text-[13px] font-semibold text-muted-foreground">Rough cost</h4>
         {editing ? (
           <div className="grid gap-3 sm:grid-cols-4">
             <SelectField label="Size" value={d.cost.size} options={CostSizes.options.map((o) => [o, o])} onChange={(v) => set("cost", { ...d.cost, size: v as "S" })} />
@@ -315,7 +315,7 @@ function SelectField({ label, value, options, onChange }: { label: string; value
 function ListField({ title, items, editing, onChange, chip }: { title: string; items: string[]; editing: boolean; onChange: (v: string[]) => void; chip?: (i: number) => React.ReactNode }) {
   return (
     <div>
-      <h4 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
+      <h4 className="mb-2 text-[13px] font-semibold text-muted-foreground">{title}</h4>
       {editing ? (
         <Textarea rows={4} value={items.join("\n")} onChange={(e) => onChange(e.target.value.split("\n").filter((x) => x.trim()))} placeholder="One per line" />
       ) : (
@@ -354,11 +354,11 @@ export function ArgumentSheet({ b }: { b: RequirementBundle }) {
   ];
   const text = lines.join("\n");
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-5">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 rounded-xl border bg-card p-6">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold">Argument sheet for the engineering meeting</h3>
-          <p className="text-xs text-muted-foreground">Complaint · wish · competition · cost, every line traceable. Engineers will challenge it, so it shows assumptions too.</p>
+          <h3 className="text-lg leading-snug font-semibold">Argument sheet for the engineering meeting</h3>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">Complaint · wish · competition · cost, every line traceable. Engineers will challenge it, so it shows assumptions too.</p>
         </div>
         <Button
           size="sm"
@@ -371,7 +371,7 @@ export function ArgumentSheet({ b }: { b: RequirementBundle }) {
           <ClipboardCopy className="size-3.5" /> Copy
         </Button>
       </div>
-      <pre className="rounded-md bg-muted/50 p-4 font-sans text-sm leading-relaxed whitespace-pre-wrap">{text}</pre>
+      <pre className="rounded-lg border bg-recessed p-5 font-sans text-sm leading-relaxed whitespace-pre-wrap">{text}</pre>
     </div>
   );
 }
