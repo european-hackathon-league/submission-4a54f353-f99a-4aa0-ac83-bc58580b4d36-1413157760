@@ -503,6 +503,8 @@ export const Metric = z.object({
   id: Id,
   question: z.string(),
   target: z.string(),
+  /** Value today with its source (study, option list, complaint counts), when the data has one. */
+  today: z.string().optional(),
   unit: z.string().optional(),
   basis: MetricBasis,
   benchmark: z.string().optional(),

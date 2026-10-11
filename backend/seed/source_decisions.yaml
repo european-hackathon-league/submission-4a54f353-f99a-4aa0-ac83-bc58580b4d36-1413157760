@@ -1,0 +1,39 @@
+# Operational decisions on the fetch sources (changes.md 8.8, 8.9). Loaded by the
+# idempotent seed step seed:source_decisions; edit and re-run with --force to change.
+
+# How often a source is fetched, by fetch step (days). Fast-moving owner voices
+# daily; reviews and complaint sites weekly; reference, prices and market data monthly.
+refresh_days_by_step:
+  1: 30   # model and generation reference
+  2: 7    # structured APIs (NHTSA, YouTube)
+  3: 1    # launches, news and press feeds
+  4: 1    # app reviews
+  5: 1    # forums
+  6: 7    # owner review and complaint sites
+  7: 7    # expert reviews
+  8: 30   # price lists
+  9: 30   # market, studies and trends
+refresh_days:
+  # Press and brand pages without a feed change slowly.
+  press-mercedes: 7
+  press-audi: 7
+  press-genesis: 7
+  press-lexus: 7
+  press-porsche: 7
+  autocar-new-cars: 7
+  caranddriver-future: 7
+  autoexpress-news: 7
+  byd-site: 7
+  nio-site: 7
+  xiaomi-ev-site: 7
+  zeekr-site: 7
+  autohome-new: 7
+  dongchedi-new: 7
+  iaa: 30
+  ces: 30
+  auto-china: 30
+disabled:
+  reddit: >-
+    Reddit API access needs an application to Reddit's developer program (OAuth app
+    approval); not available to the team (user, 2026-10-11). Owner voices come from
+    the forums, app reviews, NHTSA and the review sites instead.

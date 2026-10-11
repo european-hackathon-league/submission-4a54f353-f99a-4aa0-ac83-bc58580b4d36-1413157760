@@ -37,6 +37,8 @@ erDiagram
         bool enabled
         jsonb last_cursor "incremental runs"
         timestamptz backfill_done_at
+        int refresh_days "cadence: 1 daily, 7 weekly, 30 monthly"
+        text disabled_reason "e.g. reddit: no API access"
     }
     SITE_SLUG {
         text subject_type PK "vehicle, competitor"

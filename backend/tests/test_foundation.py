@@ -41,7 +41,9 @@ def test_all_tables_exist_with_rls(conn):
 def test_hnsw_indexes_exist(conn):
     rows = conn.execute("select indexname from pg_indexes where indexdef ilike '%using hnsw%'").fetchall()
     names = {r["indexname"] for r in rows}
-    assert {"signal_embedding", "case_item_embedding", "feature_embedding", "rag_chunk_embedding"} <= names
+    assert {"case_item_embedding", "feature_embedding"} <= names
+    # Dropped for the size budget (migration 0016): exact scans at this size.
+    assert not {"signal_embedding", "rag_chunk_embedding"} & names
 
 
 def test_audit_event_is_append_only(conn):
@@ -168,5 +170,5 @@ def test_local_embedder_similarity():
     e = LocalEmbedder()
     v = e.embed(["front seat ventilation is too weak", "seat ventilation too weak in front",
                  "the infotainment screen freezes"])
-    assert v.shape == (3, 1536)
+    assert v.shape == (3, 768)
     assert cosine(v[0], v[1]) > cosine(v[0], v[2]) + 0.2

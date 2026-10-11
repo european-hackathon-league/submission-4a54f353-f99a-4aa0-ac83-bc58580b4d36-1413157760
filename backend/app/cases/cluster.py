@@ -76,6 +76,7 @@ def create_case(conn, feature_id, feature_name: str, members: list[dict], *, asp
     centroid = _unit(np.mean(as_matrix([m["embedding"] for m in members]), axis=0))
     case = audit.insert(conn, "case_item", {
         "feature_id": feature_id, "aspect_group": aspect_group, "title": text.title, "body_md": text.body_md,
+        "short_title": text.short_title, "summary": text.summary, "highlights": text.highlights,
         "embedding": centroid,
         "created_by": ACTOR, "tags": [],
     }, actor=ACTOR, run_id=run_id, rationale=f"{rationale} ({prompt_version}{', ' + model if model else ''})")
@@ -110,6 +111,31 @@ def assign(conn, case_id: str, members: list[dict], *, run_id=None, rationale: s
                 "type": "new_evidence", "object_type": "case", "object_id": case_id, "vehicle": v,
                 "message": f"{case_id}: +{n} new signals since confirmation",
             }, actor=ACTOR, run_id=run_id)
+            rivals = [m for m in members if m.get("evidence_role") == "competitor"
+                      and m.get("kind") in ("like", "competitor_fact") and m.get("vehicle") in (v, None)]
+            if rivals:
+                from app.collab import casework
+
+                casework.raise_alert(
+                    conn, case_id, v, "raises_the_bar",
+                    f"{len(rivals)} new competitor signal{'s' if len(rivals) != 1 else ''} on {case_id}",
+                    " ".join((m.get("quote") or "").split())[:300], [m["id"] for m in rivals], run_id=run_id)
+
+
+def plan_initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN) -> list[tuple[str, list[dict]]]:
+    """The groups ``initial`` will turn into cases, as (label, signals): read-only,
+    so their pages can be written by the LLM before the write transaction opens."""
+    by_group: dict = defaultdict(list)
+    for r in _signals_for(conn):
+        by_group[(r["feature_id"], r["feature"], r["aspect_group"])].append(r)
+    out = []
+    for (_, feature_name, aspect), members in by_group.items():
+        labels = group_labels(as_matrix([m["embedding"] for m in members]), min_similarity, split_min)
+        groups: dict[int, list[dict]] = defaultdict(list)
+        for m, label in zip(members, labels):
+            groups[int(label)].append(m)
+        out += [(_label(feature_name, aspect), g) for g in groups.values()]
+    return out
 
 
 def initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN, run_id=None) -> dict:
@@ -119,6 +145,7 @@ def initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN, run_id=N
     for r in rows:
         by_group[(r["feature_id"], r["feature"], r["aspect_group"])].append(r)
     created = split_groups = 0
+    planned = []
     for (feature_id, feature_name, aspect), members in by_group.items():
         vectors = as_matrix([m["embedding"] for m in members])
         labels = group_labels(vectors, min_similarity, split_min)
@@ -130,8 +157,12 @@ def initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN, run_id=N
             split_groups += 1
             why += f", large group split by cosine >= {min_similarity:.2f}"
         for group in sorted(groups.values(), key=len, reverse=True):
-            create_case(conn, feature_id, feature_name, group, aspect_group=aspect, run_id=run_id, rationale=why)
-            created += 1
+            planned.append((feature_id, feature_name, aspect, group, why))
+    # Case pages are written in parallel first (cached); creating the cases then reads the cache.
+    writer.prefetch([(_label(name, aspect), group) for _, name, aspect, group, _ in planned])
+    for feature_id, feature_name, aspect, group, why in planned:
+        create_case(conn, feature_id, feature_name, group, aspect_group=aspect, run_id=run_id, rationale=why)
+        created += 1
     return {"signals": len(rows), "groups": len(by_group), "split_groups": split_groups, "cases": created}
 
 
@@ -182,7 +213,8 @@ def merge(conn, source_id: str, target_id: str, *, actor: str, rationale: str) -
                                         "rationale": rationale}, actor=actor)
     for cv in conn.execute("select vehicle from case_vehicle where case_id = %s", (source_id,)).fetchall():
         audit.update(conn, "case_vehicle", {"case_id": source_id, "vehicle": cv["vehicle"]},
-                     {"state": "rejected", "state_reason": f"merged into {target_id}"}, actor=actor,
+                     {"state": "rejected", "state_reason": f"merged into {target_id}", "workflow": None,
+                      "outcome": "merged", "outcome_note": rationale}, actor=actor,
                      rationale=rationale, action="state_change")
     assign(conn, target_id, [dict(m) for m in members], rationale=f"merged from {source_id}")
     refresh_centroid(conn, target_id)

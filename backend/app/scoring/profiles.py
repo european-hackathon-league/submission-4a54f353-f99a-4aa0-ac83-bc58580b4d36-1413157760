@@ -24,9 +24,14 @@ def _check_weights(weights: dict) -> dict:
 
 
 def create_profile(conn, config_id, name: str, case_weights: dict, *, actor: str, brand_multipliers=None,
-                   cost_multipliers=None, rationale: str | None = None, request_id=None) -> dict:
+                   cost_multipliers=None, rationale: str | None = None, request_id=None,
+                   description: str | None = None, owner_id=None) -> dict:
     row = {"config_id": config_id, "name": name, "case_weights": _check_weights(case_weights),
            "created_by": actor, "is_default": False}
+    if description:
+        row["description"] = description
+    if owner_id:
+        row["owner_id"] = uuid.UUID(str(owner_id))
     if brand_multipliers:
         row["brand_multipliers"] = brand_multipliers
     if cost_multipliers:
@@ -77,11 +82,16 @@ def update_config(conn, config_id, changes: dict, *, actor: str, rationale: str 
     return row
 
 
-def new_brand_profile(conn, body_md: str, *, actor: str, rationale: str, request_id=None) -> dict:
-    """A new version; configs on the previous latest version move to it."""
+def new_brand_profile(conn, body_md: str, *, actor: str, rationale: str, request_id=None,
+                      pillars: list | None = None, do_not: list | None = None) -> dict:
+    """A new version; configs on the previous latest version move to it. Pillars and
+    the do-not list carry over from the previous version unless given."""
     latest = conn.execute("select * from brand_profile order by version desc limit 1").fetchone()
     version = (latest["version"] + 1) if latest else 1
-    row = audit.insert(conn, "brand_profile", {"version": version, "body_md": body_md, "created_by": actor},
+    row = audit.insert(conn, "brand_profile", {
+        "version": version, "body_md": body_md, "created_by": actor,
+        "pillars": pillars if pillars is not None else (latest["pillars"] if latest else []),
+        "do_not": do_not if do_not is not None else (latest["do_not"] if latest else [])},
                        actor=actor, rationale=rationale, request_id=request_id)
     if latest:
         for cfg in conn.execute("select id from config where brand_profile_id = %s", (latest["id"],)).fetchall():

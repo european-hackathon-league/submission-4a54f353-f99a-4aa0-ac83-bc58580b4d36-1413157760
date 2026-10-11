@@ -199,7 +199,9 @@ def _read_csv(name: str) -> list[dict]:
 
 
 def load(conn, run_id, feature_ids: dict[str, str], vehicles=("F70", "G60", "G70")) -> dict[str, int]:
-    item_feature_map = {r["item_name"]: r["proposed_topic"] for r in _read_csv("option_features.csv")}
+    reviewed = _read_csv("option_features.csv")
+    item_feature_map = {r["item_name"]: r["proposed_topic"] for r in reviewed}
+    item_confirmed = {r["item_name"] for r in reviewed if (r.get("confirmed") or "").strip().lower() == "yes"}
     counts = {"pages": 0, "vehicle_feature": 0, "tech": 0, "option_codes": 0}
     for vehicle in vehicles:
         raw_ref = store_raw_file(FILES[vehicle])
@@ -227,12 +229,13 @@ def load(conn, run_id, feature_ids: dict[str, str], vehicles=("F70", "G60", "G70
                 "record_id": f"option_list-{vehicle}-p{r['page']}",
             })
             if r["sa_code"] and feature:
-                codes.add((feature, r["sa_code"]))
+                codes.add((feature, r["sa_code"], r["item_name"] in item_confirmed))
         counts["vehicle_feature"] += audit.insert_many(conn, "vehicle_feature", rows, actor="seed:option_list",
                                                        run_id=run_id, rationale="option-list grid (review CSV)")
         counts["option_codes"] += audit.insert_many(conn, "feature_mapping", [
-            {"feature_id": feature_ids[f], "kind": "option_code", "value": code, "vehicle": vehicle}
-            for f, code in sorted(codes) if f in feature_ids
+            {"feature_id": feature_ids[f], "kind": "option_code", "value": code, "vehicle": vehicle,
+             "confirmed_by": "team" if ok else None}
+            for f, code, ok in sorted(codes) if f in feature_ids
         ], actor="seed:option_list", on_conflict_do_nothing=True, rationale="option code of a mapped item")
         tech = [{
             "record_id": f"option_list-{vehicle}-{r['variant'].replace(' ', '_')}-{r['metric'].replace(' ', '_')}",

@@ -37,6 +37,11 @@ def database_url() -> str:
 
 def _configure(conn: psycopg.Connection) -> None:
     conn.row_factory = dict_row
+    timeout = get_settings().db_statement_timeout
+    if timeout:
+        conn.execute("select set_config('statement_timeout', %s, false)", (timeout,))
+        if not conn.autocommit:
+            conn.commit()
     try:
         register_vector(conn)
     except psycopg.ProgrammingError:
@@ -48,6 +53,7 @@ def pool() -> ConnectionPool:
     if _pool is None:
         _pool = ConnectionPool(
             database_url(), min_size=1, max_size=8, configure=_configure, open=True,
+            check=ConnectionPool.check_connection,  # replace connections a network drop killed
             kwargs={"autocommit": False, "prepare_threshold": None},
         )
     return _pool

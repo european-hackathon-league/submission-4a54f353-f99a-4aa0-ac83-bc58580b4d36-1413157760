@@ -31,13 +31,17 @@ def case_board(conn, profile_id, states=("open", "confirmed")) -> list[dict]:
     rows = conn.execute(
         """
         with scores as (
-            select case_id, score, rationale, factors, computed_at,
+            select case_id, score, rationale, factors, brand_multiplier, computed_at,
                    row_number() over (partition by case_id order by computed_at desc) as n
             from case_score where weight_profile_id = %(p)s
         )
-        select c.id, c.title, c.feature_id, c.brand_fit, c.segment, cv.vehicle, cv.state, cv.market_conflict,
+        select c.id, c.title, c.short_title, c.summary, c.highlights, c.case_type, c.change_depth, c.feature_id,
+               c.brand_fit, c.brand_fit_reason, c.brand_fit_source, c.brand_fit_confirmed_by, c.segment,
+               c.body_version, c.created_at, c.created_by, greatest(c.updated_at, cv.updated_at) as updated_at,
+               cv.vehicle, cv.state, cv.workflow, cv.outcome, cv.outcome_note, cv.owner_id, cv.co_owner_ids,
+               cv.watcher_ids, cv.scope, cv.market_conflict,
                cv.release_fit, cv.manual_rank, cv.manual_rank_reason, cv.flag_new_evidence,
-               s1.score, s1.rationale, s2.score as previous_score
+               s1.score, s1.rationale, s1.factors, s1.brand_multiplier, s2.score as previous_score
         from weight_profile wp
         join config cfg on cfg.id = wp.config_id
         join case_vehicle cv on cv.vehicle = cfg.vehicle

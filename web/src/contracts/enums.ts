@@ -180,7 +180,7 @@ export const Positioning = z.enum(["base", "premium", "luxury"]);
 export type Positioning = z.infer<typeof Positioning>;
 export type CostSize = z.infer<typeof CostSize>;
 
-export const CostSource = z.enum(["option_price", "ai_estimate", "pm", "finance"]);
+export const CostSource = z.enum(["option_price", "ai_estimate", "pm", "engineering", "finance"]);
 export type CostSource = z.infer<typeof CostSource>;
 
 export const MetricBasis = z.enum(["evidence", "assumption"]);

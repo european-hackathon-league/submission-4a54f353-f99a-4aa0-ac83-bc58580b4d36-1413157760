@@ -2336,6 +2336,7 @@ paths:
                             - option_price
                             - ai_estimate
                             - pm
+                            - engineering
                             - finance
                         note:
                           type: string
@@ -6687,6 +6688,7 @@ components:
                 - option_price
                 - ai_estimate
                 - pm
+                - engineering
                 - finance
             note:
               type: string
@@ -6818,6 +6820,8 @@ components:
         question:
           type: string
         target:
+          type: string
+        today:
           type: string
         unit:
           type: string
@@ -7441,6 +7445,7 @@ components:
                 - option_price
                 - ai_estimate
                 - pm
+                - engineering
                 - finance
             note:
               type: string

@@ -15,7 +15,8 @@ from collections import Counter
 from pydantic import BaseModel, Field
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
-from app.llm import prompts
+from app.config import get_settings
+from app.llm import cache, prompts
 from app.llm.client import LLMUnavailable, get_llm, llm_available
 
 CITATION = re.compile(r"\[signal:([0-9a-f-]{36})\]")
@@ -28,6 +29,10 @@ _GENERIC = {"customer", "stated", "vehicle", "car", "advised", "writer", "really
 
 class CaseText(BaseModel):
     title: str = Field(description="the problem in at most 12 words, never a solution")
+    short_title: str = Field(default="", description="2 to 4 words for cards and diagrams")
+    summary: str = Field(default="", description="one or two sentences: the problem and who has it")
+    highlights: list[str] = Field(default_factory=list,
+                                  description="three short bullets: the problem, who is affected, the competition")
     body_md: str
 
 
@@ -81,23 +86,68 @@ def template(feature: str, signals: list[dict]) -> CaseText:
         quote = " ".join((s["quote"] or "").split())[:280]
         lines.append(f"> \"{quote}\" [signal:{s['id']}] ({s['kind']}, {s['market']}, {s.get('vehicle') or 'brand'})")
         lines.append("")
-    return CaseText(title=title[:120], body_md="\n".join(lines).strip() + "\n")
+    competitor = sum(1 for s in signals if s["evidence_role"] == "competitor")
+    summary = (f"{customers} BMW customers on {feature}: {kinds['complaint']} complaints, {kinds['wish']} wishes, "
+               f"{kinds['like']} likes.")
+    highlights = [
+        f"{kinds['complaint']} complaints ({severities['defect']} defects), {kinds['wish']} wishes, "
+        f"{kinds['like']} likes about {feature}.",
+        f"{customers} distinct BMW customers; signals by market: "
+        + ", ".join(f"{m} {c}" for m, c in markets.most_common(3)) + ".",
+        f"{competitor} competitor signals in the case." if competitor else "No competitor evidence in the signals.",
+    ]
+    return CaseText(title=title[:120], short_title=_short(feature), summary=summary, highlights=highlights,
+                    body_md="\n".join(lines).strip() + "\n")
+
+
+def _short(text: str, words: int = 4) -> str:
+    """At most four words of a label: the fallback short title."""
+    return " ".join(text.replace("(", " ").replace(")", " ").replace(",", " ").split()[:words])
+
+
+def _cache_key(feature: str, signals: list[dict]) -> str:
+    return cache.key(prompts.load("case_writer").prompt_version, get_settings().llm_model_for("case_writer"),
+                     get_settings().llm_reasoning_for("case_writer"),
+                     feature, len(signals), sorted(str(s["id"]) for s in _sample(signals)))
+
+
+def _llm_text(feature: str, signals: list[dict]) -> dict:
+    sample = _sample(signals)
+    payload = [{"id": str(s["id"]), "kind": s["kind"], "severity": s["severity"], "market": s["market"],
+                "vehicle": s.get("vehicle"), "quote": (s["quote"] or "")[:500]} for s in sample]
+    result = get_llm().structured(
+        prompts.load("case_writer"), CaseText, feature=feature, guard=prompts.INJECTION_GUARD,
+        n_signals=str(len(signals)), signals=prompts.wrap_source(json.dumps(payload, ensure_ascii=False)),
+    )
+    allowed = {str(s["id"]) for s in sample}
+    body = CITATION.sub(lambda m: m.group(0) if m.group(1) in allowed else "", result.data.body_md)
+    d = result.data
+    return {"title": d.title[:120], "short_title": " ".join(d.short_title.split()[:5]) or _short(feature),
+            "summary": CITATION.sub("", d.summary).strip(),
+            "highlights": [CITATION.sub("", h).strip() for h in d.highlights][:3],
+            "body_md": body, "model": result.model, "prompt_version": result.prompt_version}
+
+
+def prefetch(groups: list[tuple[str, list[dict]]]) -> dict:
+    """Write the pages of many new cases in parallel (cached); ``write`` then reads the cache."""
+    if not llm_available():
+        return {}
+    return cache.prefetch("case_writer", [(_cache_key(f, s), (lambda f=f, s=s: _llm_text(f, s)))
+                                          for f, s in groups])
 
 
 def write(feature: str, signals: list[dict]) -> tuple[CaseText, str | None, str | None]:
     """(text, model, prompt_version)."""
     if llm_available():
-        sample = _sample(signals)
-        payload = [{"id": str(s["id"]), "kind": s["kind"], "severity": s["severity"], "market": s["market"],
-                    "vehicle": s.get("vehicle"), "quote": (s["quote"] or "")[:500]} for s in sample]
+        k = _cache_key(feature, signals)
+        hit = cache.get("case_writer", k)
         try:
-            result = get_llm().structured(
-                prompts.load("case_writer"), CaseText, feature=feature, guard=prompts.INJECTION_GUARD,
-                n_signals=str(len(signals)), signals=prompts.wrap_source(json.dumps(payload, ensure_ascii=False)),
-            )
-            allowed = {str(s["id"]) for s in sample}
-            body = CITATION.sub(lambda m: m.group(0) if m.group(1) in allowed else "", result.data.body_md)
-            return CaseText(title=result.data.title[:120], body_md=body), result.model, result.prompt_version
+            if hit is None:
+                hit = _llm_text(feature, signals)
+                cache.put("case_writer", k, hit)
+            return (CaseText(title=hit["title"], short_title=hit.get("short_title") or _short(feature),
+                             summary=hit.get("summary") or "", highlights=hit.get("highlights") or [],
+                             body_md=hit["body_md"]), hit["model"], hit["prompt_version"])
         except LLMUnavailable:
             pass
     return template(feature, signals), None, "case_template@v1"

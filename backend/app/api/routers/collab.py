@@ -90,14 +90,16 @@ def chain(requirement_id: str, c=Depends(conn), user: User = Depends(current_use
 @router.get("/notifications")
 def notifications(vehicle: str | None = None, unread: bool = False, limit: int = 50, c=Depends(conn),
                   user: User = Depends(current_user)) -> list[dict]:
+    """My inbox items (user_id = me) and the broadcasts of my lines (user_id null)."""
     vehicles = [vehicle] if vehicle else list(user.vehicles)
     return c.execute(
-        "select id, type, object_type, object_id, vehicle, market, message, created_at,"
-        " %s::uuid = any(read_by) as read from notification"
-        " where (cardinality(%s::text[]) = 0 or vehicle is null or vehicle = any(%s::text[]))"
+        "select id, type, object_type, object_id, vehicle, market, message, created_at, user_id, title, link,"
+        " actor, %s::uuid = any(read_by) as read from notification"
+        " where (user_id = %s or (user_id is null and"
+        " (cardinality(%s::text[]) = 0 or vehicle is null or vehicle = any(%s::text[]))))"
         " and (not %s or not (%s::uuid = any(read_by)))"
         " order by created_at desc limit %s",
-        (user.id, vehicles, vehicles, unread, user.id, min(limit, 500))).fetchall()
+        (user.id, user.id, vehicles, vehicles, unread, user.id, min(limit, 500))).fetchall()
 
 
 @router.post("/notifications/{notification_id}/read")

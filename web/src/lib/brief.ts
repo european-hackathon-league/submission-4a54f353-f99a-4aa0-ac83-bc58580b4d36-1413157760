@@ -1,4 +1,20 @@
-import { changeAmbitionLabel, costSensitivityLabel, marketLabel, positioningLabel, releaseLabel, targetCustomerLabel, type BriefFieldKey, type Market, type ReleaseTarget } from "@/contracts";
+import { changeAmbitionLabel, costSensitivityLabel, marketLabel, positioningLabel, releaseLabel, targetCustomerLabel, type BriefFieldKey, type BriefValues, type Market, type ReleaseTarget } from "@/contracts";
+
+/**
+ * Where the onboarding form starts for questions nobody answered yet (a brief pre-filled
+ * from data holds only market weights, the protect list and the don't-fight-on list).
+ * These are a starting point, never stored until the PM saves the brief.
+ */
+export const BRIEF_START: BriefValues = {
+  thesis: "",
+  targetCustomer: { who: "both", positioning: "premium" },
+  marketWeights: { EU: 0.25, US: 0.25, CN: 0.25, RoW: 0.25 },
+  changeAmbition: { level: "balanced", innovationSlots: 3 },
+  protectList: [],
+  dontFightOn: [],
+  givens: { platform: "", sop: "", frozen: [], openReleases: ["next_gen", "lci", "ota"], cycle: "WLTP" },
+  costEnvelope: { sensitivity: "medium", perCarBand: "" },
+};
 
 /** Short human text for a brief value (brief page, conflicts, proposals). UI-only. */
 export function showBriefValue(field: BriefFieldKey | string, v: unknown): string {

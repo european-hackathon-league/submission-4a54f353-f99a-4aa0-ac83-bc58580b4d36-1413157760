@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# adapter sidecar store (INTEGRATION-GUIDE.md 8.8)
+/.data/

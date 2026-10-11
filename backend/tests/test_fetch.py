@@ -267,3 +267,58 @@ def test_predecessor_subject_is_the_older_car(conn):
     s = predecessor.predecessor_subject(conn, "G60")
     assert (s.id, s.chassis_code, s.vehicle_role, s.wikipedia_page) == ("G60", "G30", "predecessor",
                                                                         "BMW 5 Series (G30)")
+
+
+def test_cadence_and_market_scope():
+    import datetime as dt
+
+    now = dt.datetime(2026, 10, 11, 3, tzinfo=dt.timezone.utc)
+    weekly = {"refresh_days": 7, "last_run_at": now - dt.timedelta(days=3)}
+    assert not worker.is_due(weekly, now) and worker.is_due({**weekly, "last_run_at": now - dt.timedelta(days=7)}, now)
+    assert worker.is_due({"refresh_days": 1, "last_run_at": None}, now)
+    daily = {"refresh_days": 1, "last_run_at": now - dt.timedelta(hours=23)}  # cron a bit earlier than yesterday
+    assert worker.is_due(daily, now)
+    us_only = {"country": "US"}
+    assert worker.in_market(us_only, g60(markets=["USA", "Europe"]))
+    assert not worker.in_market(us_only, g60(markets=["China"]))
+    assert worker.in_market({"country": "Global"}, g60(markets=["China"]))
+
+
+def test_source_decisions_disable_reddit(conn):
+    from app.seed import registry
+
+    for sid, step in (("reddit", 2), ("motor-talk", 5), ("kba", 9)):
+        audit.insert(conn, "source_registry", {"source_id": sid, "name": sid, "fetch_step": step, "enabled": True},
+                     actor="seed:test", key="source_id")
+    assert registry.apply_source_decisions(conn) == 2  # motor-talk already has the default (daily)
+    rows = {r["source_id"]: r for r in conn.execute("select * from source_registry").fetchall()}
+    assert rows["reddit"]["enabled"] is False and "developer" in rows["reddit"]["disabled_reason"]
+    assert (rows["motor-talk"]["refresh_days"], rows["kba"]["refresh_days"]) == (1, 30)
+    assert registry.apply_source_decisions(conn) == 0  # idempotent
+
+
+def test_relevance_filter_keeps_no_text_without_a_signal(conn):
+    """A fetched record the LLM finds nothing in keeps only its marker row."""
+    from app import audit
+    from app.fetch import worker
+    from app.llm import client as llm_client
+
+    audit.insert(conn, "source_registry", {"source_id": "bmwblog", "name": "bmwblog"}, actor="seed:test",
+                 key="source_id", on_conflict_do_nothing=True)
+    record = audit.insert(conn, "source_record", {
+        "record_id": "bmwblog-offtopic", "source_id": "bmwblog", "category": "C", "content_type": "news",
+        "content_hash": "x", "title": "Factory tour", "text_original": "The museum opens a new exhibition in May."},
+        actor="fetch:bmwblog", key="record_id")
+    llm_client.set_llm(llm_client.FakeLLM({"signal_extract": lambda v: {"signals": []}}))
+    out = worker.run_agents(conn, [record], None)
+    assert out["not_relevant"] == 1 and out["valid"] == 0
+    row = conn.execute("select text_original, title, deleted_at from source_record where record_id = 'bmwblog-offtopic'"
+                       ).fetchone()
+    assert row["text_original"] is None and row["title"] is None and row["deleted_at"] is not None
+    # Without an LLM nothing is judged, so nothing is purged.
+    llm_client.set_llm(None)
+    other = audit.insert(conn, "source_record", {
+        "record_id": "bmwblog-unread", "source_id": "bmwblog", "category": "C", "content_type": "news",
+        "content_hash": "y", "text_original": "The museum opens a new exhibition in May."},
+        actor="fetch:bmwblog", key="record_id")
+    assert worker.run_agents(conn, [other], None)["not_relevant"] == 0

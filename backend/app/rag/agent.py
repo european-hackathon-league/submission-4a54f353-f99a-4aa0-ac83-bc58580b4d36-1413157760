@@ -1,11 +1,14 @@
 """RAG sidebar agent on case and requirement pages.
 
-Tools: search_signals, get_case, get_requirement, score_breakdown,
-compare_markets, what_if_weights, propose_edit. Every factual claim cites a
-signal as [signal:<id>]. Citation check: a cited ID must exist and must have
-been returned by a search in this conversation turn, otherwise the citation is
-removed; an answer left without evidence becomes "No evidence found". Edits are
-only proposals (diffs) that the PM accepts or rejects.
+Tools: search_signals, search_context, get_case, get_requirement,
+score_breakdown, compare_markets, what_if_weights, propose_edit. Every factual
+claim about customers or the market cites a signal as [signal:<id>]; what a
+person told the system (brief, stance, answers, meeting notes, feedback,
+comments) is cited as [context:<type>:<id>] and is never customer evidence.
+Citation check: a cited ID must have been returned by a search in this
+conversation turn, otherwise the citation is removed; an answer left without
+any valid citation becomes "No evidence found". Edits are only proposals
+(diffs) that the PM accepts or rejects.
 
 Without an OpenAI key the agent answers extractively from the hybrid search
 (changes.md 7.3).
@@ -13,6 +16,7 @@ Without an OpenAI key the agent answers extractively from the hybrid search
 
 from __future__ import annotations
 
+import datetime as dt
 import difflib
 import json
 import re
@@ -27,6 +31,7 @@ from app.llm.embeddings import get_embedder
 from app.scoring import score as scoring
 
 CITATION = re.compile(r"\[signal:([0-9a-f-]{36})\]")
+CONTEXT_CITATION = re.compile(r"\[context:([a-z_]+):([^\]\s]+)\]")
 NO_EVIDENCE = "No evidence found in the stored sources."
 MAX_STEPS = 6
 
@@ -36,7 +41,9 @@ class Turn:
     object_type: str
     object_id: str
     retrieved: set[str] = field(default_factory=set)
+    context: set[tuple[str, str]] = field(default_factory=set)   # (type, id) of PM-context chunks returned
     proposal: dict | None = None
+    actor: str | None = None   # who asks (pm:<user id>): decides whose brief is the context
 
 
 def search(conn, query: str, *, k: int = 12, vehicle: str | None = None, case_id: str | None = None,
@@ -59,6 +66,58 @@ def tool_search_signals(conn, turn: Turn, query: str, case_only: bool = True, ve
     turn.retrieved.update(h["object_id"] for h in hits)
     return [{"signal_id": h["object_id"], "vehicle": h["vehicle"], "market": h["market"], "case_id": h["case_id"],
              "text": h["text"][:600]} for h in hits]
+
+
+def _scope(conn, turn: Turn) -> tuple[str | None, list[str]]:
+    """The case of the page and the BMW lines it applies to."""
+    if turn.object_type == "requirement":
+        r = conn.execute("select case_id, vehicle from requirement where id = %s", (turn.object_id,)).fetchone()
+        return (r["case_id"], [r["vehicle"]]) if r else (None, [])
+    lines = [r["vehicle"] for r in conn.execute("select vehicle from case_vehicle where case_id = %s",
+                                                (turn.object_id,)).fetchall()]
+    # A case can span lines; the brief that counts is the one of the asking PM's line.
+    user_id = (turn.actor or "").split(":", 1)[-1] if turn.actor and turn.actor.startswith(("pm:", "admin:")) else None
+    try:
+        user_id = user_id and str(uuid.UUID(user_id))
+    except ValueError:
+        user_id = None  # an actor that is not a stored user (scripts, tests)
+    if user_id:
+        own = conn.execute("select vehicles from app_user where id = %s", (user_id,)).fetchone()
+        mine = [v for v in (own["vehicles"] if own else []) if v in lines]
+        if not mine:
+            ws = conn.execute("select c.vehicle from workspace w join config c on c.id = w.config_id"
+                              " where w.user_id = %s", (user_id,)).fetchone()
+            mine = [ws["vehicle"]] if ws and ws["vehicle"] in lines else []
+        if mine:
+            return turn.object_id, mine
+    return turn.object_id, lines
+
+
+def _own_brief(conn, turn: Turn, brief_id: str) -> bool:
+    """The shared brief of the line, or the asking PM's own regional overlay (not a colleague's)."""
+    b = conn.execute("select kind, owner_id from series_brief where id = %s", (brief_id,)).fetchone()
+    return bool(b) and (b["kind"] == "shared" or (turn.actor or "").endswith(f":{b['owner_id']}"))
+
+
+def tool_search_context(conn, turn: Turn, query: str) -> list:
+    """What people told the system about this case and its lines: series brief, stance,
+    open questions and answers, meeting notes, feedback, comments."""
+    from app.rag.index import CONTEXT_TYPES
+
+    case_id, vehicles = _scope(conn, turn)
+    hits = search(conn, query, k=40, types=list(CONTEXT_TYPES))
+    # Text search can miss a short note: the context of this very case is always offered.
+    known = {h["id"] for h in hits}
+    hits += [dict(r, score=0.0) for r in conn.execute(
+        "select id, object_type, object_id, vehicle, market, case_id, text from rag_chunk"
+        " where object_type = any(%s) and (case_id = %s or (object_type = 'series_brief' and vehicle = any(%s)))",
+        (list(CONTEXT_TYPES), case_id, vehicles)).fetchall() if r["id"] not in known]
+    mine = [h for h in hits if h["case_id"] == case_id
+            or (h["object_type"] == "series_brief" and h["vehicle"] in vehicles
+                and _own_brief(conn, turn, h["object_id"]))][:12]
+    turn.context.update((h["object_type"], h["object_id"]) for h in mine)
+    return [{"cite_as": f"[context:{h['object_type']}:{h['object_id']}]", "type": h["object_type"],
+             "text": h["text"][:900]} for h in mine]
 
 
 def tool_get_case(conn, turn: Turn, case_id: str) -> dict:
@@ -117,6 +176,10 @@ def tool_propose_edit(conn, turn: Turn, new_body_md: str, reason: str) -> dict:
 TOOLS = {
     "search_signals": (tool_search_signals, {"query": "string", "case_only": "boolean", "vehicle": "string"},
                        "Hybrid search over signals (quotes from customers, reviews, competitor facts)."),
+    "search_context": (tool_search_context, {"query": "string"},
+                       "What people told the system about this case and its lines: series brief, the PM's stance, "
+                       "open questions and their answers, meeting notes, engineering or finance feedback, comments. "
+                       "PM context, not customer evidence."),
     "get_case": (tool_get_case, {"case_id": "string"}, "Case page, per-vehicle state and figures."),
     "get_requirement": (tool_get_requirement, {"requirement_id": "string"}, "Requirement page and fields."),
     "score_breakdown": (tool_score_breakdown, {"case_id": "string"}, "Current scores and rationales per profile."),
@@ -139,26 +202,40 @@ def _tool_specs() -> list[dict]:
     return specs
 
 
-def check_citations(conn, answer: str, retrieved: set[str]) -> tuple[str, list[str]]:
+def check_citations(conn, answer: str, retrieved: set[str],
+                    context: set[tuple[str, str]] | None = None) -> tuple[str, list[str]]:
+    """Keep only citations of things a search returned in this turn: signals, and
+    PM-context items. An answer left with neither is replaced by "No evidence found"."""
     cited = list(dict.fromkeys(CITATION.findall(answer)))
     existing = {str(r["id"]) for r in conn.execute("select id from signal where id = any(%s::uuid[])"
                                                    " and validation = 'valid'", (cited,)).fetchall()} if cited else set()
     valid = [c for c in cited if c in retrieved and c in existing]
     cleaned = CITATION.sub(lambda m: m.group(0) if m.group(1) in valid else "", answer)
-    if not valid:
+    context = context or set()
+    kept = [m for m in CONTEXT_CITATION.findall(cleaned) if m in context]
+    cleaned = CONTEXT_CITATION.sub(lambda m: m.group(0) if (m.group(1), m.group(2)) in context else "", cleaned)
+    if not valid and not kept:
         return NO_EVIDENCE, []
     return cleaned.strip(), valid
 
 
 def _extractive(conn, turn: Turn, question: str) -> str:
     hits = tool_search_signals(conn, turn, question)
-    if not hits:
+    told = tool_search_context(conn, turn, question)
+    if not hits and not told:
         return NO_EVIDENCE
-    lines = [f"Signals matching the question ({len(hits)} shown, extractive answer without an LLM):"]
-    for h in hits[:8]:
-        quote = h["text"].split("Quote: ", 1)[-1].split("\nSource:")[0][:200]
-        lines.append(f"- {h['market'] or 'unknown market'}, {h['vehicle'] or 'brand'}: \"{quote}\" [signal:{h['signal_id']}]")
-    return "\n".join(lines)
+    lines = []
+    if hits:
+        lines.append(f"Signals matching the question ({len(hits)} found, extractive answer without an LLM):")
+        for h in hits[:8]:
+            quote = h["text"].split("Quote: ", 1)[-1].split("\nSource:")[0][:200]
+            lines.append(f"- {h['market'] or 'unknown market'}, {h['vehicle'] or 'brand'}: \"{quote}\" "
+                         f"[signal:{h['signal_id']}]")
+    if told:
+        lines += ["", "What you and your colleagues told me about this case (PM context, not customer evidence):"]
+        for c in told[:6]:
+            lines.append(f"- {' '.join(c['text'].split())[:260]} {c['cite_as']}")
+    return "\n".join(lines).strip()
 
 
 def _llm_answer(conn, turn: Turn, question: str, history: list[dict]) -> tuple[str, str]:
@@ -170,7 +247,7 @@ def _llm_answer(conn, turn: Turn, question: str, history: list[dict]) -> tuple[s
     system, _ = prompt.render(object_type=turn.object_type, object_id=turn.object_id, guard=prompts.INJECTION_GUARD)
     messages = [{"role": "system", "content": system}] + history + [{"role": "user", "content": question}]
     for _ in range(MAX_STEPS):
-        response = client.chat.completions.create(model=settings.openai_chat_model, messages=messages,
+        response = client.chat.completions.create(model=settings.llm_model_for("rag_agent"), messages=messages,
                                                   tools=_tool_specs())
         msg = response.choices[0].message
         if not msg.tool_calls:
@@ -192,7 +269,7 @@ def _llm_answer(conn, turn: Turn, question: str, history: list[dict]) -> tuple[s
 
 
 def ask(conn, object_type: str, object_id: str, question: str, *, actor: str, request_id: str | None = None) -> dict:
-    turn = Turn(object_type, object_id)
+    turn = Turn(object_type, object_id, actor=actor)
     history = [{"role": "user" if m["role"] == "pm" else "assistant", "content": m["content"]}
                for m in conn.execute("select role, content from chat_message where object_type = %s and object_id = %s"
                                      " order by created_at desc limit 8", (object_type, object_id)).fetchall()][::-1]
@@ -201,10 +278,10 @@ def ask(conn, object_type: str, object_id: str, question: str, *, actor: str, re
     model = None
     if llm_available():
         raw, prompt_version = _llm_answer(conn, turn, question, history)
-        model = get_settings().openai_chat_model
+        model = get_settings().llm_model_for("rag_agent")
     else:
-        raw, prompt_version = _extractive(conn, turn, question), "rag_extractive@v1"
-    answer, cited = check_citations(conn, raw, turn.retrieved)
+        raw, prompt_version = _extractive(conn, turn, question), "rag_extractive@v2"
+    answer, cited = check_citations(conn, raw, turn.retrieved, turn.context)
     row = audit.insert(conn, "chat_message", {
         "object_type": object_type, "object_id": object_id, "role": "agent", "author": "agent:rag",
         "content": answer, "cited_signals": [uuid.UUID(c) for c in cited],
@@ -212,6 +289,10 @@ def ask(conn, object_type: str, object_id: str, question: str, *, actor: str, re
         "proposed_diff": turn.proposal, "diff_status": "proposed" if turn.proposal else "none",
         "model": model, "prompt_version": prompt_version,
     }, actor="agent:rag", request_id=request_id, rationale="RAG answer (citations checked)")
+    if turn.proposal:
+        from app.collab import proposals
+
+        row["proposal_id"] = proposals.from_chat_edit(conn, row, request_id=request_id)["id"]
     return row
 
 
@@ -229,6 +310,14 @@ def decide_edit(conn, message_id: str, accept: bool, *, actor: str, request_id: 
             save_case_page(conn, msg["object_id"], p["body_md"], p["base_version"], actor=actor, request_id=request_id)
         else:
             save_page(conn, msg["object_id"], p["body_md"], p["base_version"], actor=actor, request_id=request_id)
-    return audit.update(conn, "chat_message", {"id": message_id},
-                        {"diff_status": "accepted" if accept else "rejected"}, actor=actor,
-                        rationale="PM decision on the proposed edit", request_id=request_id)
+    out = audit.update(conn, "chat_message", {"id": message_id},
+                       {"diff_status": "accepted" if accept else "rejected"}, actor=actor,
+                       rationale="PM decision on the proposed edit", request_id=request_id)
+    linked = conn.execute("select id from proposal where chat_message_id = %s and status = 'pending'",
+                          (message_id,)).fetchone()
+    if linked:
+        audit.update(conn, "proposal", {"id": linked["id"]}, {
+            "status": "accepted" if accept else "rejected", "decided_by": uuid.UUID(actor.split(":", 1)[1]),
+            "decided_at": dt.datetime.now(dt.timezone.utc)}, actor=actor, action="accept" if accept else "reject",
+            rationale="PM decision on the proposed edit", request_id=request_id)
+    return out

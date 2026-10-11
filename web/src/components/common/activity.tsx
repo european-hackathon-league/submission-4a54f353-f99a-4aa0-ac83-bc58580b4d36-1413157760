@@ -4,48 +4,57 @@ import { useState } from "react";
 import { Bot, Send } from "lucide-react";
 import type { AuditEvent } from "@/contracts";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
+import { auditAction, auditLines } from "@/lib/audit";
 import { fmtDateTime, fromNow } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar, useUsers } from "./people";
 import { Pill } from "./badges";
 
-function short(v: unknown): string {
-  if (v === undefined || v === null) return "";
-  if (typeof v === "string") return v.length > 120 ? v.slice(0, 120) + "…" : v;
-  const s = JSON.stringify(v);
-  return s.length > 160 ? s.slice(0, 160) + "…" : s;
-}
-
 export function AuditTimeline({ events }: { events: AuditEvent[] }) {
   const { name } = useUsers();
   return (
     <ol className="relative space-y-3 border-l pl-5">
-      {events.map((e) => (
-        <li key={e.seq} className="relative">
-          <span className="absolute top-0.5 -left-[27px]">
-            <UserAvatar id={e.actorId} size="xs" />
-          </span>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="font-medium">{name(e.actorId)}</span>
-            <Pill t={e.actorType === "ai" ? "sky" : "outline"}>
-              {e.actorType === "ai" && <Bot className="size-3" />}
-              {e.action}
-            </Pill>
-            <span className="font-mono text-muted-foreground">{e.objectId}</span>
-            <span className="text-muted-foreground" title={fmtDateTime(e.at)}>
-              {fromNow(e.at)}
+      {events.map((e) => {
+        const lines = auditLines(e, name);
+        return (
+          <li key={e.seq} className="relative">
+            <span className="absolute top-0.5 -left-[27px]">
+              <UserAvatar id={e.actorId} size="xs" />
             </span>
-          </div>
-          {e.rationale && <p className="mt-0.5 text-sm">“{e.rationale}”</p>}
-          {(e.before !== undefined || e.after !== undefined) && (
-            <div className="mt-1 space-y-0.5 font-mono text-[11px] text-muted-foreground">
-              {e.before !== undefined && <div className="truncate">− {short(e.before)}</div>}
-              {e.after !== undefined && <div className="truncate">+ {short(e.after)}</div>}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="font-medium">{name(e.actorId)}</span>
+              <Pill t={e.actorType === "ai" ? "sky" : "outline"}>
+                {e.actorType === "ai" && <Bot className="size-3" />}
+                <span title={e.action}>{auditAction(e.action)}</span>
+              </Pill>
+              {!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(e.objectId) && <span className="font-mono text-muted-foreground">{e.objectId}</span>}
+              <span className="text-muted-foreground" title={fmtDateTime(e.at)}>
+                {fromNow(e.at)}
+              </span>
             </div>
-          )}
-        </li>
-      ))}
+            {e.rationale && <p className="mt-0.5 text-sm">“{e.rationale}”</p>}
+            {lines.length > 0 && (
+              <dl className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                {lines.map((l) => (
+                  <div key={l.label} className="flex flex-wrap gap-x-1.5">
+                    <dt className="font-medium text-foreground/70">{l.label}:</dt>
+                    <dd className="min-w-0 break-words">
+                      {l.from !== undefined && (
+                        <>
+                          <span className="line-through decoration-muted-foreground/50">{l.from}</span>
+                          <span className="px-1">→</span>
+                        </>
+                      )}
+                      <span className="text-foreground/90">{l.to}</span>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </li>
+        );
+      })}
       {events.length === 0 && <li className="text-sm text-muted-foreground">No events yet.</li>}
     </ol>
   );

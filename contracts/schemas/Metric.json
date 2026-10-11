@@ -12,6 +12,9 @@
     "target": {
       "type": "string"
     },
+    "today": {
+      "type": "string"
+    },
     "unit": {
       "type": "string"
     },

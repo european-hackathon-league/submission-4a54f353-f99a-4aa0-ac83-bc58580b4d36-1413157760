@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     supabase_publishable_key: str = ""
     supabase_jwks_url: str = ""
     supabase_db_url: str = ""
+    # Per-session statement timeout (e.g. "0" for long batch scripts on Supabase, whose
+    # default for the postgres role is 2 min). Empty = the server default.
+    db_statement_timeout: str = ""
     # API auth: "supabase" (Bearer token), "dev" (X-User-Id header), "auto" = supabase
     # when SUPABASE_URL is set, else dev. See app/api/auth.py.
     auth_mode: str = "auto"
@@ -34,16 +37,24 @@ class Settings(BaseSettings):
 
     # OpenAI.
     openai_api_key: str = ""
-    openai_chat_model: str = "gpt-5-mini"
-    openai_strong_model: str = "gpt-5"
-    # Price per 1M tokens (input, output) in USD, used for cost logging only.
-    openai_price_in: float = 0.25
-    openai_price_out: float = 2.0
+    openai_chat_model: str = "gpt-6-luna"
+    openai_strong_model: str = "gpt-6.1-sol"
+    # Price per 1M tokens (input, output) in USD, for cost logging only (changes.md 8.12).
+    openai_prices: dict[str, tuple[float, float]] = {
+        "gpt-6-luna": (0.10, 0.50), "gpt-6.1-sol": (2.0, 10.0), "gpt-6-sol": (2.0, 10.0), "gpt-5-mini": (0.25, 2.0), "gpt-5": (1.25, 10.0),
+    }
+
+    def llm_price(self, model: str) -> tuple[float, float]:
+        """Prices of the model; dated snapshots (gpt-6-luna-2026-...) use their base name."""
+        for name in sorted(self.openai_prices, key=len, reverse=True):
+            if model.startswith(name):
+                return self.openai_prices[name]
+        return self.openai_prices[self.openai_chat_model] if self.openai_chat_model in self.openai_prices else (0.0, 0.0)
 
     # Embeddings: "openai" or "local" (offline fallback, see changes.md 1.2).
     embedding_provider: str = "openai"
     embedding_model: str = "text-embedding-3-small"
-    embedding_dim: int = 1536
+    embedding_dim: int = 768   # stored vector size (migration 0016); the API shortens the model's 1536
 
     # Raw record storage: "supabase" or "local" (see changes.md 1.3).
     storage_backend: str = "local"
@@ -56,7 +67,11 @@ class Settings(BaseSettings):
     youtube_api_key: str = ""
     fetch_user_agent: str = ("BMW-PM-Research-Prototype/0.1"
                              " (+https://github.com/ghassenzaara/BMW-Product-Management-Challenge)")
-    fetch_daily_request_budget: int = 2000
+    fetch_daily_request_budget: int = 500
+    # YouTube: comments and transcripts of videos published in the last N days.
+    youtube_window_days: int = 60
+    # The most relevant comments per video (YouTube's own ranking: likes and replies).
+    youtube_comments_per_video: int = 10
 
     def model_post_init(self, __context) -> None:
         # Values still holding the .env.example placeholders count as not set.
@@ -68,6 +83,27 @@ class Settings(BaseSettings):
             self.supabase_service_role_key = self.supabase_secret_key
         if self.auth_mode in ("auto", ""):
             self.auth_mode = "supabase" if self.supabase_url else "dev"
+
+    # Model per prompt (changes.md 8.11): high-volume, closed-list work on the chat model,
+    # few high-stakes texts on the strong model. Override with OPENAI_STRONG_TASKS.
+    openai_strong_tasks: str = "requirement_writer"
+
+    # Thinking effort per prompt. Reading, classifying and summarizing given text needs no
+    # long reasoning: those prompts run with minimal effort (faster, cheaper). Every other
+    # prompt (the RAG agent, the requirement writer) keeps the model's normal effort.
+    openai_minimal_reasoning_tasks: str = "feedback_classify,signal_extract,case_writer,case_tags"
+    # The effort value sent for those prompts. gpt-6-luna accepts none, low, medium, high, xhigh
+    # (it has no "minimal"): "low" is the least thinking that still thinks, "none" switches it off.
+    openai_minimal_reasoning_effort: str = "low"
+
+    def llm_reasoning_for(self, task: str) -> str | None:
+        """The reduced effort for the high-volume reading tasks, None (the model's default) otherwise."""
+        minimal = {t.strip() for t in self.openai_minimal_reasoning_tasks.split(",") if t.strip()}
+        return (self.openai_minimal_reasoning_effort or None) if task in minimal else None
+
+    def llm_model_for(self, task: str) -> str:
+        strong = {t.strip() for t in self.openai_strong_tasks.split(",") if t.strip()}
+        return self.openai_strong_model if task in strong else self.openai_chat_model
 
     @property
     def db_url(self) -> str:
