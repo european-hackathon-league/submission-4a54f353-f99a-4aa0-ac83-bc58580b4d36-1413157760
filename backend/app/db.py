@@ -53,6 +53,7 @@ def pool() -> ConnectionPool:
     if _pool is None:
         _pool = ConnectionPool(
             database_url(), min_size=1, max_size=8, configure=_configure, open=True,
+            check=ConnectionPool.check_connection,  # replace connections a network drop killed
             kwargs={"autocommit": False, "prepare_threshold": None},
         )
     return _pool

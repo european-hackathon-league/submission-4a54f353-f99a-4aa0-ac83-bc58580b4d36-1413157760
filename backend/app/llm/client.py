@@ -130,7 +130,7 @@ class OpenAILLM:
         @retry(
             retry=retry_if_exception_type((RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)),
             wait=wait_exponential(min=2, max=60),
-            stop=stop_after_attempt(5),
+            stop=stop_after_attempt(8),  # rides out a short network drop (about 5 min)
             reraise=True,
         )
         def call():
