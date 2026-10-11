@@ -1,0 +1,300 @@
+"use client";
+
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
+import { AlertTriangle, AtSign, Check, CheckCircle2, CircleDot, ClipboardCheck, CornerUpLeft, Forward, KanbanSquare, MessageSquareReply, Radar, Scale } from "lucide-react";
+import { CaseState as CaseStates, addresseeLabel, caseStateLabel, type Case, type Referral, type Requirement, type RequirementAction } from "@/contracts";
+import { useApi, useApiMutation } from "@/lib/api/hooks";
+import { fmtDate, fromNow } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { CaseStateDot, ReqStatusDot, caseStateTone } from "@/components/common/badges";
+import { useUsers } from "@/components/common/people";
+import { RationaleDialog } from "@/components/common/rationale-dialog";
+import { useScores } from "@/components/cases/use-scores";
+import { RequirementActionDialog } from "@/components/requirements/requirement-action-dialog";
+import { RequirementSheet } from "@/components/requirements/requirement-sheet";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+/**
+ * My desk: what needs the PM, sorted by the kind of work.
+ * One line per item, short names, details one click away.
+ */
+export function DeskView() {
+  const me = useApi("me");
+  const { data: cases = [] } = useApi("cases");
+  const { data: questions = [] } = useApi("questions");
+  const { data: referrals = [] } = useApi("referrals");
+  const { data: alerts = [] } = useApi("alerts");
+  const { data: notifications = [] } = useApi("notifications");
+  const { data: requirements = [] } = useApi("requirements");
+  const scores = useScores();
+  const { name } = useUsers();
+  const [reqId, setReqId] = useState<string | null>(null);
+  const user = me.data?.user;
+  if (!user) return null;
+  const isHead = user.role === "head";
+  const caseById = new Map(cases.map((c) => [c.id, c]));
+  const reqById = new Map(requirements.map((r) => [r.id, r]));
+  const short = (type: "case" | "requirement", id: string) => (type === "case" ? caseById.get(id)?.shortTitle : reqById.get(id)?.shortTitle) ?? id;
+  const rank = (id: string) => scores.cases.get(id)?.rank ?? 999;
+  const first = (n?: string) => n?.split(" ")[0] ?? "";
+
+  const flags = [
+    ...alerts
+      .filter((a) => a.status === "open" && (isHead || a.ownerId === user.id))
+      .map((a) => (
+        <Row
+          key={a.id}
+          icon={<AlertTriangle className="text-amber-500" />}
+          label={a.caseId ? short("case", a.caseId) : a.title}
+          hint={a.title}
+          right={<span className="text-xs text-amber-700 dark:text-amber-400">{a.verdict === "raises_the_bar" ? "Bar raised" : "Contradicts"}</span>}
+          href={a.caseId ? `/cases/${a.caseId}` : "/inbox"}
+        />
+      )),
+    ...notifications
+      .filter((n) => n.kind === "mention" && !n.read)
+      .map((n) => {
+        const caseId = n.link.match(/CASE-[A-Z0-9-]+/)?.[0];
+        return <Row key={n.id} icon={<AtSign className="text-primary" />} label={caseId ? short("case", caseId) : n.title} hint={n.body} right={<Muted>{first(name(n.actorId ?? ""))} · {fromNow(n.createdAt)}</Muted>} href={n.link} />;
+      }),
+  ];
+
+  const mine = cases.filter((c) => (isHead ? c.state === "ready" : (c.ownerId === user.id || c.coOwnerIds.includes(user.id)) && c.state !== "decided" && c.state !== "observed")).sort((a, b) => rank(a.id) - rank(b.id));
+  const toMe = referrals.filter((r) => r.toUserId === user.id && r.status === "pending" && r.kind === "referral");
+  const myCases = [
+    ...toMe.map((r) => <Row key={r.id} icon={<Forward className="text-violet-500" />} label={short("case", r.caseId)} hint={r.note} right={<Muted>from {first(name(r.fromUserId))}</Muted>} href="/inbox" />),
+    ...mine.map((c) => <Row key={c.id} label={c.shortTitle} hint={c.title} right={<CaseStateDot state={c.state} />} href={`/cases/${c.id}`} />),
+  ];
+
+  const signOff = requirements.filter((r) => r.status === "pm_approved");
+  const escalations = referrals.filter((r) => r.kind === "escalation" && r.status === "pending");
+  const review = isHead
+    ? [
+        ...signOff.map((r) => <SignOffRow key={r.id} r={r} onOpen={() => setReqId(r.id)} />),
+        ...escalations.map((e) => <EscalationRow key={e.id} e={e} c={caseById.get(e.caseId)} />),
+      ]
+    : requirements
+        .filter((r) => r.ownerId === user.id && (r.status === "draft" || r.status === "in_discussion"))
+        .sort((a, b) => Number(!!b.sentBackReason) - Number(!!a.sentBackReason))
+        .map((r) => (
+          <Row
+            key={r.id}
+            icon={r.sentBackReason ? <CornerUpLeft className="text-amber-600" /> : undefined}
+            label={r.shortTitle}
+            hint={r.sentBackReason ? `Sent back: ${r.sentBackReason}` : r.title}
+            right={<ReqStatusDot status={r.status} />}
+            onClick={() => setReqId(r.id)}
+          />
+        ));
+
+  const answered = questions.filter((q) => q.status === "answered").sort((a, b) => (b.answeredAt ?? "").localeCompare(a.answeredAt ?? ""));
+  const open = questions.filter((q) => q.status === "open").sort((a, b) => (a.dueDate ?? "9").localeCompare(b.dueDate ?? "9"));
+  const href = (type: "case" | "requirement", id: string) => (type === "case" ? `/cases/${id}?step=knowledge` : `/requirements/${id}`);
+  const followUp = [
+    ...answered.map((q) => (
+      <Row key={q.id} icon={<CheckCircle2 className="text-positive" />} label={short(q.objectType, q.objectId)} hint={q.answer} right={<Muted>{addresseeLabel[q.addressee]} answered</Muted>} href={href(q.objectType, q.objectId)} />
+    )),
+    ...open.map((q) => (
+      <Row key={q.id} icon={<CircleDot className="text-muted-foreground" />} label={short(q.objectType, q.objectId)} hint={q.question} right={<Muted>{addresseeLabel[q.addressee]}{q.dueDate ? ` · ${fmtDate(q.dueDate)}` : ""}</Muted>} href={href(q.objectType, q.objectId)} />
+    )),
+  ];
+
+  return (
+    <div className="mx-auto max-w-6xl p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">Good morning, {first(user.name)}</h1>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Card icon={<Radar />} title="Agent flags" items={flags} />
+        <Card icon={<KanbanSquare />} title={isHead ? "Ready to decide" : "My cases"} items={myCases} more={{ href: "/cases", label: "Board" }}>
+          {!isHead && <StageBar cases={mine} />}
+        </Card>
+        <Card icon={<ClipboardCheck />} title="Review" items={review} />
+        <Card icon={<MessageSquareReply />} title="Follow up" items={followUp}>
+          {(answered.length > 0 || open.length > 0) && (
+            <div className="flex gap-4 px-4 pb-1 text-xs text-muted-foreground">
+              <span>
+                <b className="font-semibold text-foreground tabular-nums">{answered.length}</b> answers back
+              </span>
+              <span>
+                <b className="font-semibold text-foreground tabular-nums">{open.length}</b> open questions
+              </span>
+            </div>
+          )}
+        </Card>
+      </div>
+      <RequirementSheet id={reqId} onOpenChange={(o) => !o && setReqId(null)} />
+    </div>
+  );
+}
+
+function Card({ icon, title, items, more, children }: { icon: ReactNode; title: string; items: ReactNode[]; more?: { href: string; label: string }; children?: ReactNode }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? items : items.slice(0, 3);
+  return (
+    <section className="flex flex-col rounded-xl border bg-card shadow-xs">
+      <header className="flex items-center gap-2.5 px-4 pt-4 pb-3">
+        <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary [&_svg]:size-4">{icon}</span>
+        <h2 className="text-sm font-semibold">{title}</h2>
+        <span className="ml-auto text-2xl font-semibold tabular-nums">{items.length}</span>
+      </header>
+      {children}
+      {items.length === 0 ? (
+        <p className="flex items-center gap-2 px-4 pb-4 text-sm text-muted-foreground">
+          <CheckCircle2 className="size-4 text-positive" /> All clear
+        </p>
+      ) : (
+        <ul className="px-2 pb-2">{shown}</ul>
+      )}
+      {(items.length > 3 || more) && (
+        <div className="mt-auto flex items-center border-t px-4 py-2 text-sm">
+          {items.length > 3 && (
+            <button onClick={() => setAll(!all)} className="text-primary hover:underline">
+              {all ? "Show less" : `+${items.length - 3} more`}
+            </button>
+          )}
+          {more && (
+            <Link href={more.href} className="ml-auto text-muted-foreground hover:text-foreground">
+              {more.label} →
+            </Link>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** One line: icon, short name, one quiet detail on the right. The full text is in the tooltip. */
+function Row({ icon, label, hint, right, href, onClick }: { icon?: ReactNode; label: string; hint?: string; right?: ReactNode; href?: string; onClick?: () => void }) {
+  const cls = "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none";
+  const body = (
+    <>
+      <span className="grid size-4 shrink-0 place-items-center [&_svg]:size-4">{icon ?? <span className="size-1.5 rounded-full bg-muted-foreground/40" />}</span>
+      <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+      {right}
+    </>
+  );
+  const el = href ? (
+    <Link href={href} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <button onClick={onClick} className={cls}>
+      {body}
+    </button>
+  );
+  return (
+    <li>
+      {hint ? (
+        <Tooltip delayDuration={400}>
+          <TooltipTrigger asChild>{el}</TooltipTrigger>
+          <TooltipContent side="bottom" align="start" className="max-w-sm">
+            {hint}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        el
+      )}
+    </li>
+  );
+}
+
+const Muted = ({ children }: { children: ReactNode }) => <span className="shrink-0 text-xs text-muted-foreground">{children}</span>;
+
+const barColor: Record<string, string> = { slate: "bg-slate-400", sky: "bg-sky-500", violet: "bg-violet-500", amber: "bg-amber-500", emerald: "bg-emerald-500" };
+
+/** Where my open cases stand, as one segmented bar. */
+function StageBar({ cases }: { cases: Case[] }) {
+  const stages = CaseStates.options.filter((s) => s !== "observed" && s !== "decided").map((s) => [s, cases.filter((c) => c.state === s).length] as const);
+  if (!cases.length) return null;
+  return (
+    <div className="space-y-2 px-4 pb-2">
+      <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
+        {stages.map(([s, n]) => n > 0 && <span key={s} className={barColor[caseStateTone[s]]} style={{ flexGrow: n }} />)}
+      </div>
+      <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+        {stages.map(
+          ([s, n]) =>
+            n > 0 && (
+              <span key={s} className="inline-flex items-center gap-1">
+                <span className={cn("size-1.5 rounded-full", barColor[caseStateTone[s]])} />
+                {n} {caseStateLabel[s].toLowerCase()}
+              </span>
+            ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SignOffRow({ r, onOpen }: { r: Requirement; onOpen: () => void }) {
+  const [action, setAction] = useState<RequirementAction | null>(null);
+  return (
+    <li className="flex items-center gap-2 px-2 py-1.5">
+      <button onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-0.5 text-left text-sm hover:underline">
+        <span className="size-4 shrink-0" />
+        <span className="truncate font-medium">{r.shortTitle}</span>
+      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button size="icon-sm" variant="ghost" aria-label="Send back" onClick={() => setAction("send_back")}>
+            <CornerUpLeft className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Send back</TooltipContent>
+      </Tooltip>
+      <Button size="xs" onClick={() => setAction("sign_off")}>
+        <Check className="size-3.5" /> Sign off
+      </Button>
+      <RequirementActionDialog r={r} action={action} onOpenChange={(o) => !o && setAction(null)} />
+    </li>
+  );
+}
+
+const resolutions = [
+  ["variant", "Market variant"],
+  ["one_market", "Prioritize one market"],
+  ["keep_both", "Keep both open"],
+] as const;
+
+function EscalationRow({ e, c }: { e: Referral; c?: Case }) {
+  const [open, setOpen] = useState(false);
+  const [resolution, setResolution] = useState<(typeof resolutions)[number][0]>("variant");
+  const decide = useApiMutation("decideReferral", { success: "Escalation resolved" });
+  return (
+    <li className="flex items-center gap-2 px-2 py-1.5">
+      <Link href={c ? `/cases/${c.id}` : "/cases"} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-0.5 text-sm hover:underline">
+        <Scale className="size-4 shrink-0 text-violet-500" />
+        <span className="truncate font-medium">{c?.shortTitle ?? e.caseId}</span>
+      </Link>
+      <Button size="xs" variant="outline" onClick={() => setOpen(true)}>
+        Decide
+      </Button>
+      <RationaleDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Resolve: ${c?.shortTitle ?? e.caseId}`}
+        description={c?.marketConflict?.note ?? e.note}
+        confirmLabel="Decide"
+        pending={decide.isPending}
+        onSubmit={async (rationale) => {
+          await decide.mutateAsync({ params: { id: e.id }, body: { decision: "resolve", resolution, rationale } });
+          setOpen(false);
+        }}
+      >
+        <div className="flex flex-wrap gap-2">
+          {resolutions.map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setResolution(v)}
+              className={cn("rounded-full border px-3 py-1 text-sm", resolution === v ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </RationaleDialog>
+    </li>
+  );
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "market": {
+      "type": "string",
+      "enum": [
+        "EU",
+        "US",
+        "CN",
+        "RoW",
+        "unknown"
+      ]
+    },
+    "powertrain": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "ICE",
+            "PHEV",
+            "BEV",
+            "unknown"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "verbatims": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    }
+  },
+  "required": [
+    "key",
+    "label",
+    "market",
+    "powertrain",
+    "verbatims"
+  ],
+  "additionalProperties": false
+}
