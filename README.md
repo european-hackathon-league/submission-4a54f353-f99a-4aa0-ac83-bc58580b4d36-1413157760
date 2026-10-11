@@ -199,7 +199,8 @@ BMW provided customer feedback for the 1, 5 and 7 Series (about 10,000 verbatims
 Built in one weekend at the TUM.ai hackathon by
 [Ghassen Zaara](https://github.com/ghassenzaara),
 [kechich](https://github.com/kechich),
-[Ahlem Trabelsi](https://github.com/ahlemtr) and
+[Ahlem Trabelsi](https://github.com/ahlemtr),
+[Yacine Dhouafli](https://github.com/yacine-dh) and
 [Amine Cheikhrouhou](https://github.com/AmineChr54).
 AI-assisted development sessions are recorded with [Entire](https://entire.io).
 
