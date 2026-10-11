@@ -109,7 +109,7 @@ export function CasesView() {
           </ToggleGroup>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn(activeFilters > 0 && "border-primary/60 text-primary")}>
+              <Button variant="outline" size="sm" className={cn(activeFilters > 0 && "border-foreground text-foreground")}>
                 <SlidersHorizontal className="size-3.5" /> Filters{activeFilters > 0 && ` · ${activeFilters}`}
               </Button>
             </PopoverTrigger>
@@ -139,7 +139,7 @@ export function CasesView() {
 function FilterSelect({ value, onChange, label, options }: { value: string; onChange: (v: string) => void; label: string; options: [string, string][] }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" className={cn("w-full", value !== ALL && "border-primary/60 text-primary")}>
+      <SelectTrigger size="sm" className={cn("w-full", value !== ALL && "border-foreground text-foreground")}>
         <SelectValue placeholder={label} />
       </SelectTrigger>
       <SelectContent>
@@ -175,7 +175,7 @@ function Board({ cases, scores, showObserved }: { cases: Case[]; scores: Map<str
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-4">
+      <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto px-6 py-5">
         {columns.map((state) => {
           const col = cases.filter((c) => c.state === state).sort((a, b) => (scores.get(b.id)?.score ?? 0) - (scores.get(a.id)?.score ?? 0));
           return <Column key={state} state={state} cases={col} scores={scores} />;
@@ -201,7 +201,7 @@ function Board({ cases, scores, showObserved }: { cases: Case[]; scores: Map<str
             ).map(([a, label, hint]) => (
               <button
                 key={a}
-                className="rounded-md border px-3 py-2 text-left hover:border-primary/60 hover:bg-muted/50"
+                className="rounded-lg border px-3 py-2 text-left transition-colors duration-150 hover:border-border-strong hover:bg-muted/60"
                 onClick={() => {
                   setPending({ c: decide!, action: a });
                   setDecide(null);
@@ -220,19 +220,19 @@ function Board({ cases, scores, showObserved }: { cases: Case[]; scores: Map<str
 
 function Column({ state, cases, scores }: { state: CaseState; cases: Case[]; scores: Map<string, { score: number; rank: number }> }) {
   const { setNodeRef, isOver } = useDroppable({ id: state });
-  const toneDot = { slate: "bg-slate-400", sky: "bg-sky-500", violet: "bg-violet-500", amber: "bg-amber-500", emerald: "bg-emerald-500" } as Record<string, string>;
+  const toneDot = { slate: "bg-tone-slate-dot", sky: "bg-tone-sky-dot", violet: "bg-tone-violet-dot", amber: "bg-tone-amber-dot", emerald: "bg-tone-emerald-dot" } as Record<string, string>;
   return (
-    <div ref={setNodeRef} className={cn("flex w-60 shrink-0 flex-col rounded-lg bg-muted/60 transition", isOver && "bg-primary/10 ring-2 ring-primary/40")}>
+    <div ref={setNodeRef} className={cn("flex w-60 shrink-0 flex-col rounded-xl border bg-recessed transition-colors duration-150", isOver && "border-border-strong bg-muted ring-1 ring-foreground/15")}>
       <div className="flex items-center gap-2 px-3 py-2.5">
-        <span className={cn("size-2 rounded-full", toneDot[caseStateTone[state]] ?? "bg-slate-400")} />
+        <span className={cn("size-2 rounded-full", toneDot[caseStateTone[state]] ?? "bg-tone-slate-dot")} />
         <span className="text-sm font-semibold">{caseStateLabel[state]}</span>
-        <span className="text-xs text-muted-foreground">{cases.length}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">{cases.length}</span>
       </div>
-      <div className="flex-1 space-y-2 overflow-y-auto px-2 pb-3">
+      <div className="flex-1 space-y-2 overflow-y-auto px-2 pb-2">
         {cases.map((c) => (
           <DraggableCard key={c.id} c={c} score={scores.get(c.id)?.score} rank={scores.get(c.id)?.rank} />
         ))}
-        {cases.length === 0 && <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">Drop a case here</div>}
+        {cases.length === 0 && <div className="rounded-lg border border-dashed border-border-strong p-4 text-center text-xs text-muted-foreground">Drop a case here</div>}
       </div>
     </div>
   );
@@ -279,11 +279,11 @@ function Ranked({
     }).length;
 
   return (
-    <div className="flex-1 space-y-3 p-4">
+    <div className="flex-1 space-y-3 px-6 py-5">
       <div className="flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className={cn(whatIf && "border-primary/60 text-primary")}>
+            <Button variant="outline" size="sm" className={cn(whatIf && "border-foreground text-foreground")}>
               <SlidersHorizontal className="size-3.5" /> Weights{whatIf && " · what-if"}
             </Button>
           </PopoverTrigger>
@@ -293,8 +293,8 @@ function Ranked({
         </Popover>
         {whatIf && <span className="text-xs text-muted-foreground">Arrows show how each case moved</span>}
       </div>
-      <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
-        <div className="grid grid-cols-[56px_1fr_160px_110px] gap-3 border-b bg-muted/40 px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase">
+      <div className="overflow-hidden rounded-xl border bg-card">
+        <div className="grid grid-cols-[56px_1fr_160px_110px] gap-3 border-b bg-recessed px-4 py-2 text-xs font-medium text-muted-foreground uppercase">
           <span>Rank</span>
           <span>Case</span>
           <span>Score</span>
@@ -309,17 +309,17 @@ function Ranked({
           const why = whatIf && baseWeights && delta !== 0 ? movedBecause(c.factors, baseWeights, whatIf, delta > 0) : null;
           const robust = topIn(c.id);
           return (
-            <Link key={c.id} href={`/cases/${c.id}`} className="grid grid-cols-[56px_1fr_160px_110px] items-center gap-3 border-b px-4 py-2.5 last:border-0 hover:bg-muted/40">
+            <Link key={c.id} href={`/cases/${c.id}`} className="grid grid-cols-[56px_1fr_160px_110px] items-center gap-3 border-b px-4 py-2.5 transition-colors duration-150 last:border-0 hover:bg-muted/60">
               <span className="flex items-center gap-1 font-mono text-sm font-semibold">
                 {r}
                 {delta > 0 && (
-                  <span className="flex items-center text-[11px] text-emerald-600">
+                  <span className="flex items-center text-xs text-positive">
                     <ArrowUp className="size-3" />
                     {delta}
                   </span>
                 )}
                 {delta < 0 && (
-                  <span className="flex items-center text-[11px] text-red-600">
+                  <span className="flex items-center text-xs text-negative">
                     <ArrowDown className="size-3" />
                     {-delta}
                   </span>
@@ -334,7 +334,7 @@ function Ranked({
                   <CaseStateDot state={c.state} />
                   {c.manualRank != null && <Pill t="violet">Manual rank</Pill>}
                 </span>
-                {why && <span className="block truncate text-[11px] text-primary">{why}</span>}
+                {why && <span className="block truncate text-xs text-muted-foreground">{why}</span>}
               </span>
               <span title={top.map(([f, v]) => `${factorLabel[f]} +${v.toFixed(2)}`).join(" · ")}>
                 <ScoreBar value={s.score} />
