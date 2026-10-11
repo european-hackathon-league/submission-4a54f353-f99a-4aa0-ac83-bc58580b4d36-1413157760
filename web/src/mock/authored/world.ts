@@ -530,32 +530,13 @@ export const plans: VehiclePlan[] = [
   },
 ];
 
-/** Alerts reference web signals by the seed's deterministic id: SIG-<caseId>-W<index>. */
+/**
+ * Alerts reference web signals by the seed's deterministic id: SIG-<caseId>-W<index>.
+ * Competitor facts raise alerts only through a ripple, on requirements with a target (mock/ripple.ts);
+ * low-trust facts (D, E) only reach the watch list as an FYI. What stays here is evidence that
+ * contradicts a case direction.
+ */
 export const alerts: Alert[] = [
-  {
-    id: "AL-0001",
-    ownerId: "u-lena",
-    caseId: "CASE-G60-0003",
-    requirementId: null,
-    verdict: "raises_the_bar",
-    title: "Mercedes CLA: ~790 km WLTP and 320 kW raise the bar for the i5 successor",
-    detail: "The competitor agent found a trust-B competitor fact that beats today's i5 (WLTP 513–627 km, 205 kW). Your range options in CASE-G60-0003 may be outdated.",
-    signalIds: ["SIG-CASE-G60-0003-W0"],
-    status: "open",
-    createdAt: "2026-10-10T21:04:00Z",
-  },
-  {
-    id: "AL-0002",
-    ownerId: "u-wei",
-    caseId: "CASE-G60-CN-0003",
-    requirementId: "REQ-G60-CN-0003",
-    verdict: "raises_the_bar",
-    title: "Watch list: NIO announces ~850 km CLTC for the next ET7",
-    detail: "An announcement (trust E, not on sale) is above your 750 km CLTC draft. Kept on the watch list: no change is proposed until an on-sale fact confirms it.",
-    signalIds: ["SIG-CASE-G60-CN-0003-W1"],
-    status: "open",
-    createdAt: "2026-10-10T22:30:00Z",
-  },
   {
     id: "AL-0003",
     ownerId: "u-lena",
@@ -580,7 +561,6 @@ export const comments: Comment[] = [
 ];
 
 export const notifications: Notification[] = [
-  { id: "N-0001", userId: "u-lena", kind: "alert", title: "Competitor raises the bar", body: "Mercedes CLA ~790 km WLTP vs your range case", link: "/cases/CASE-G60-0003", actorId: "agent:monitor", read: false, createdAt: "2026-10-10T21:04:00Z" },
   { id: "N-0002", userId: "u-lena", kind: "mention", title: "Jonas mentioned you", body: "Same pattern in F70 and G70. Let's make this one Baukasten requirement…", link: "/cases/CASE-G60-0001", actorId: "u-jonas", read: false, createdAt: "2026-10-09T15:20:00Z" },
   { id: "N-0003", userId: "u-lena", kind: "question_answered", title: "Engineering answered", body: "8 buttons fit the centre stack (CASE-G60-0001)", link: "/cases/CASE-G60-0001", actorId: "u-lena", read: true, createdAt: "2026-10-08T10:00:00Z" },
   { id: "N-0004", userId: "u-lena", kind: "new_signals", title: "4 new signals", body: "Luggage case gained 4 signals overnight", link: "/cases/CASE-G60-0011", actorId: "agent:clusterer", read: false, createdAt: "2026-10-11T05:00:00Z" },

@@ -583,7 +583,7 @@ export const handlers: Handlers = {
         status: added.length ? ("ok" as const) : ("skipped" as const),
         detail: `${added.length} passed (quote in stored snapshot, dated); ${facts.filter((s) => s.trust === "D" || s.trust === "E").length} low-trust competitor facts → watch list only`,
       },
-      { name: "Match metrics", status: facts.length ? ("ok" as const) : ("skipped" as const), detail: facts.length ? `${facts.length} competitor facts with a metric matched against ${ripples.reduce((n, r) => n + r.items.length, 0)} targets and cases` : "No competitor fact with a metric" },
+      { name: "Match metrics", status: facts.length ? ("ok" as const) : ("skipped" as const), detail: facts.length ? `${facts.length} competitor facts with a metric matched against ${ripples.reduce((n, r) => n + r.items.length, 0)} requirement targets` : "No competitor fact with a metric" },
       {
         name: "Assess impact",
         status: ripples.length ? ("ok" as const) : ("skipped" as const),

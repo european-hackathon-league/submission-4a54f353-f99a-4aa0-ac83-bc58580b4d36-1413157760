@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Activity, CheckCircle2, Inbox, Loader2, Plus, RefreshCw, ShieldAlert, Waves, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -183,7 +184,7 @@ function RunSteps({ res, onOpen }: { res: RefreshResponse; onOpen: (rippleId: st
   );
 }
 
-function RunsPopover({ runs }: { runs: { id: string; agent: keyof typeof agentLabel; status: string; newSignals: number; rejected: number; llmCostUsd: number; startedAt: string }[] }) {
+function RunsPopover({ runs }: { runs: { id: string; agent: keyof typeof agentLabel; status: string; newSignals: number; rejected: number; llmCostUsd: number; startedAt: string; rippleId?: string | null }[] }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -199,6 +200,11 @@ function RunsPopover({ runs }: { runs: { id: string; agent: keyof typeof agentLa
               <span className="min-w-0 flex-1 truncate">
                 <b className="font-medium">{agentLabel[r.agent]}</b> · {r.newSignals} new · ${r.llmCostUsd.toFixed(2)}
               </span>
+              {r.rippleId && (
+                <Link href={`/ripple/${r.rippleId}`} className="inline-flex shrink-0 items-center gap-1 font-medium text-foreground underline decoration-border-strong underline-offset-2 hover:decoration-foreground">
+                  <Waves className="size-3.5 text-ember" /> View ripple
+                </Link>
+              )}
               <span className="text-muted-foreground">{fromNow(r.startedAt)}</span>
             </li>
           ))}

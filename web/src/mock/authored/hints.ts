@@ -31,14 +31,6 @@ export const solutionHints: Record<string, SolutionHint> = {
   "CASE-G60-0006": { text: "a compact spare wheel as an option", because: "owners complain about being stranded with only a sealant kit" },
 };
 
-/**
- * Today's car on confirmed cases that have no requirement yet. The competitor ripple compares a new
- * competitor fact with it, so a case without a target still shows whether it falls further behind.
- */
-export const todayValues: Record<string, { key: "ev_range"; value: number; unit: string; cycle: "WLTP"; text: string }> = {
-  "CASE-G70-0006": { key: "ev_range", value: 625, unit: "km", cycle: "WLTP", text: "Today: i7 xDrive60 up to ~625 km WLTP" },
-};
-
 /** Segment of each line and of the competitors the monitor knows; a compact car is not compared with a business saloon. */
 export const segments = {
   series: { G60: "business", G70: "luxury", F70: "compact" } as Record<string, string>,
