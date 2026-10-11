@@ -35,10 +35,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const alerts = useApi("alerts", {}, { enabled: ready });
   const notifications = useApi("notifications", {}, { enabled: ready });
   const user = me.data?.user;
-  // First login of a vehicle PM without a confirmed brief: onboarding (layer 1) before anything else.
+  // First login of a vehicle PM without a confirmed brief: onboarding (layer 1) instead of the desk.
+  // Deep links (an alert, a ripple, a requirement) still open directly.
   const onboarding = me.data?.needsOnboarding;
   useEffect(() => {
-    if (onboarding && !pathname.startsWith("/brief")) router.replace("/brief?onboarding=1");
+    if (onboarding && pathname === "/") router.replace("/brief?onboarding=1");
   }, [onboarding, pathname, router]);
 
   const pendingIn = (referrals.data ?? []).filter((r) => r.toUserId === user?.id && r.status === "pending").length;

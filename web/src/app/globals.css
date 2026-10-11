@@ -158,3 +158,14 @@
 .prose-chat ul { @apply list-disc; }
 .prose-chat ol { @apply list-decimal; }
 .prose-chat strong { @apply font-semibold; }
+
+/* Competitor ripple: affected cells pulse outward from the source, delayed by their distance (--ripple-delay). */
+@keyframes ripple-pulse {
+  0% { box-shadow: 0 0 0 0 var(--ripple-color, rgb(245 158 11 / 0.55)); transform: scale(0.96); opacity: 0.4; }
+  35% { transform: scale(1.02); opacity: 1; }
+  100% { box-shadow: 0 0 0 14px transparent; transform: scale(1); opacity: 1; }
+}
+.ripple-cell { animation: ripple-pulse 900ms ease-out both; animation-delay: var(--ripple-delay, 0ms); }
+@media (prefers-reduced-motion: reduce) {
+  .ripple-cell { animation: none; }
+}

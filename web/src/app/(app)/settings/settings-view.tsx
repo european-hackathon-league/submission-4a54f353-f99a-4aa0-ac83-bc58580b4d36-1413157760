@@ -8,6 +8,7 @@ import { fmtDate } from "@/lib/format";
 import { PageHeader, PageSkeleton, Section } from "@/components/common/page";
 import { Pill } from "@/components/common/badges";
 import { useUsers } from "@/components/common/people";
+import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,10 +122,70 @@ export function SettingsView() {
           </div>
         </Section>
 
+        <Section title="Competitor monitor">
+          <MonitorEditor />
+        </Section>
+
         <Section title={`BMW brand profile · v${brand.data.version}`} className="xl:col-span-2">
           <BrandEditor profile={brand.data} canEdit={isHead} updatedBy={name(brand.data.updatedBy)} />
         </Section>
       </div>
+    </div>
+  );
+}
+
+/** Alarm-fatigue rules of the competitor ripple. Every change is logged with a reason. */
+function MonitorEditor() {
+  const settings = useApi("monitorSettings");
+  const conversions = useApi("conversions");
+  const { name } = useUsers();
+  const [draft, setDraft] = useState<{ mute: string; par: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const save = useApiMutation("saveMonitorSettings", { success: "Monitor settings saved" });
+  if (!settings.data) return null;
+  const s = settings.data;
+  const v = draft ?? { mute: String(s.muteThresholdPct), par: String(s.atParTolerancePct) };
+  const changed = Number(v.mute) !== s.muteThresholdPct || Number(v.par) !== s.atParTolerancePct;
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="mute">Mute threshold (gap points)</Label>
+          <Input id="mute" type="number" min={0} max={50} step={0.5} value={v.mute} onChange={(e) => setDraft({ ...v, mute: e.target.value })} />
+          <p className="text-xs text-muted-foreground">After “Keep, with reason”, repeats stay quiet until the gap grows by more than this.</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="par">At-par tolerance (±%)</Label>
+          <Input id="par" type="number" min={0} max={20} step={0.5} value={v.par} onChange={(e) => setDraft({ ...v, par: e.target.value })} />
+          <p className="text-xs text-muted-foreground">Within this gap after conversion the verdict is “at par”.</p>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Low-trust facts (D, E) only go on the watch list. Last changed {fmtDate(s.updatedAt)} by {name(s.updatedBy)}.
+      </p>
+      <ul className="space-y-1 text-xs text-muted-foreground">
+        {(conversions.data ?? []).map((c) => (
+          <li key={c.id}>
+            {c.from}→{c.to}: factor <span className="font-mono text-foreground">{c.factor}</span> (range {c.range[0]}–{c.range[1]}){c.isAssumption && " · assumption"}
+          </li>
+        ))}
+      </ul>
+      <Button size="sm" disabled={!changed} onClick={() => setSaving(true)}>
+        Save
+      </Button>
+      <RationaleDialog
+        open={saving}
+        onOpenChange={setSaving}
+        title="Change the monitor settings"
+        description={`Mute threshold ${s.muteThresholdPct} → ${v.mute}; at-par tolerance ${s.atParTolerancePct} → ${v.par}. Applies to the next agent run.`}
+        confirmLabel="Save"
+        pending={save.isPending}
+        onSubmit={async (rationale) => {
+          await save.mutateAsync({ body: { muteThresholdPct: Number(v.mute), atParTolerancePct: Number(v.par), rationale } });
+          setDraft(null);
+          setSaving(false);
+        }}
+      />
     </div>
   );
 }

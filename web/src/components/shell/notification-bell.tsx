@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, AtSign, Bell, CheckCircle2, CornerUpLeft, Forward, Megaphone, Radar, Scale } from "lucide-react";
+import { AlertTriangle, AtSign, Bell, CheckCircle2, CornerUpLeft, Forward, Info, Megaphone, Radar, Scale } from "lucide-react";
 import type { NotificationKind } from "@/contracts";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { fromNow } from "@/lib/format";
@@ -18,6 +18,7 @@ export const notificationIcon: Record<NotificationKind, typeof Bell> = {
   sent_back: CornerUpLeft,
   new_signals: Radar,
   escalation: Scale,
+  fyi: Info,
 };
 
 export function NotificationBell() {

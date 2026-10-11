@@ -22,6 +22,7 @@ import {
 } from "@/contracts";
 import { api } from "@/lib/api/client";
 import { useApi } from "@/lib/api/hooks";
+import { movedBecause } from "@/lib/rank-reasons";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/common/page";
 import { CaseStateDot, Pill, ScoreBar, caseStateTone } from "@/components/common/badges";
@@ -305,7 +306,7 @@ function Ranked({
           const before = savedLocal.get(c.id);
           const delta = whatIf && before ? before - r : 0;
           const top = (Object.entries(s.contributions) as [FactorKey, number][]).sort((a, b) => b[1] - a[1]).slice(0, 2);
-          const why = whatIf && baseWeights && delta !== 0 ? movedBecause(c, baseWeights, whatIf, delta > 0) : null;
+          const why = whatIf && baseWeights && delta !== 0 ? movedBecause(c.factors, baseWeights, whatIf, delta > 0) : null;
           const robust = topIn(c.id);
           return (
             <Link key={c.id} href={`/cases/${c.id}`} className="grid grid-cols-[56px_1fr_160px_110px] items-center gap-3 border-b px-4 py-2.5 last:border-0 hover:bg-muted/40">
@@ -356,15 +357,4 @@ function Ranked({
       </div>
     </div>
   );
-}
-
-function movedBecause(c: Case, base: Record<FactorKey, number>, next: Record<FactorKey, number>, up: boolean) {
-  const changes = (Object.keys(next) as FactorKey[])
-    .map((f) => ({ f, d: (next[f] - base[f]) * c.factors[f] }))
-    .filter((x) => Math.abs(x.d) > 0.001)
-    .sort((a, b) => (up ? b.d - a.d : a.d - b.d));
-  const top = changes[0];
-  if (!top) return null;
-  const dir = next[top.f] > base[top.f] ? "↑" : "↓";
-  return `${up ? "Moved up" : "Moved down"} because ${factorLabel[top.f]} weight ${dir} and this case scores ${c.factors[top.f].toFixed(2)} on it`;
 }

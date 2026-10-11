@@ -14,7 +14,7 @@ The clickable demo of our BMW hackathon tool: **Signals → Cases → Requiremen
 | **Inbox** | Referrals to accept or decline, agent flags, all notifications |
 | **Cases** | Kanban (drag = state change with a reason). A *Ranked* toggle shows the score order; weights sit behind one button |
 | **Vehicle plan** | All requirements of a series as a list grouped by car area, with status filter chips, plan action and release; today's equipment folds per area; Codebeamer export |
-| **Signals** | One Sankey: sources → car areas → cases. Click a node to see its signals and start a case from loose ones |
+| **Signals** | One Sankey: sources → car areas → cases. Click a node to see its signals and start a case from loose ones. *Refresh* plays the agent run step by step (fetch → classify → gate → match metrics → assess impact) |
 | **Innovation pool** | Ideas parked for a future series; vote or pull into your series |
 
 Three things borrowed from the market (see the competitor research):
@@ -36,6 +36,22 @@ The drafter combines five layers; [docs/05-solution/ux-and-collaboration.md](../
 | 4 Engineering / finance feedback | *Engineering feedback* on a requirement → proposal for the next version | per round |
 
 Every part of a drafted requirement shows where it came from (evidence with signal IDs, your context with the layer, or assumption). The **Versions** tab keeps the history on the same ID; a brief change shows the affected requirements and creates a version proposal per owner; a regional PM's variant shows a side-by-side "two briefs" comparison.
+
+### Trace replay and the competitor ripple (no new nav item)
+- **Trace replay** (*Replay* in the trace strip of every requirement, side panel and full page): a full-screen overlay plays the requirement's life in about 15 s. It opens on the requirement card, rewinds in 1 s to the first quote, then plays forward:
+  1. voices: real BMW quotes with market and source; a sample of 12, all counted
+  2. signals: topic × type nodes, each with its BMW label or model and prompt version
+  3. case and score: the score built factor by factor under the weight profile active on the decision date, next to today's
+  4. decisions: agent steps dashed with a bot icon, people solid with an avatar and their quoted reason
+  5. planned: the vehicle-plan slot
+
+  It ends in **Chain intact** with four checks recomputed on every call: every quote found in its source record, every record's SHA-256 matching, no gaps in the audit sequence, a rationale on every status change. A failed check shows in red with its reason. Esc closes, Space pauses, ←/→ step, 1×/2×, and a scrubber shows version, score and evidence as of any date. *Export dossier* downloads Markdown with the backend's `audit_chain.render` sections plus scores and integrity. Under `prefers-reduced-motion` the beats step without sweeps. The static Sankey with highlights is the base; the motion is layered on top.
+- **Competitor ripple** (`/ripple/[id]`, opened from the Refresh toast, the agent flag on My desk, notifications and the alert strip on an affected requirement): a competitor fact with a metric is matched on `targetSpec.key` against every target in the portfolio (all series, market variants, Baukasten) and every confirmed case on the topic. Each comparison converts into that target's cycle and market and gets a verdict: behind, at par (±3%), still ahead or not comparable, e.g. a different segment.
+  - The band shows the conversion ("800 km CLTC ≈ 680 km WLTP, factor 0.85, range 0.80–0.90, assumption"); its factor is a live what-if, and only the head saves a new team value, with a reason.
+  - The grid is series × car area; cells pulse from the source row, are colored by the worst target verdict, outlined for your items and show colleagues' avatars.
+  - The impact drawer shows ours vs. the normalized competitor value, rank before → after with "moved because", and who was notified (owner and co-owners alert, watchers FYI, the head when a signed-off target is affected).
+  - Row actions are proposals or audited decisions only: *Raise target* (a version proposal; a signed-off requirement drops back to PM-approved), *Keep, with reason* (mutes repeats until the gap grows by more than the threshold in Settings; the reason goes into the monitor's context), *Create market variant* (a regional PM's proposal), *Reopen case*.
+  - Low-trust facts (D, E) only go on the watch list. Every decision appears in that requirement's replay.
 
 ### The brain seam (for the AI track)
 Drafting goes through one interface, `src/mock/ai/drafter.ts`:
@@ -100,13 +116,14 @@ web/scripts/               seed, contract export, contract test
 - Case score = weighted mean of 8 factors (0..1), with no cost. Requirement rank = case score × cost multiplier (S/M/L). Evidence level is separate from the score.
 
 ### Contract additions vs. `data-model.mmd` (to sync with Ghassen)
-`User` · `Workspace.projectType` · case and requirement `shortTitle` (2–4 words for lists; the title stays the full sentence) · signal `topicId` + `aspectGroup` (fixed taxonomy, see `../taxonomy/`) and `GET /taxonomy` · case `highlights`, `topicId`, `stances` (one `CaseStance` per PM, `PUT /cases/:id/stance`; replaces `pmContext`) · `SeriesBrief` (shared + regional overlay with per-field source and reason; `/briefs`, `/briefs/mine`, `PUT /briefs/:id` returns the impact, `/briefs/:id/impact`, `/briefs/:id/extract`, `/brief-conflicts`, `POST /briefs/:id/conflicts/:field`) · shape questions (`GET /cases/:id/shape-questions`, `POST /cases/:id/shape-questions/ask` posts them to the chat; `POST /cases/:id/requirements/generate` takes the answers) · requirement `descriptionParts`, `provenance[]` (path → source, layer, ref, signal IDs), `version`, `shapeAnswers`, `briefId`, `drafter` · `RequirementVersion` snapshots · `FeedbackEntry` (`POST /requirements/:id/feedback` → new-version proposal) · proposal kinds `brief_field` and `new_version` · case `outcome` (confirmed / referred / innovation pool / parked / merged / rejected) plus the states `investigating`, `awaiting_answers`, `ready` · case taxonomy `carArea` / `type` / `changeDepth` and `relatedSeries` · `context` (preset context + PM inputs) · `OpenQuestion` · `MeetingNote` · `Proposal` · `Referral` (referral or escalation) · `InnovationMeta` · `VehiclePlan` / `PlannedFeature` · `Comment` · `Notification` · `Alert` · requirement statuses `pm_approved`, `signed_off`, `planned`.
+`User` · `Workspace.projectType` · case and requirement `shortTitle` (2–4 words for lists; the title stays the full sentence) · signal `topicId` + `aspectGroup` (fixed taxonomy, see `../taxonomy/`) and `GET /taxonomy` · case `highlights`, `topicId`, `stances` (one `CaseStance` per PM, `PUT /cases/:id/stance`; replaces `pmContext`) · `SeriesBrief` (shared + regional overlay with per-field source and reason; `/briefs`, `/briefs/mine`, `PUT /briefs/:id` returns the impact, `/briefs/:id/impact`, `/briefs/:id/extract`, `/brief-conflicts`, `POST /briefs/:id/conflicts/:field`) · shape questions (`GET /cases/:id/shape-questions`, `POST /cases/:id/shape-questions/ask` posts them to the chat; `POST /cases/:id/requirements/generate` takes the answers) · requirement `descriptionParts`, `provenance[]` (path → source, layer, ref, signal IDs), `version`, `shapeAnswers`, `briefId`, `drafter` · `RequirementVersion` snapshots · `FeedbackEntry` (`POST /requirements/:id/feedback` → new-version proposal) · proposal kinds `brief_field` and `new_version` · metric `targetSpec` (`key` ev_range / dc_10_80_min, comparator, value, unit, cycle WLTP / CLTC / EPA / none, market) · signal `classification` (BMW label, or model + prompt version) · `SourceRecord` (raw text + sha256 per `recordRef`) · `AuditEvent.scoreSnapshot` (factors, weights, profile name and version, score, rank at confirm, approve, sign-off, rank change, re-score) · `GET /requirements/:id/replay` (`ReplayResponse` with integrity checks) · `CycleConversion` (`GET /conversions`, `PUT /conversions/:id` head only) · `Ripple` / `RippleItem` (`GET /ripples`, `GET /ripples/:id`, `POST /ripples/:id/items/:itemId/decision`) · `MonitorSettings` (`GET`/`PUT /settings/monitor`) · `Alert.rippleId` / `itemVerdict` / `comparison` · `AgentRun.steps` / `rippleId` · shared comparison rule `src/contracts/compare.ts` · case `outcome` (confirmed / referred / innovation pool / parked / merged / rejected) plus the states `investigating`, `awaiting_answers`, `ready` · case taxonomy `carArea` / `type` / `changeDepth` and `relatedSeries` · `context` (preset context + PM inputs) · `OpenQuestion` · `MeetingNote` · `Proposal` · `Referral` (referral or escalation) · `InnovationMeta` · `VehiclePlan` / `PlannedFeature` · `Comment` · `Notification` · `Alert` · requirement statuses `pm_approved`, `signed_off`, `planned`.
 
 ## Synthetic data, honestly labelled
 
 - **Real** (no tag): 404 BMW verbatims selected by topic and text from `feedback_verbatims.csv` (e.g. `G60-1430`, `G60-0878`), study rows from `study_*_2025.csv`, and 2030 sales shares. Per-market counts are computed from them.
 - **Synthetic** (tagged): people, web signals and competitor facts (their URLs point to the source site, not a real post), chats, decisions, requirements and the audit history. The story follows `docs/02-data/insights.md`.
 - The case pages and the desk say so: there are no Chinese verbatims, and 5 and 7 Series feedback is 90 to 95% US.
+- **Assumptions in the ripple:** the CLTC↔WLTP (0.85, range 0.80–0.90) and EPA↔WLTP (1.12, range 1.08–1.18) factors are team rules of thumb, not published conversions. The 1 Series BEV requirement is itself an assumption (the F70 data is ICE only). G68 (5 Series China) is the China row of the 5 Series, not a separate series. Web source records are synthetic snapshots; their hashes prove they were not edited after capture, not that the page existed.
 
 ## Personas
 
@@ -118,6 +135,16 @@ web/scripts/               seed, contract export, contract test
 | Katrin Maier | Head of product line | Regional brief differences, sign-off and escalations from her desk, brand profile |
 | Sofia Rossi / Daniel Okafor | PM 1 Series / PM 7 Series | Light series for referrals and the portfolio |
 
+## Demo script: world changed + trace replay (about 60 seconds, after *Reset demo data*)
+
+1. **Lena → Signals → Refresh** (once): the agent run plays its five steps; the toast says *Competitor fact: Xiaomi SU7 800 km CLTC affects 5 items in 3 series* → **View ripple**. The Zeekr 900 km owner post (trust D) only lands on the watch list.
+2. **Ripple:** China is red (REQ-G60-CN-0003, 750 km CLTC, −6.2%), the 7 Series green (the battery Baukasten at 750 km WLTP, +10%), the 5 Series amber (REQ-G60-0010, 690 vs. ≈ 680 km WLTP, +1.5%) and the 1 Series grey (compact segment, not judged). CASE-G70-0006 (no target yet) moved up 17 → 13 "because Competitor gap 0.40 → 0.70".
+3. **Drag the factor to 0.90:** "800 km CLTC ≈ 720 km WLTP", and the 5 Series cell turns red. The verdict hinges on an assumption, and the screen says so. *Team value 0.85* resets it.
+4. **Impact list → REQ-G60-0010 → Keep, with reason** ("At par in WLTP; we win on 10–80% charging time"). Repeats stay muted until the gap grows by more than 3 points.
+5. **Wei → the same row → Create market variant** (≥ 840 km CLTC): a proposal on his REQ-G60-CN-0003, not an edit.
+6. **Katrin → notifications:** "Signed-off REQ-G60-0010 is at par … any change needs a new sign-off"; My desk shows one agent-flag row for the ripple.
+7. **REQ-G60-0010 → Replay:** the card, rewind, voices (17 customers), signals (BMW labels), score 0.614 on 12 Sep under *Balanced v1*, next to 0.630 today. Decisions end with the competitor alert, Lena's kept target and Wei's variant, then the plan slot, then **Chain intact** and *Export dossier*.
+
 ## Demo script: context layers (about 5 minutes, after *Reset demo data*)
 
 1. **Lena → persona menu → My series brief:** eight answers, most pre-filled (*from data*, *from the brand profile*). The thesis names the A6 e-tron.
@@ -126,7 +153,7 @@ web/scripts/               seed, contract export, contract test
 4. **Engineering feedback:** "800 km needs the next-gen cells; 700 km is the max for the current pack" → *Compromise* + reason → a v2 proposal with the diff. Accept: **Versions** shows v1 → v2 on the same ID.
 5. **My series brief → Cost envelope → High, ≤ +1%** → *Save*: the dialog lists the affected requirement first; saving creates a v3 proposal on it instead of editing it.
 6. **Switch to Wei:** he lands on onboarding. *Create my regional brief* (China pre-filled at 100%) → *Paste your strategy doc → Use demo doc → Propose brief values*: six field proposals with quotes; accept them → *Confirm*.
-7. **Wei → CASE-G60-0003 → Draft my regional variant:** different questions (China variant, Mercedes CLA, beat), and the draft is *CLTC range ≥ 920 km (China)*, a CN variant of Lena's requirement with the "two briefs" comparison.
+7. **Wei → CASE-G60-0003 → Draft my regional variant:** different questions (China variant, Mercedes CLA, beat), and the draft is *CLTC range ≥ 980 km (China)* (the CLA's 792 km WLTP converted with the 0.85 team assumption, then beaten), a CN variant of Lena's requirement with the "two briefs" comparison.
 8. **Katrin, My desk → Review → 5 Series brief:** Wei differs on seven fields; decide each as regional variant or align, with one rationale.
 
 ## Demo script: the rest (about 6 minutes)

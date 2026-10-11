@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AlertTriangle, AtSign, Check, CheckCircle2, CircleDot, ClipboardCheck, CornerUpLeft, Forward, GitCompare, KanbanSquare, MessageSquareReply, Radar, Scale } from "lucide-react";
+import { AlertTriangle, AtSign, Check, CheckCircle2, CircleDot, ClipboardCheck, CornerUpLeft, Forward, GitCompare, KanbanSquare, MessageSquareReply, Radar, Scale, Waves } from "lucide-react";
 import { CaseState as CaseStates, addresseeLabel, briefFieldLabel, caseStateLabel, seriesShort, type Case, type Referral, type Requirement, type RequirementAction, type ResponseOf } from "@/contracts";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { showBriefValue } from "@/lib/brief";
@@ -43,9 +43,28 @@ export function DeskView() {
   const rank = (id: string) => scores.cases.get(id)?.rank ?? 999;
   const first = (n?: string) => n?.split(" ")[0] ?? "";
 
+  const openAlerts = alerts.filter((a) => a.status === "open" && (isHead || a.ownerId === user.id));
+  // A competitor ripple is one row per fact (it may touch many items), opening the ripple screen.
+  const rippleRows = Object.values(Object.groupBy(openAlerts.filter((a) => a.rippleId), (a) => a.rippleId!)).map((xs) => {
+    const a = xs![0];
+    const items = new Set(xs!.map((x) => x.requirementId ?? x.caseId));
+    const verdicts = xs!.map((x) => x.itemVerdict);
+    const behind = verdicts.filter((v) => v === "behind").length;
+    return (
+      <Row
+        key={a.rippleId}
+        icon={<Waves className="text-amber-500" />}
+        label={a.title.split(":")[0]}
+        hint={`${items.size} of ${isHead ? "the portfolio's" : "your"} items: ${[...items].join(", ")}`}
+        right={<span className="text-xs text-amber-700 dark:text-amber-400">{behind ? `${behind} behind` : "At par"}</span>}
+        href={`/ripple/${a.rippleId}`}
+      />
+    );
+  });
   const flags = [
-    ...alerts
-      .filter((a) => a.status === "open" && (isHead || a.ownerId === user.id))
+    ...rippleRows,
+    ...openAlerts
+      .filter((a) => !a.rippleId)
       .map((a) => (
         <Row
           key={a.id}

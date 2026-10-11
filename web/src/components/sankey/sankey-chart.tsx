@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ClipboardList, FileText, Globe, MessageSquareText, MessagesSquare, Newspaper, PlaySquare, Rss, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sayLabel, type SankeyGraph, type SankeyNode, type SayType, type Tone } from "@/lib/sankey";
@@ -139,6 +139,9 @@ export function SankeyChart({
   selectedId,
   onSelect,
   className,
+  reveal = 1,
+  revealMs = 0,
+  highlight,
 }: {
   graph: SankeyGraph;
   /** Big number shown in the hero node (e.g. distinct customers). */
@@ -147,8 +150,15 @@ export function SankeyChart({
   selectedId?: string | null;
   onSelect?: (n: SankeyNode) => void;
   className?: string;
+  /** Trace replay: share of the width shown, left to right (0..1). Nodes and bands right of it are hidden. */
+  reveal?: number;
+  /** Transition time for reveal changes; 0 = jump (reduced motion, static fallback). */
+  revealMs?: number;
+  /** Trace replay: node ids to emphasize in the current beat. */
+  highlight?: string[];
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const clipId = `reveal-${useId().replace(/:/g, "")}`;
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<string | null>(null);
 
@@ -176,6 +186,12 @@ export function SankeyChart({
             </div>
           ))}
           <svg className="absolute inset-0 overflow-visible" width={width} height={L.height} aria-hidden>
+            <defs>
+              <clipPath id={clipId}>
+                <rect x={0} y={0} height={L.height} style={{ width: Math.max(0, reveal) * width, transition: `width ${revealMs}ms ease-in-out` }} />
+              </clipPath>
+            </defs>
+            <g clipPath={reveal < 1 || revealMs ? `url(#${clipId})` : undefined}>
             {L.links.map((l) => {
               const s = L.placed.get(l.source)!;
               const t = L.placed.get(l.target)!;
@@ -189,14 +205,17 @@ export function SankeyChart({
                 />
               );
             })}
+            </g>
           </svg>
           {[...L.placed.values()].map((n) => (
             <NodeCard
               key={n.id}
               n={n}
               heroValue={heroValue}
-              selected={selectedId === n.id}
-              dimmed={!!focus && focus !== n.id && !L.links.some((l) => (l.source === focus && l.target === n.id) || (l.target === focus && l.source === n.id))}
+              selected={selectedId === n.id || !!highlight?.includes(n.id)}
+              dimmed={(!!focus && focus !== n.id && !L.links.some((l) => (l.source === focus && l.target === n.id) || (l.target === focus && l.source === n.id))) || (!!highlight?.length && !highlight.includes(n.id))}
+              hidden={n.x + n.w * 0.5 > reveal * width + 1}
+              revealMs={revealMs}
               onHover={setHover}
               onSelect={onSelect}
             />
@@ -212,6 +231,8 @@ function NodeCard({
   heroValue,
   selected,
   dimmed,
+  hidden = false,
+  revealMs = 0,
   onHover,
   onSelect,
 }: {
@@ -219,13 +240,26 @@ function NodeCard({
   heroValue?: number;
   selected: boolean;
   dimmed: boolean;
+  hidden?: boolean;
+  revealMs?: number;
   onHover: (id: string | null) => void;
   onSelect?: (n: SankeyNode) => void;
 }) {
   const Icon = sourceIcon[n.id];
   const common = {
     title: n.sub && !n.say ? `${n.label} · ${n.sub}` : n.label,
-    style: { left: n.x, top: n.y, width: n.w, height: n.h },
+    style: {
+      left: n.x,
+      top: n.y,
+      width: n.w,
+      height: n.h,
+      opacity: hidden ? 0 : undefined,
+      transform: hidden ? "translateX(-12px)" : undefined,
+      transition: revealMs ? `opacity ${Math.round(revealMs * 0.6)}ms ease-out, transform ${Math.round(revealMs * 0.6)}ms ease-out` : undefined,
+      pointerEvents: hidden ? ("none" as const) : undefined,
+    },
+    "aria-hidden": hidden || undefined,
+    tabIndex: hidden ? -1 : undefined,
     onMouseEnter: () => onHover(n.id),
     onMouseLeave: () => onHover(null),
     onFocus: () => onHover(n.id),

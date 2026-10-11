@@ -30,6 +30,10 @@ import type {
   SignalKind,
   SourceType,
   TargetCustomer,
+  ImpactVerdict,
+  PortfolioRow,
+  RippleDecisionKind,
+  ClassificationMethod,
 } from "./enums";
 
 /** Display labels for contract enums. UI-only; the API exchanges the keys. */
@@ -250,4 +254,31 @@ export const horizonLabel: Record<InnovationHorizon, string> = {
   next_gen: "Next generation",
   gen_after: "Generation after",
   new_product: "New product",
+};
+
+export const verdictLabel: Record<ImpactVerdict, string> = {
+  behind: "Behind",
+  at_par: "At par",
+  still_ahead: "Still ahead",
+  not_comparable: "Not comparable",
+};
+
+export const portfolioRowLabel: Record<PortfolioRow, string> = {
+  G60: "5 Series (G60)",
+  G60_CN: "5 Series China (G68)",
+  G70: "7 Series (G70)",
+  F70: "1 Series (F70)",
+};
+
+export const rippleDecisionLabel: Record<RippleDecisionKind, string> = {
+  raise_target: "Raise target",
+  keep: "Keep, with reason",
+  market_variant: "Create market variant",
+  reopen_case: "Reopen case",
+};
+
+export const classificationLabel: Record<ClassificationMethod, string> = {
+  bmw_label: "BMW label (VFC lookup)",
+  llm: "Model",
+  manual: "Set by a person",
 };

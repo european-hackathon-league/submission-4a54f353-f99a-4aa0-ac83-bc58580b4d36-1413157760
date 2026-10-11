@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ClipboardCopy, MessageSquareQuote, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, ClipboardCopy, MessageSquareQuote, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   CostSize as CostSizes,
@@ -24,6 +24,7 @@ import { useApiMutation } from "@/lib/api/hooks";
 import { EvidenceBadge, Pill, RegionChip, ReleaseChip } from "@/components/common/badges";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { ProvChip, ProvenanceLegend, ProvText, provenanceMap } from "@/components/requirements/provenance";
+import { ReplayButton } from "@/components/replay/replay-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,7 +52,28 @@ export function TraceChain({ b }: { b: RequirementBundle }) {
   const bmw = b.signals.filter((s) => s.agent === "bmw_data").length;
   const web = b.signals.length - bmw;
   const step = "flex min-w-0 flex-1 flex-col rounded-md border bg-card px-3 py-2";
+  const ripples = b.alerts.filter((a) => a.rippleId && a.status === "open");
   return (
+    <div className="space-y-2">
+      {ripples.map((a) => (
+        <Link
+          key={a.id}
+          href={`/ripple/${a.rippleId}`}
+          className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs hover:border-amber-500 dark:border-amber-800 dark:bg-amber-950/40"
+        >
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+          <span className="min-w-0 flex-1">
+            <span className="font-medium">{a.title}</span>
+            {a.comparison && (
+              <span className="block text-muted-foreground">
+                Ours {a.comparison.ours} vs {a.comparison.theirs} ≈ {a.comparison.normalized}
+                {a.comparison.factor !== null && ` (factor ${a.comparison.factor}${a.comparison.isAssumption ? ", assumption" : ""})`}
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 font-medium text-amber-800 dark:text-amber-300">View ripple →</span>
+        </Link>
+      ))}
     <div className="flex items-stretch gap-2 text-xs">
       <Link href={`/cases/${b.case.id}`} className={step + " hover:border-primary/50"}>
         <span className="flex items-center gap-1 text-muted-foreground">
@@ -76,6 +98,10 @@ export function TraceChain({ b }: { b: RequirementBundle }) {
         <span className="text-muted-foreground">Planned feature</span>
         <span className="truncate font-medium">{b.plannedFeature?.name ?? "not yet"}</span>
       </Link>
+      <div className="flex items-center">
+        <ReplayButton requirementId={b.requirement.id} />
+      </div>
+    </div>
     </div>
   );
 }

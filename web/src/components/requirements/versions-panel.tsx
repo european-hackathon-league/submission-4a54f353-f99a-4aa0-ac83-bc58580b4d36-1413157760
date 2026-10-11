@@ -9,7 +9,7 @@ import { useUsers } from "@/components/common/people";
 import { ProvenanceLegend } from "@/components/requirements/provenance";
 import { cn } from "@/lib/utils";
 
-const causeLabel: Record<RequirementVersion["cause"], string> = { draft: "First draft", feedback: "After feedback", brief_change: "Brief changed", edit: "Edited by the PM" };
+const causeLabel: Record<RequirementVersion["cause"], string> = { draft: "First draft", feedback: "After feedback", brief_change: "Brief changed", edit: "Edited by the PM", ripple: "After a competitor fact" };
 
 /** Version history of one requirement: what changed, why, and the feedback that caused it. */
 export function VersionsPanel({ versions, feedback }: { versions: RequirementVersion[]; feedback: FeedbackEntry[] }) {

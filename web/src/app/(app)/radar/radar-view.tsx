@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, CheckCircle2, Inbox, Loader2, Plus, RefreshCw, ShieldAlert, XCircle } from "lucide-react";
+import { Activity, CheckCircle2, Inbox, Loader2, Plus, RefreshCw, ShieldAlert, Waves, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import {
   CarArea as CarAreas,
   CaseType as CaseTypes,
@@ -17,6 +18,7 @@ import {
   type CarArea,
   type CaseType,
   type ChangeDepth,
+  type RefreshResponse,
   type Region,
   type Series,
 } from "@/contracts";
@@ -47,7 +49,24 @@ export function RadarView() {
   const { data: cases = [] } = useApi("cases", { query: { series: activeSeries } });
   const { data: runs = [] } = useApi("agentRuns");
   const { data: quarantine = [] } = useApi("quarantine");
-  const refresh = useApiMutation("refresh", { success: (r) => (r.signals.length ? `${r.signals.length} new signals` : "Nothing new since the last run") });
+  const [run, setRun] = useState<RefreshResponse | null>(null);
+  const refresh = useApiMutation("refresh");
+  const onRefresh = async () => {
+    const res = await refresh.mutateAsync({ body: { series: activeSeries } });
+    setRun(res);
+    // The toast comes when the steps have played (instantly with reduced motion).
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(
+      () => {
+        const active = res.ripples.find((r) => r.status === "active");
+        if (active) toast.warning(`Competitor fact: ${active.summary}`, { duration: 30000, action: { label: "View ripple", onClick: () => router.push(`/ripple/${active.id}`) } });
+        else toast.success(res.signals.length ? `${res.signals.length} new signals` : "Nothing new since the last run");
+        const watch = res.ripples.filter((r) => r.status === "watch");
+        if (watch.length) toast.info(`${watch.length} low-trust fact${watch.length > 1 ? "s" : ""} on the watch list (no alerts)`);
+      },
+      reduced ? 0 : (res.run.steps?.length ?? 0) * STEP_MS + 200,
+    );
+  };
 
   const graph = overviewSankey(signals, cases);
   const loose = signals.filter((s) => s.status !== "clustered");
@@ -74,7 +93,7 @@ export function RadarView() {
             </Select>
             <RunsPopover runs={runs} />
             <QuarantinePopover items={quarantine} />
-            <Button size="sm" onClick={() => refresh.mutate({ body: { series: activeSeries } })} disabled={refresh.isPending}>
+            <Button size="sm" onClick={onRefresh} disabled={refresh.isPending}>
               {refresh.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />} Refresh
             </Button>
           </>
@@ -84,7 +103,8 @@ export function RadarView() {
           <Inbox className="size-4 text-muted-foreground" /> {loose.length} not in a case yet
         </button>
       </PageHeader>
-      <div className="p-6">
+      <div className="space-y-4 p-6">
+        {run?.run.steps && <RunSteps key={run.run.id} res={run} onOpen={(id) => router.push(`/ripple/${id}`)} />}
         <div className="rounded-xl border bg-card p-5 shadow-xs">
           <SankeyChart graph={graph} titles={["Sources", "Car area", "Cases"]} onSelect={onNode} />
         </div>
@@ -118,6 +138,47 @@ export function RadarView() {
         </SheetContent>
       </Sheet>
       <StartCaseDialog open={creating} onOpenChange={setCreating} signalIds={selected} series={activeSeries} region={me.data?.workspace.region ?? "RoW"} onCreated={(id) => router.push(`/cases/${id}`)} />
+    </div>
+  );
+}
+
+const STEP_MS = 450;
+
+/** The agent run of the last Refresh, step by step: fetch → classify → gate → match metrics → assess impact. */
+function RunSteps({ res, onOpen }: { res: RefreshResponse; onOpen: (rippleId: string) => void }) {
+  const steps = res.run.steps ?? [];
+  return (
+    <div className="rounded-xl border bg-card p-4 shadow-xs">
+      <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <Activity className="size-4 text-muted-foreground" /> Agent run {res.run.id}
+        <span className="text-xs font-normal text-muted-foreground">
+          {res.signals.length} new · ${res.run.llmCostUsd.toFixed(2)}
+        </span>
+      </p>
+      <ol className="grid gap-2 sm:grid-cols-5">
+        {steps.map((s, i) => (
+          <li
+            key={s.name}
+            className="animate-in fade-in slide-in-from-left-2 fill-mode-both rounded-lg border px-3 py-2 text-xs duration-300 motion-reduce:animate-none"
+            style={{ animationDelay: `${i * STEP_MS}ms` }}
+          >
+            <p className="flex items-center gap-1.5 font-medium">
+              {s.status === "ok" ? <CheckCircle2 className="size-3.5 text-positive" /> : s.status === "failed" ? <XCircle className="size-3.5 text-negative" /> : <span className="size-3.5 rounded-full border" />}
+              {i + 1}. {s.name}
+            </p>
+            <p className="mt-1 text-muted-foreground">{s.detail}</p>
+          </li>
+        ))}
+      </ol>
+      {res.ripples.length > 0 && (
+        <div className="animate-in fade-in fill-mode-both mt-3 flex flex-wrap gap-2 duration-300 motion-reduce:animate-none" style={{ animationDelay: `${steps.length * STEP_MS}ms` }}>
+          {res.ripples.map((r) => (
+            <Button key={r.id} size="sm" variant={r.status === "active" ? "default" : "outline"} onClick={() => onOpen(r.id)}>
+              <Waves className="size-3.5" /> {r.summary}
+            </Button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

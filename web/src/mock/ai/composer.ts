@@ -1,5 +1,5 @@
-import type { Ambition, BriefFieldKey, BriefValues, Case, Market, Metric, Provenance, Region, ReleaseTarget, ShapeAnswer, ShapeKey, ShapeQuestion, Signal } from "@/contracts";
-import { ambitionLabel, briefFieldLabel, costSensitivityLabel, insideKindLabel, marketLabel, positioningLabel, regionLabel, releaseLabel, targetCustomerLabel } from "@/contracts";
+import type { Ambition, BriefFieldKey, BriefValues, Case, Market, Metric, Provenance, Region, ReleaseTarget, ShapeAnswer, ShapeKey, ShapeQuestion, Signal, TargetCycle, TargetSpec } from "@/contracts";
+import { ambitionLabel, briefFieldLabel, costSensitivityLabel, insideKindLabel, marketLabel, normalize, positioningLabel, regionLabel, releaseLabel, targetCustomerLabel } from "@/contracts";
 import { benchmarks, solutionHints } from "../authored/hints";
 import { assumption, context, evidence, fromBrief } from "./provenance";
 import type { Draft, DraftInput } from "./drafter";
@@ -277,6 +277,14 @@ function numberIn(text: string, unit: string, current: number, lowerIsBetter: bo
   return lowerIsBetter ? Math.max(...values) : Math.min(...values);
 }
 
+/** Machine-readable target, so the competitor ripple can compare it (range and charging minutes only). */
+function specOf(t: { value: number; unit: string; metricName: string; cycle?: string }, lowerIsBetter: boolean, scope: Region): TargetSpec | undefined {
+  const key = /range/i.test(t.metricName) && t.unit === "km" ? "ev_range" : /10.?[–-]?.?80|charg/i.test(t.metricName) && t.unit === "min" ? "dc_10_80_min" : null;
+  if (!key) return undefined;
+  const cycle = (["WLTP", "CLTC", "EPA"].includes(t.cycle ?? "") ? t.cycle : "none") as TargetCycle;
+  return { key, comparator: lowerIsBetter ? "lte" : "gte", value: t.value, unit: t.unit, cycle, market: scope === "CN" ? "CN" : scope === "RoW" ? "RoW" : "global" };
+}
+
 const roundTo = (n: number, unit: string) => (unit === "km" ? Math.round(n / 10) * 10 : unit === "min" ? Math.round(n * 2) / 2 : Math.round(n));
 
 // ---------- The composer ----------
@@ -338,11 +346,13 @@ export function composeDrafts(input: DraftInput): Draft[] {
   const benchAns = ans("benchmark");
   const ambition: Ambition = (benchAns?.value as Ambition) ?? amb.value;
   const ambProv = (path: string, ids: string[] = []) => (benchAns ? shapeTag(path, "benchmark", ambitionLabel[ambition].toLowerCase(), ids) : amb.prov(path, ids));
-  let target: { value: number; unit: string; text: string; metricName: string; ref: number } | null = null;
+  let target: { value: number; unit: string; text: string; metricName: string; ref: number; cycle?: string } | null = null;
   const benchIds = bench?.signalId ? [bench.signalId] : [];
   if (bench) {
-    const toCltc = v.givens.cycle === "CLTC" && bench.cycle && bench.cycle !== "CLTC" && bench.unit === "km";
-    const ref = toCltc ? bench.value * 1.1 : bench.value;
+    const toCltcWanted = v.givens.cycle === "CLTC" && bench.cycle && bench.cycle !== "CLTC" && bench.unit === "km";
+    const conv = toCltcWanted ? normalize(bench.value, bench.cycle as TargetCycle, "CLTC", input.conversions) : null;
+    const toCltc = !!conv;
+    const ref = conv ? conv.value : bench.value;
     let value: number;
     if (bench.lowerIsBetter) value = ambition === "beat" ? ref * 0.9 : ambition === "match" ? ref : ((bench.today ?? ref * 1.5) + ref) / 2;
     else value = ambition === "beat" ? ref * 1.05 : ambition === "match" ? ref : ref * 0.95;
@@ -351,8 +361,12 @@ export function composeDrafts(input: DraftInput): Draft[] {
     const metricName = cycle ? bench.metric.replace(bench.cycle ?? "", cycle).trim() : bench.metric;
     // The cycle goes into the target text only when the metric name does not already say it.
     const cycleSuffix = cycle && !metricName.includes(cycle) ? ` ${cycle}` : "";
-    target = { value, unit: bench.unit, metricName, ref, text: `${bench.lowerIsBetter ? "≤" : "≥"} ${value} ${bench.unit}${cycleSuffix}` };
-    if (toCltc) assumptions.push({ text: `The CLTC target is converted from the ${bench.cycle} benchmark (×1.1); engineering confirms the real CLTC value.`, prov: (p) => assumption(p, "Assumption · cycle conversion", benchIds) });
+    target = { value, unit: bench.unit, metricName, ref, cycle, text: `${bench.lowerIsBetter ? "≤" : "≥"} ${value} ${bench.unit}${cycleSuffix}` };
+    if (conv?.conversion)
+      assumptions.push({
+        text: `The CLTC target is converted from the ${bench.cycle} benchmark (${bench.value} → ${conv.value} km, factor ${conv.conversion.factor} per ${conv.conversion.from}→${conv.conversion.to}, range ${conv.low}–${conv.high} km; ${conv.conversion.isAssumption ? "team assumption" : "sourced"}); engineering confirms the real CLTC value.`,
+        prov: (p) => assumption(p, "Assumption · cycle conversion", benchIds),
+      });
   }
 
   // 4. Feedback (applied on top of the layers, oldest first)
@@ -391,7 +405,15 @@ export function composeDrafts(input: DraftInput): Draft[] {
       prov: (p) => targetProv(p),
     });
     metrics.push({
-      m: { id: "m1", question: target.metricName, target: target.text, unit: target.unit, basis: bench.signalId ? "evidence" : "assumption", benchmark: `${vs} (${bench.source})` },
+      m: {
+        id: "m1",
+        question: target.metricName,
+        target: target.text,
+        unit: target.unit,
+        basis: bench.signalId ? "evidence" : "assumption",
+        benchmark: `${vs} (${bench.source})`,
+        targetSpec: specOf(target, !!bench.lowerIsBetter, marketScope),
+      },
       prov: targetProv("metrics.m1.target"),
     });
   } else {

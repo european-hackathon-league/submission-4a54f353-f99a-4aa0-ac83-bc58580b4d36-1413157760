@@ -25,6 +25,7 @@ import type {
 import { BriefFieldKey as BriefFieldKeys, RequirementSnapshot, addresseeLabel, briefFieldLabel, feedbackResponseLabel, shapeKeyLabel } from "@/contracts";
 import { ApiError, audit, checks, db, must, nextId, notify, now, resetStore } from "./store";
 import { computeScores } from "./scoring";
+import { scoreSnapshotNow } from "./snapshot";
 import { getDrafter, type Draft } from "./ai/drafter";
 import { buildInput, changeSummary, feedbackPatch, redraft, regionOf, retagEdits, snapshotOf, snapshotsDiffer, stanceOf } from "./ai/drafting";
 import { briefFieldsUsed, provenanceCounts, provenanceLine, sentences } from "./ai/provenance";
@@ -35,7 +36,9 @@ import { cite, followUpQuestions, scriptedReply, shapeQuestionsMessage, type Pro
 import { extractFromNote } from "./ai/notes";
 import { liveChatEnabled, liveReply } from "./ai/live";
 import { refreshPool } from "./authored/world";
-import { webSpecToSignal } from "./convert";
+import { WEB_CLASSIFIER, webSnapshotRecord, webSpecToSignal } from "./convert";
+import { buildReplay } from "./replay";
+import { assessFact, decideItem, reassess, SIGNED_STATUSES } from "./ripple";
 import taxonomyData from "./fixtures/taxonomy.json";
 import { FactorKey as FactorKeys } from "@/contracts";
 import { shortFromTitle } from "./authored/short-names";
@@ -157,7 +160,7 @@ function createRequirement(
 }
 
 /** Apply a new version (feedback, brief change or edit): bump the version, keep the history, re-run the quality check. */
-function applyVersion(d: Dataset, r: Requirement, snapshot: RequirementSnapshot, cause: "feedback" | "brief_change" | "edit", actorId: string, rationale: string, feedbackId?: string) {
+function applyVersion(d: Dataset, r: Requirement, snapshot: RequirementSnapshot, cause: "feedback" | "brief_change" | "edit" | "ripple", actorId: string, rationale: string, feedbackId?: string) {
   const before = snapshotOf(r);
   Object.assign(r, snapshot);
   r.version += 1;
@@ -165,6 +168,15 @@ function applyVersion(d: Dataset, r: Requirement, snapshot: RequirementSnapshot,
   d.requirementVersions.push({ requirementId: r.id, version: r.version, snapshot: snapshotOf(r), cause, feedbackId, rationale, createdAt: now(), createdBy: actorId });
   audit({ actorId, action: "requirement.version_created", objectType: "requirement", objectId: r.id, before: { version: r.version - 1 }, after: { version: r.version, cause, change: changeSummary(before, snapshot) }, rationale });
   saveCheck(ruleCheck(d, r, now()), `After version ${r.version}`);
+}
+
+/** Changing a signed-off target drops it back to PM-approved: the head signs off again. */
+function resetSignOff(d: Dataset, r: Requirement, user: User, why: string) {
+  if (!SIGNED_STATUSES.includes(r.status)) return;
+  const before = r.status;
+  r.status = "pm_approved";
+  audit({ actorId: user.id, action: "requirement.signoff_reset", objectType: "requirement", objectId: r.id, before: { status: before }, after: { status: r.status }, rationale: `Target changed after sign-off: ${why}` });
+  notify({ userId: head(d).id, kind: "sign_off_request", title: "New sign-off needed", body: `${r.id}: ${why}`, link: `/requirements/${r.id}`, actorId: user.id });
 }
 
 /** PMs of the case's series may draft their own (regional) requirement on it, under their own brief. */
@@ -520,7 +532,9 @@ export const handlers: Handlers = {
   refresh: ({ body, user }) => {
     const d = db();
     const startedAt = now();
-    const fresh = refreshPool.filter((spec, i) => !d.signals.some((s) => s.id === `SIG-REFRESH-${i}`)).map((spec) => ({ spec, i: refreshPool.indexOf(spec) }));
+    const pending = refreshPool.map((spec, i) => ({ spec, i })).filter(({ i }) => !d.signals.some((s) => s.id === `SIG-REFRESH-${i}`));
+    const batch = Math.min(...pending.map(({ spec }) => spec.batch ?? 1));
+    const fresh = pending.filter(({ spec }) => (spec.batch ?? 1) === batch);
     const added: Signal[] = [];
     let notes = 0;
     for (const { spec, i } of fresh) {
@@ -536,6 +550,7 @@ export const handlers: Handlers = {
       });
       s.status = c ? "clustered" : "new";
       d.signals.push(s);
+      d.sourceRecords.push(webSnapshotRecord(s));
       added.push(s);
       if (c) {
         c.signalIds.push(s.id);
@@ -546,29 +561,42 @@ export const handlers: Handlers = {
           notify({ userId: uid, kind: "new_signals", title: "New signal", body: `${s.summary} → ${c.id}`, link: `/cases/${c.id}`, actorId: "agent:clusterer" });
           notes++;
         }
-        if (s.kind === "competitor_fact" && s.metric) {
-          const alertId = nextId("AL-", d.alerts);
-          d.alerts.push({
-            id: alertId,
-            ownerId: c.ownerId,
-            caseId: c.id,
-            requirementId: null,
-            verdict: "raises_the_bar",
-            title: `${s.competitor}: ${s.summary}`,
-            detail: `New competitor fact (trust ${s.trust}) may raise the bar for ${c.id}. Today: ${c.figures.equipmentToday}.`,
-            signalIds: [s.id],
-            status: "open",
-            createdAt: now(),
-          });
-          audit({ actorId: "agent:monitor", action: "alert.raised", objectType: "case", objectId: c.id, after: { alertId, verdict: "raises_the_bar" } });
-          notify({ userId: c.ownerId, kind: "alert", title: "Competitor raises the bar", body: s.summary, link: `/cases/${c.id}`, actorId: "agent:monitor" });
-          notes++;
-        }
       }
     }
+    const runId = nextId("RUN-live-", d.agentRuns, 2);
+    audit({ actorId: "agent:fetcher", action: "signals.fetched", objectType: "signal", objectId: runId, after: { newSignals: added.length }, rationale: `Refresh by ${user.id}` });
+
+    // Impact: every competitor fact with a metric is matched against targets across the portfolio.
+    const facts = added.filter((s) => s.kind === "competitor_fact" && s.metric);
+    const notesBefore = d.notifications.length;
+    const ripples = facts.map((s) => assessFact(d, s, runId)).filter((r): r is NonNullable<typeof r> => !!r);
+    notes += d.notifications.length - notesBefore;
+    const active = ripples.filter((r) => r.status === "active");
+    const affected = active.flatMap((r) => r.items);
+    const seriesOf = (rows: string[]) => new Set(rows.map((x) => (x === "G60_CN" ? "G60" : x)));
+    const rowsOf = (rp: (typeof ripples)[number]) => [...new Set(rp.items.flatMap((i) => [i.row, ...i.alsoRows]))];
+    const steps = [
+      { name: "Fetch", status: "ok" as const, detail: added.length ? `${added.length} new records from ${new Set(added.map((s) => s.sourceName)).size} sources (deduped by URL and content hash)` : "No new records: all URLs already seen" },
+      { name: "Classify", status: added.length ? ("ok" as const) : ("skipped" as const), detail: `${added.length} signals mapped onto the fixed taxonomy (${WEB_CLASSIFIER.promptVersion}, scripted in the demo)` },
+      {
+        name: "Gate",
+        status: added.length ? ("ok" as const) : ("skipped" as const),
+        detail: `${added.length} passed (quote in stored snapshot, dated); ${facts.filter((s) => s.trust === "D" || s.trust === "E").length} low-trust competitor facts → watch list only`,
+      },
+      { name: "Match metrics", status: facts.length ? ("ok" as const) : ("skipped" as const), detail: facts.length ? `${facts.length} competitor facts with a metric matched against ${ripples.reduce((n, r) => n + r.items.length, 0)} targets and cases` : "No competitor fact with a metric" },
+      {
+        name: "Assess impact",
+        status: ripples.length ? ("ok" as const) : ("skipped" as const),
+        detail: active.length
+          ? `${affected.length} items in ${seriesOf(active.flatMap(rowsOf)).size} series: ${["behind", "at_par", "still_ahead", "not_comparable"].map((v) => `${affected.filter((i) => i.verdict === v).length} ${v.replace("_", " ")}`).join(", ")}`
+          : ripples.length
+            ? "Low-trust facts only: listed on the watch list"
+            : "Nothing affected",
+      },
+    ];
     const run = {
-      id: nextId("RUN-live-", d.agentRuns, 2),
-      agent: "customer_public" as const,
+      id: runId,
+      agent: "competitor" as const,
       series: body.series,
       startedAt,
       endedAt: now(),
@@ -578,10 +606,22 @@ export const handlers: Handlers = {
       newSignals: added.length,
       llmCostUsd: Math.round((0.3 + added.length * 0.08) * 100) / 100,
       note: added.length ? `Watchlist run triggered by ${user.name}` : "No new findings: all URLs already seen (dedupe by URL and content hash)",
+      steps,
+      rippleId: active[0]?.id ?? null,
     };
     d.agentRuns.push(run);
-    audit({ actorId: "agent:fetcher", action: "signals.fetched", objectType: "signal", objectId: run.id, after: { newSignals: added.length }, rationale: `Refresh by ${user.id}` });
-    return { run, signals: added, notifications: notes };
+    return {
+      run,
+      signals: added,
+      notifications: notes,
+      ripples: ripples.map((rp) => ({
+        id: rp.id,
+        status: rp.status,
+        items: rp.items.length,
+        rows: rowsOf(rp).length,
+        summary: `${rp.fact.competitor} ${rp.fact.value} ${rp.fact.unit} ${rp.fact.cycle} affects ${rp.items.length} items in ${seriesOf(rowsOf(rp)).size} series${rp.status === "watch" ? " (watch list only)" : ""}`,
+      })),
+    };
   },
   quarantine: () => db().quarantine,
 
@@ -685,7 +725,17 @@ export const handlers: Handlers = {
     if (body.patch.bodyMd !== undefined) c.bodyVersion += 1;
     if (body.patch.brandFit) c.factors.brand_fit = body.patch.brandFit.value;
     touch(c);
-    audit({ actorId: user.id, action: onlyWatch ? "case.watch_changed" : "case.edited", objectType: "case", objectId: c.id, before, after: body.patch, rationale: body.rationale });
+    const rankChanging = body.patch.manualRank !== undefined || body.patch.brandFit !== undefined;
+    audit({
+      actorId: user.id,
+      action: onlyWatch ? "case.watch_changed" : "case.edited",
+      objectType: "case",
+      objectId: c.id,
+      before,
+      after: body.patch,
+      rationale: body.rationale,
+      scoreSnapshot: rankChanging ? scoreSnapshotNow(d, c.id, profileOf(d, user.id)) : undefined,
+    });
     return c;
   },
   transitionCase: ({ params, body, user }) => {
@@ -771,7 +821,16 @@ export const handlers: Handlers = {
     }
     c.bodyMd = c.bodyMd.replace("## Decision log", `## Decision log\n\n- ${now().slice(0, 10)} · ${user.name}: ${body.action} (${body.rationale})`).replace("\n\n_No decisions yet._", "");
     touch(c);
-    audit({ actorId: user.id, action: c.state === "decided" && !stateFor[body.action] ? "case.decided" : "case.state_changed", objectType: "case", objectId: c.id, before, after: { state: c.state, outcome: c.outcome, mergedInto: c.mergedInto ?? undefined }, rationale: body.rationale });
+    audit({
+      actorId: user.id,
+      action: c.state === "decided" && !stateFor[body.action] ? "case.decided" : "case.state_changed",
+      objectType: "case",
+      objectId: c.id,
+      before,
+      after: { state: c.state, outcome: c.outcome, mergedInto: c.mergedInto ?? undefined },
+      rationale: body.rationale,
+      scoreSnapshot: body.action === "confirm" ? scoreSnapshotNow(d, c.id, profileOf(d, user.id)) : undefined,
+    });
     return c;
   },
   createQuestion: ({ params, body, user }) => {
@@ -1104,7 +1163,16 @@ export const handlers: Handlers = {
         break;
     }
     touch(r);
-    audit({ actorId: user.id, action: "requirement.status_changed", objectType: "requirement", objectId: r.id, before: { status: before, costSize: r.cost.size }, after: { status: r.status, ...(openIssues && { openIssues }) }, rationale: body.rationale });
+    audit({
+      actorId: user.id,
+      action: "requirement.status_changed",
+      objectType: "requirement",
+      objectId: r.id,
+      before: { status: before, costSize: r.cost.size },
+      after: { status: r.status, ...(openIssues && { openIssues }) },
+      rationale: body.rationale,
+      scoreSnapshot: body.action === "sign_off" || body.action === "approve" ? scoreSnapshotNow(d, r.caseId, profileOf(d, user.id)) : undefined,
+    });
     if (body.action === "reject") maybeLearnCost(d, user);
     return r;
   },
@@ -1473,8 +1541,9 @@ export const handlers: Handlers = {
       const r = findReq(d, p.objectId);
       assertReqEditor(user, r);
       const fb = d.feedback.find((f) => f.proposalId === p.id);
-      applyVersion(d, r, RequirementSnapshot.parse(p.changes[0].after), p.source === "brief_change" ? "brief_change" : "feedback", user.id, body.rationale ?? p.summary, fb?.id);
+      applyVersion(d, r, RequirementSnapshot.parse(p.changes[0].after), p.source === "brief_change" ? "brief_change" : p.source === "monitor" ? "ripple" : "feedback", user.id, body.rationale ?? p.summary, fb?.id);
       if (fb) fb.resultingVersion = r.version;
+      if (p.source === "monitor") resetSignOff(d, r, user, body.rationale ?? p.summary);
       p.status = "accepted";
     } else {
       const target = p.objectType === "case" ? findCase(d, p.objectId) : findReq(d, p.objectId);
@@ -1509,6 +1578,14 @@ export const handlers: Handlers = {
       }
       if ("context" in target) target.context.pmInputs.push({ kind: "diff", label: "AI proposal accepted", detail: p.summary, at: now(), ref: p.id });
       touch(target);
+      if (p.source === "monitor" && p.objectType === "requirement" && p.kind === "field") {
+        // A competitor-driven change is a new version of the same requirement, with its sign-off reset.
+        const r = target as Requirement;
+        r.version += 1;
+        d.requirementVersions.push({ requirementId: r.id, version: r.version, snapshot: snapshotOf(r), cause: "ripple", rationale: body.rationale ?? p.summary, createdAt: now(), createdBy: user.id });
+        audit({ actorId: user.id, action: "requirement.version_created", objectType: "requirement", objectId: r.id, before: { version: r.version - 1 }, after: { version: r.version, cause: "ripple", change: p.summary }, rationale: body.rationale ?? p.summary });
+        resetSignOff(d, r, user, p.summary);
+      }
       p.status = "accepted";
     }
     p.decidedBy = user.id;
@@ -1615,5 +1692,52 @@ export const handlers: Handlers = {
   reset: () => {
     resetStore();
     return { ok: true as const };
+  },
+
+  // Trace replay
+  requirementReplay: ({ params, user }) => {
+    const d = db();
+    const r = findReq(d, params.id);
+    audit({ actorId: user.id, action: "requirement.replay_viewed", objectType: "requirement", objectId: r.id });
+    return buildReplay(d, r);
+  },
+
+  // Competitor ripple
+  ripples: () => db().ripples,
+  ripple: ({ params }) => {
+    const d = db();
+    return { ripple: must(d.ripples.find((r) => r.id === params.id), `Ripple ${params.id}`), conversions: d.conversions, settings: d.monitorSettings };
+  },
+  decideRippleItem: ({ params, body, user }) => {
+    const d = db();
+    const ripple = must(d.ripples.find((r) => r.id === params.id), `Ripple ${params.id}`);
+    const item = must(ripple.items.find((i) => i.id === params.itemId), `Item ${params.itemId}`);
+    const proposal = decideItem(d, user, ripple, item, body);
+    return { ripple, proposal };
+  },
+  conversions: () => db().conversions,
+  saveConversion: ({ params, body, user }) => {
+    const d = db();
+    if (user.role !== "head") throw new ApiError(403, "Only the head of product line changes the team's conversion factor. Try another factor on the ripple screen instead.");
+    const c = must(d.conversions.find((x) => x.id === params.id), `Conversion ${params.id}`);
+    if (body.factor < c.range[0] || body.factor > c.range[1]) throw new ApiError(400, `Factor ${body.factor} is outside the stated range ${c.range[0]}–${c.range[1]}. Widen the range with a source first.`);
+    const before = c.factor;
+    c.factor = body.factor;
+    c.updatedAt = now();
+    c.updatedBy = user.id;
+    reassess(d);
+    audit({ actorId: user.id, action: "conversion.updated", objectType: "settings", objectId: c.id, before: { factor: before }, after: { factor: c.factor, isAssumption: c.isAssumption }, rationale: body.rationale });
+    return c;
+  },
+  monitorSettings: () => db().monitorSettings,
+  saveMonitorSettings: ({ body, user }) => {
+    const d = db();
+    const before = { ...d.monitorSettings };
+    if (body.muteThresholdPct !== undefined) d.monitorSettings.muteThresholdPct = body.muteThresholdPct;
+    if (body.atParTolerancePct !== undefined) d.monitorSettings.atParTolerancePct = body.atParTolerancePct;
+    d.monitorSettings.updatedAt = now();
+    d.monitorSettings.updatedBy = user.id;
+    audit({ actorId: user.id, action: "settings.updated", objectType: "settings", objectId: "monitor", before: { muteThresholdPct: before.muteThresholdPct, atParTolerancePct: before.atParTolerancePct }, after: { muteThresholdPct: d.monitorSettings.muteThresholdPct, atParTolerancePct: d.monitorSettings.atParTolerancePct }, rationale: body.rationale });
+    return d.monitorSettings;
   },
 };
