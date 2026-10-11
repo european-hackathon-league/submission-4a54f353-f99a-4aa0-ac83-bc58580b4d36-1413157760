@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4MYW42R47QZ3KT5GHM5H339",
+  "strategy": "manual-commit",
+  "branch": "fix/agent-and-case-counts",
+  "checkpoints_count": 17,
+  "files_touched": [
+    "backend/.data/llm_cache/case_writer.jsonl",
+    "backend/app/cases/rewrite.py",
+    "backend/app/cases/writer.py",
+    "backend/app/fetch/agents.py",
+    "backend/app/fetch/reread.py",
+    "backend/app/fetch/worker.py",
+    "backend/app/prompts/case_writer@v3.md",
+    "backend/app/rag/agent.py",
+    "backend/app/signals/gate.py",
+    "backend/tests/test_cases.py",
+    "changes.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 232,
+    "cache_creation_tokens": 149556,
+    "cache_read_tokens": 21111403,
+    "output_tokens": 61817,
+    "api_call_count": 98
+  }
+}
