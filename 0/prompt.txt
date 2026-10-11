@@ -251,3 +251,7 @@ is it still the process still runningM
 ---
 
 can you stop the process because my pc is shutting down and only restart when i tell you
+
+---
+
+okay commit all the changes regarding the backend and push i decided to change the schema according to the UI being developped since i just noticed many things miss
