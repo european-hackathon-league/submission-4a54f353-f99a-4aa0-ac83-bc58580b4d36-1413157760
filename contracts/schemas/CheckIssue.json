@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "vague_word",
+        "missing_scope",
+        "out_of_scope",
+        "duplicate",
+        "conflict",
+        "baukasten"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "red",
+        "amber"
+      ]
+    },
+    "field": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "relatedId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suggestion": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "severity",
+    "field",
+    "message"
+  ],
+  "additionalProperties": false
+}

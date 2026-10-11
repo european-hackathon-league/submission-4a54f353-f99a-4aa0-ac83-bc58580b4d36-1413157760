@@ -1,7 +1,9 @@
 "use client";
 
-import type { Requirement, RequirementAction } from "@/contracts";
+import { TriangleAlert } from "lucide-react";
+import { checkKindLabel, type Requirement, type RequirementAction, type RequirementCheck } from "@/contracts";
 import { useApiMutation } from "@/lib/api/hooks";
+import { Pill } from "@/components/common/badges";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 
 export const reqActionCopy: Record<RequirementAction, { title: string; description: string; confirm: string; destructive?: boolean }> = {
@@ -15,10 +17,23 @@ export const reqActionCopy: Record<RequirementAction, { title: string; descripti
   restore: { title: "Restore as draft", description: "Brings a rejected requirement back.", confirm: "Restore" },
 };
 
-export function RequirementActionDialog({ r, action, onOpenChange }: { r: Requirement; action: RequirementAction | null; onOpenChange: (o: boolean) => void }) {
+export function RequirementActionDialog({
+  r,
+  check,
+  action,
+  onOpenChange,
+}: {
+  r: Requirement;
+  /** Latest quality check; open issues are shown before PM approval. */
+  check?: RequirementCheck | null;
+  action: RequirementAction | null;
+  onOpenChange: (o: boolean) => void;
+}) {
   const m = useApiMutation("transitionRequirement", { success: (x) => `${x.id} → ${x.status.replace("_", " ")}` });
   if (!action) return null;
   const t = reqActionCopy[action];
+  const issues = action === "approve" ? (check?.issues ?? []) : [];
+  const red = issues.filter((i) => i.severity === "red");
   return (
     <RationaleDialog
       open
@@ -32,6 +47,26 @@ export function RequirementActionDialog({ r, action, onOpenChange }: { r: Requir
         await m.mutateAsync({ params: { id: r.id }, body: { action, rationale } });
         onOpenChange(false);
       }}
-    />
+    >
+      {issues.length > 0 && (
+        <div className="space-y-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+          <p className="flex items-center gap-1.5 font-medium">
+            <TriangleAlert className="size-4 text-amber-600" />
+            The quality check found {red.length ? `${red.length} issue${red.length === 1 ? "" : "s"} to fix` : `${issues.length} point${issues.length === 1 ? "" : "s"} to review`}
+          </p>
+          <ul className="space-y-1 pl-1">
+            {(red.length ? red : issues).slice(0, 4).map((i) => (
+              <li key={i.id} className="flex gap-2">
+                <Pill t={i.severity === "red" ? "red" : "amber"} className="shrink-0">
+                  {checkKindLabel[i.kind]}
+                </Pill>
+                <span>{i.message}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">Engineering runs the same checks in Codebeamer. You can still approve; say why below.</p>
+        </div>
+      )}
+    </RationaleDialog>
   );
 }

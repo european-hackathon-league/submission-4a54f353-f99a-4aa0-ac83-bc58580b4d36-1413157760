@@ -12,20 +12,24 @@ import type {
   Proposal,
   Referral,
   Requirement,
+  RequirementCheck,
   RequirementStatus,
   Signal,
   TaxonomyResponse,
   User,
 } from "@/contracts";
-import { ApiError, audit, db, must, nextId, notify, now, resetStore } from "./store";
+import { ApiError, audit, checks, db, must, nextId, notify, now, resetStore } from "./store";
 import { computeScores } from "./scoring";
 import { draftRequirements } from "./ai/drafts";
+import { checkRequirement, ruleCheck } from "./ai/quality";
+import { caseSegments, segmentReply } from "./ai/segment";
 import { cite, followUpQuestions, scriptedReply, type ProposalDraft } from "./ai/chat";
 import { extractFromNote } from "./ai/notes";
 import { liveChatEnabled, liveReply } from "./ai/live";
 import { refreshPool } from "./authored/world";
 import { webSpecToSignal } from "./convert";
 import taxonomyData from "./fixtures/taxonomy.json";
+import { FactorKey as FactorKeys } from "@/contracts";
 
 type Ep = typeof endpoints;
 type In<T> = T extends z.ZodType ? z.output<T> : undefined;
@@ -121,7 +125,31 @@ function createRequirement(d: Dataset, c: Case, draft: ReturnType<typeof draftRe
   d.requirements.push(r);
   c.requirementIds.push(r.id);
   audit({ actorId, action: "requirement.drafted", objectType: "requirement", objectId: r.id, after: { title: r.title }, rationale: `Generated from ${c.id}` });
+  saveCheck(ruleCheck(d, r, now()), "After drafting");
   return r;
+}
+
+function saveCheck(check: RequirementCheck, trigger: string) {
+  checks().set(check.requirementId, check);
+  const red = check.issues.filter((i) => i.severity === "red").length;
+  audit({
+    actorId: "agent:quality_check",
+    action: "requirement.checked",
+    objectType: "requirement",
+    objectId: check.requirementId,
+    after: { engine: check.engine, red, amber: check.issues.length - red, kinds: [...new Set(check.issues.map((i) => i.kind))] },
+    rationale: trigger,
+  });
+  return check;
+}
+
+/** Latest check, or a rules-only check computed now (seeded requirements were never checked). Not audited. */
+function currentCheck(d: Dataset, r: Requirement) {
+  const known = checks().get(r.id);
+  if (known) return known;
+  const fresh = ruleCheck(d, r, now());
+  checks().set(r.id, fresh);
+  return fresh;
 }
 
 const reqOrder: RequirementStatus[] = ["draft", "in_discussion", "pm_approved", "signed_off", "planned", "exported"];
@@ -582,6 +610,10 @@ export const handlers: Handlers = {
     audit({ actorId: user.id, action: "case.exported_md", objectType: "case", objectId: c.id });
     return { filename: `${c.id}.md`, content: `---\n${toYaml(front)}---\n\n# ${c.title}\n\n${c.bodyMd}\n` };
   },
+  caseSegments: ({ params }) => {
+    const d = db();
+    return caseSegments(d, findCase(d, params.id));
+  },
 
   // Questions
   questions: ({ query, user }) => {
@@ -622,6 +654,7 @@ export const handlers: Handlers = {
       alerts: d.alerts.filter((a) => a.requirementId === r.id),
       proposals: d.proposals.filter((p) => p.objectId === r.id),
       plannedFeature: plan?.features.find((f) => f.id === r.plannedFeatureId) ?? null,
+      check: currentCheck(d, r),
     };
   },
   patchRequirement: ({ params, body, user }) => {
@@ -633,13 +666,20 @@ export const handlers: Handlers = {
     Object.assign(r, body.patch);
     touch(r);
     audit({ actorId: user.id, action: "requirement.edited", objectType: "requirement", objectId: r.id, before, after: body.patch, rationale: body.rationale });
+    saveCheck(ruleCheck(d, r, now()), "After edit");
     return r;
+  },
+  runRequirementCheck: async ({ params, user }) => {
+    const d = db();
+    const r = findReq(d, params.id);
+    return saveCheck(await checkRequirement(d, r, now(), true), `Run by ${user.name}`);
   },
   transitionRequirement: ({ params, body, user }) => {
     const d = db();
     const r = findReq(d, params.id);
     const before = r.status;
     const isHead = user.role === "head";
+    let openIssues: { red: number; amber: number } | undefined;
     const need = (ok: boolean, msg: string) => {
       if (!ok) throw new ApiError(409, msg);
     };
@@ -654,6 +694,12 @@ export const handlers: Handlers = {
         need(["draft", "in_discussion"].includes(r.status), "Approve from draft or in discussion.");
         r.status = "pm_approved";
         r.sentBackReason = undefined;
+        {
+          // The quality check warns but never blocks; open issues are logged with the PM's reason.
+          const issues = currentCheck(d, r).issues;
+          const red = issues.filter((i) => i.severity === "red").length;
+          if (issues.length) openIssues = { red, amber: issues.length - red };
+        }
         notify({ userId: head(d).id, kind: "sign_off_request", title: "Sign-off requested", body: `${r.id} · ${r.title}`, link: `/requirements/${r.id}`, actorId: user.id });
         break;
       case "send_back":
@@ -700,7 +746,7 @@ export const handlers: Handlers = {
         break;
     }
     touch(r);
-    audit({ actorId: user.id, action: "requirement.status_changed", objectType: "requirement", objectId: r.id, before: { status: before }, after: { status: r.status }, rationale: body.rationale });
+    audit({ actorId: user.id, action: "requirement.status_changed", objectType: "requirement", objectId: r.id, before: { status: before }, after: { status: r.status, ...(openIssues && { openIssues }) }, rationale: body.rationale });
     return r;
   },
 
@@ -881,6 +927,69 @@ export const handlers: Handlers = {
     audit({ actorId: user.id, action: "requirements.exported", objectType: "plan", objectId: body.series, after: { count: rows.length, format: body.format } });
     return { filename: `requirements_${body.series}_${now().slice(0, 10)}.${body.format === "json" ? "json" : "csv"}`, mime: body.format === "json" ? "application/json" : "text/csv", content, count: rows.length };
   },
+  requirementDeck: ({ params, user }) => {
+    const d = db();
+    const series = params.series as Requirement["series"];
+    const plan = must(d.plans.find((p) => p.series === series), `Plan ${series}`);
+    const profile = profileOf(d, user.id);
+    const scores = computeScores(d, profile, series);
+    const rank = new Map(scores.requirements.map((s) => [s.requirementId, s]));
+    const weightTotal = FactorKeys.options.reduce((s, f) => s + (profile.weights[f] ?? 0), 0) || 1;
+    const sev = { defect: 0, difficult_to_use: 1, wish: 2, none: 3 } as const;
+    const decisionActions = new Set(["requirement.status_changed", "requirement.edited", "case.decided", "proposal.accepted", "escalation.created", "referral.resolve", "escalation.resolve"]);
+    const list = d.requirements
+      .filter((r) => r.series === series && ["signed_off", "planned", "exported"].includes(r.status))
+      .sort((a, b) => (rank.get(a.id)?.rank ?? 999) - (rank.get(b.id)?.rank ?? 999));
+    const slides = list.map((r) => {
+      const c = findCase(d, r.caseId);
+      const sigs = caseSignals(d, c);
+      const quotes = sigs
+        .filter((s) => s.sourceType === "bmw_feedback" && s.kind !== "like" && !s.synthetic)
+        .sort((a, b) => Number(a.kind !== "complaint") - Number(b.kind !== "complaint") || (sev[a.severity] ?? 4) - (sev[b.severity] ?? 4))
+        .slice(0, 3)
+        .map((s) => {
+          const text = (s.quoteEn ?? s.quote).replace(/\s+/g, " ").trim();
+          return { ref: s.id, market: s.market, text: text.length > 240 ? `${text.slice(0, 237).replace(/\s+\S*$/, "")}…` : text };
+        });
+      const comp = sigs.filter((s) => s.kind === "competitor_fact").slice(0, 3);
+      const decisions = d.audit
+        .filter((e) => (e.objectId === r.id || e.objectId === c.id) && decisionActions.has(e.action))
+        .slice(-5)
+        .reverse()
+        .map((e) => {
+          const after = (e.after ?? {}) as { status?: string; outcome?: string };
+          const action = e.action === "requirement.status_changed" ? `${e.objectId}: ${after.status?.replace("_", " ")}` : e.action === "case.decided" ? `${e.objectId}: ${after.outcome}` : `${e.objectId}: ${e.action.split(".").pop()?.replace("_", " ")}`;
+          return { at: e.at, actor: e.actorId.startsWith("agent:") ? `AI ${e.actorId.slice(6).replace("_", " ")}` : userName(d, e.actorId), action, rationale: e.rationale };
+        });
+      const issues = currentCheck(d, r).issues;
+      const red = issues.filter((i) => i.severity === "red").length;
+      return {
+        requirementId: r.id,
+        rank: rank.get(r.id)?.rank ?? 0,
+        score: rank.get(r.id)?.score ?? 0,
+        title: r.title,
+        description: r.description,
+        status: r.status,
+        release: r.releaseTarget,
+        marketScope: r.marketScope,
+        evidenceLevel: r.evidenceLevel,
+        metrics: r.metrics,
+        quotes,
+        factors: FactorKeys.options.map((f) => {
+          const weight = (profile.weights[f] ?? 0) / weightTotal;
+          return { factor: f, value: c.factors[f] ?? 0, weight: Math.round(weight * 1000) / 1000, contribution: Math.round(weight * (c.factors[f] ?? 0) * 1000) / 1000 };
+        }),
+        competitor: comp.length ? comp.map((s) => `${s.competitor ?? s.sourceName}: ${s.summary}`) : c.figures.competitorOffer,
+        decisions,
+        openIssues: { red, amber: issues.length - red },
+        caseId: c.id,
+        caseTitle: c.title,
+        ownerName: userName(d, r.ownerId),
+      };
+    });
+    audit({ actorId: user.id, action: "requirements.deck_exported", objectType: "plan", objectId: series, after: { count: slides.length, profile: profile.id } });
+    return { filename: `engineering-round_${series}_${now().slice(0, 10)}.pptx`, series, successorName: plan.successorName, generatedAt: now(), slides };
+  },
 
   // Conversation
   messages: ({ params }) => db().messages.filter((m) => m.objectType === params.type && m.objectId === params.id),
@@ -891,6 +1000,16 @@ export const handlers: Handlers = {
     const c = findCase(d, r ? r.caseId : params.id);
     const userMsg: ChatMessage = { id: nextId("MSG-", d.messages), objectType, objectId: params.id, role: "user", authorId: user.id, content: body.content, citations: [], proposalIds: [], createdAt: now() };
     d.messages.push(userMsg);
+
+    if (body.segment) {
+      const seg = await segmentReply(d, c, objectType, params.id, body.segment);
+      if (!seg) throw new ApiError(400, `Unknown segment ${body.segment} for ${c.id}.`);
+      const segProposals = saveProposals(d, seg.proposals);
+      const segMsg: ChatMessage = { id: nextId("MSG-", d.messages), objectType, objectId: params.id, role: "assistant", content: seg.text, citations: seg.citations, proposalIds: segProposals.map((p) => p.id), createdAt: now() };
+      d.messages.push(segMsg);
+      audit({ actorId: "agent:segment", action: "segment.asked", objectType, objectId: params.id, after: { segment: body.segment, citations: seg.citations.length }, rationale: body.content });
+      return { messages: [userMsg, segMsg], proposals: segProposals };
+    }
 
     const scripted = scriptedReply(d, { objectType, c, r }, body.content, user.id, now());
     let text = scripted.text;

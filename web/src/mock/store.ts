@@ -1,5 +1,5 @@
 import seed from "./fixtures/seed.json";
-import type { ActorType, AuditEvent, Dataset, Notification, ObjectType } from "@/contracts";
+import type { ActorType, AuditEvent, Dataset, Notification, ObjectType, RequirementCheck } from "@/contracts";
 
 /**
  * In-memory store behind the mock REST API. One process-wide instance
@@ -7,7 +7,7 @@ import type { ActorType, AuditEvent, Dataset, Notification, ObjectType } from "@
  * The real backend replaces all of src/mock; nothing in the UI imports from here.
  */
 
-const g = globalThis as unknown as { __rsStore?: Dataset; __rsSeq?: Record<string, number> };
+const g = globalThis as unknown as { __rsStore?: Dataset; __rsSeq?: Record<string, number>; __rsChecks?: Map<string, RequirementCheck> };
 
 function fresh(): Dataset {
   return structuredClone(seed) as unknown as Dataset;
@@ -21,6 +21,13 @@ export function db(): Dataset {
 export function resetStore() {
   g.__rsStore = fresh();
   g.__rsSeq = {};
+  g.__rsChecks = new Map();
+}
+
+/** Latest quality check per requirement. Derived data, so it lives beside the dataset, not in the seed. */
+export function checks(): Map<string, RequirementCheck> {
+  g.__rsChecks ??= new Map();
+  return g.__rsChecks;
 }
 
 /** Clock of the synthetic world: real time, but never before the seed's "now". */

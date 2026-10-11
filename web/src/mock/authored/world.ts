@@ -111,7 +111,7 @@ export const requirementSpecs: ReqSpec[] = [
       { id: "m1", question: "Reconnect time after start", target: "≤ 10 s", unit: "s", basis: "assumption" },
       { id: "m2", question: "Disconnects per 10 driving hours", target: "≤ 1", basis: "assumption" },
     ],
-    acceptanceCriteria: ["Tested with the 5 most common phone models per market"],
+    acceptanceCriteria: ["Tested with the 5 most common phone models per market", "Reconnection feels seamless and intuitive to the driver"],
     assumptions: ["Root cause is software (to confirm with engineering)"],
     evidenceLevel: "high",
     cost: { size: "S", eurBand: "< €0.3M (software)", source: "ai_estimate", note: "If root cause is software." },

@@ -17,6 +17,11 @@ The clickable demo of our BMW hackathon tool: **Signals → Cases → Requiremen
 | **Signals** | One Sankey: sources → car areas → cases. Click a node to see its signals and start a case from loose ones |
 | **Innovation pool** | Ideas parked for a future series; vote or pull into your series |
 
+Three things borrowed from the market (see the competitor research):
+- **Quality check on every requirement** (like Raiqon and Polarion run inside Codebeamer): vague wording, scope vs. evidence, out-of-scope content (regulatory, technical, pricing), duplicates, conflicting targets and Baukasten overlap. Rules always run; with an LLM key an AI pass adds issues. It warns but never blocks: *Approve as PM* lists the open issues and the reason is logged.
+- **Ask the segment** in the case chat (like Dovetail's digital twins, but grounded): chips such as *USA (24) · USA BEV (9) · China (0)* answer only from that segment's real BMW verbatims, with citations. No verbatims means "no evidence" plus a proposed open question, never a guess.
+- **Engineering deck** next to *Export to Codebeamer* (like Aha! roadmap decks): one slide per signed-off or planned requirement with the SMART text, three customer quotes, the score breakdown, the competition and the decision log.
+
 A **case** opens with a Sankey of its evidence (*sources → what they say → case*, where "what they say" is a taxonomy topic × type, e.g. *Public charging · hard to use*). Every node is clickable and shows its quotes. Then three steps: **① Evidence** (Sankey + three bullets, full analysis on demand) → **② Your knowledge** (four one-click questions + a note; the AI colleague answers with follow-up questions; open questions to engineering and finance) → **③ Requirements** (create, then open each in a side panel and harden it with the AI). Settings and the audit trail live in the persona menu.
 
 ## Run it
@@ -95,7 +100,9 @@ web/scripts/               seed, contract export, contract test
 3. **② Your knowledge:** choose *Europe · Premium · Mid-life update* and save. The AI colleague opens with two questions the data can't answer (Europe vs. US evidence, platform change vs. LCI).
 4. **CASE-G60-0001 → Decide → Refer** to Jonas (Baukasten). **Switch to Jonas → Inbox → Accept:** a linked case appears in his workspace.
 5. **Lena, CASE-G60-0005 → ② → Paste meeting notes → Use demo note:** the AI proposes the answers; accept them, the audit trail logs each one.
+   - **Ask owners** in the case chat (e.g. CASE-G60-0012): click a chip with data for a cited summary, then *China (0)*: "no evidence", plus a proposed question to the market PM.
+   - **Vehicle plan → REQ-G60-0019:** the quality check flags "seamless" and "intuitive" (not testable) and that the evidence is 100% US while the scope is global. *Approve as PM* shows the issues and asks for the reason.
 6. **Cases → Ranked → Weights:** move *Brand fit*; the list re-ranks with arrows and "moved because…".
 7. **Katrin, My desk → Review:** sign off REQ-G60-0004 inline and resolve the 7 Series escalation as a market variant.
-8. **Vehicle plan:** requirements by car area, open one in the side panel (trace chain, argument sheet, *Harden with AI*), then **Export to Codebeamer**.
+8. **Vehicle plan:** requirements by car area, open one in the side panel (trace chain, quality check, argument sheet, *Harden with AI*), then **Download deck** for the engineering round and **Export to Codebeamer**.
 9. **Signals:** the whole evidence base as one Sankey; *Refresh* fetches new signals and raises a competitor flag.

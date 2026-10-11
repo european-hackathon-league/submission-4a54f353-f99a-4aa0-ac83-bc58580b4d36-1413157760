@@ -14,6 +14,8 @@ import {
   CaseState,
   CaseType,
   ChangeDepth,
+  CheckKind,
+  CheckSeverity,
   CostSensitivity,
   CostSize,
   CostSource,
@@ -388,6 +390,27 @@ export const Requirement = z.object({
 });
 export type Requirement = z.infer<typeof Requirement>;
 
+export const CheckIssue = z.object({
+  id: Id,
+  kind: CheckKind,
+  severity: CheckSeverity,
+  /** Requirement field the issue points at, e.g. "description" or "metrics". */
+  field: z.string(),
+  message: z.string(),
+  /** Another requirement or planned feature the issue refers to. */
+  relatedId: Id.optional(),
+  suggestion: z.string().optional(),
+});
+export type CheckIssue = z.infer<typeof CheckIssue>;
+
+export const RequirementCheck = z.object({
+  requirementId: Id,
+  ranAt: IsoDate,
+  engine: z.enum(["rules", "rules+llm"]),
+  issues: z.array(CheckIssue),
+});
+export type RequirementCheck = z.infer<typeof RequirementCheck>;
+
 // ---------- Routing ----------
 export const Referral = z.object({
   id: Id,
@@ -457,6 +480,16 @@ export const ChatMessage = z.object({
   createdAt: IsoDate,
 });
 export type ChatMessage = z.infer<typeof ChatMessage>;
+
+/** A customer segment the PM can ask in the case chat. Built from real BMW verbatims only. */
+export const ChatSegment = z.object({
+  key: z.string(),
+  label: z.string(),
+  market: Market,
+  powertrain: Powertrain.nullable(),
+  verbatims: z.number().int(),
+});
+export type ChatSegment = z.infer<typeof ChatSegment>;
 
 export const Comment = z.object({
   id: Id,

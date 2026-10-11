@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Send } from "lucide-react";
+import { Bot, Loader2, Send, Users } from "lucide-react";
 import type { Proposal } from "@/contracts";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { fromNow } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/common/markdown";
@@ -28,6 +29,7 @@ export function ChatPanel({
   onCite?: (ref: string) => void;
 }) {
   const { data: messages = [] } = useApi("messages", { params: { type: objectType, id: objectId } });
+  const { data: segments = [] } = useApi("caseSegments", { params: { id: objectId } }, { enabled: objectType === "case" });
   const post = useApiMutation("postMessage");
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
@@ -37,10 +39,10 @@ export function ChatPanel({
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length, post.isPending]);
 
-  const send = (content: string) => {
+  const send = (content: string, segment?: string) => {
     if (!content.trim()) return;
-    post.mutate({ params: { type: objectType, id: objectId }, body: { content } });
-    setText("");
+    post.mutate({ params: { type: objectType, id: objectId }, body: { content, segment } });
+    if (!segment) setText("");
   };
 
   return (
@@ -75,6 +77,26 @@ export function ChatPanel({
         <div ref={end} />
       </div>
       <div className="space-y-2 border-t p-3">
+        {segments.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5" title="Answers use only real BMW verbatims from that segment">
+            <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+              <Users className="size-3" /> Ask owners:
+            </span>
+            {segments.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => send(`What do ${s.label} say?`, s.key)}
+                disabled={post.isPending}
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[11px] hover:border-primary/60 hover:text-foreground",
+                  s.verbatims ? "border-primary/30 bg-primary/5 text-foreground" : "border-dashed text-muted-foreground",
+                )}
+              >
+                {s.label.replace(/ owners$/, "")} <span className="tabular-nums text-muted-foreground">({s.verbatims})</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex flex-wrap gap-1.5">
           {(objectType === "case" ? caseSuggestions : reqSuggestions).map((s) => (
             <button key={s} onClick={() => send(s)} disabled={post.isPending} className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-primary/60 hover:text-foreground">

@@ -6,6 +6,7 @@ import type {
   CaseState,
   CaseType,
   ChangeDepth,
+  CheckKind,
   EvidenceLevel,
   FactorKey,
   InnovationHorizon,
@@ -25,6 +26,15 @@ export const seriesLabel: Record<Series, string> = {
   G60: "5 Series (G60)",
   F70: "1 Series (F70)",
   G70: "7 Series (G70)",
+};
+
+export const checkKindLabel: Record<CheckKind, string> = {
+  vague_word: "Vague wording",
+  missing_scope: "Scope",
+  out_of_scope: "Out of scope",
+  duplicate: "Duplicate",
+  conflict: "Conflict",
+  baukasten: "Baukasten",
 };
 
 export const seriesShort: Record<Series, string> = { G60: "5 Series", F70: "1 Series", G70: "7 Series" };

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ArgumentSheet, requirementButtons, Spec, TraceChain } from "@/components/requirements/requirement-parts";
+import { QualityCheck } from "@/components/requirements/quality-check";
 
 export function RequirementView() {
   const { id } = useParams<{ id: string }>();
@@ -107,6 +108,7 @@ export function RequirementView() {
               </div>
             ))}
           <TraceChain b={b} />
+          <QualityCheck key={b.check?.ranAt} r={r} check={b.check} />
           {b.proposals
             .filter((p) => p.status === "pending")
             .map((p) => (
@@ -222,7 +224,7 @@ export function RequirementView() {
           )}
         </div>
       </aside>
-      <RequirementActionDialog r={r} action={action} onOpenChange={(o) => !o && setAction(null)} />
+      <RequirementActionDialog r={r} check={b.check} action={action} onOpenChange={(o) => !o && setAction(null)} />
     </div>
   );
 }

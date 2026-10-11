@@ -1092,6 +1092,35 @@ paths:
           description: Not found
         "409":
           description: Invalid state transition
+  /cases/{id}/segments:
+    get:
+      operationId: caseSegments
+      summary: Customer segments of a case (market, market x powertrain) with their count of real BMW verbatims
+      tags:
+        - cases
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatSegment"
+        "400":
+          description: Invalid request (Zod issues)
+        "403":
+          description: Not allowed for this user (e.g. not the owner)
+        "404":
+          description: Not found
+        "409":
+          description: Invalid state transition
   /questions:
     get:
       operationId: questions
@@ -1267,6 +1296,10 @@ paths:
                     anyOf:
                       - $ref: "#/components/schemas/PlannedFeature"
                       - type: "null"
+                  check:
+                    anyOf:
+                      - $ref: "#/components/schemas/RequirementCheck"
+                      - type: "null"
                 required:
                   - requirement
                   - case
@@ -1276,6 +1309,7 @@ paths:
                   - alerts
                   - proposals
                   - plannedFeature
+                  - check
                 additionalProperties: false
         "400":
           description: Invalid request (Zod issues)
@@ -1457,6 +1491,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Requirement"
+        "400":
+          description: Invalid request (Zod issues)
+        "403":
+          description: Not allowed for this user (e.g. not the owner)
+        "404":
+          description: Not found
+        "409":
+          description: Invalid state transition
+  /requirements/{id}/check:
+    post:
+      operationId: runRequirementCheck
+      summary: Run the quality check (vague words, scope, out of scope, duplicates, conflicts, Baukasten); rules plus an LLM pass when available
+      tags:
+        - requirements
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequirementCheck"
         "400":
           description: Invalid request (Zod issues)
         "403":
@@ -2253,6 +2321,223 @@ paths:
           description: Not found
         "409":
           description: Invalid state transition
+  /plans/{series}/deck:
+    post:
+      operationId: requirementDeck
+      summary: "Slides for the engineering round: signed-off and planned requirements with quotes, score, competition and decisions"
+      tags:
+        - plan
+      parameters:
+        - name: series
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  series:
+                    type: string
+                    enum:
+                      - G60
+                      - F70
+                      - G70
+                  successorName:
+                    type: string
+                  generatedAt:
+                    type: string
+                  slides:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        requirementId:
+                          type: string
+                        rank:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
+                        score:
+                          type: number
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - in_discussion
+                            - pm_approved
+                            - signed_off
+                            - planned
+                            - exported
+                            - rejected
+                        release:
+                          type: string
+                          enum:
+                            - next_gen
+                            - lci
+                            - ota
+                        marketScope:
+                          type: string
+                          enum:
+                            - global
+                            - RoW
+                            - CN
+                        evidenceLevel:
+                          type: string
+                          enum:
+                            - high
+                            - medium
+                            - low
+                            - assumption
+                        metrics:
+                          type: array
+                          items:
+                            $ref: "#/components/schemas/Metric"
+                        quotes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              ref:
+                                type: string
+                              market:
+                                type: string
+                                enum:
+                                  - EU
+                                  - US
+                                  - CN
+                                  - RoW
+                                  - unknown
+                              text:
+                                type: string
+                            required:
+                              - ref
+                              - market
+                              - text
+                            additionalProperties: false
+                        factors:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              factor:
+                                type: string
+                                enum:
+                                  - customers
+                                  - severity
+                                  - satisfaction_gap
+                                  - competitor_gap
+                                  - market_volume
+                                  - regression
+                                  - trend
+                                  - brand_fit
+                              value:
+                                type: number
+                              weight:
+                                type: number
+                              contribution:
+                                type: number
+                            required:
+                              - factor
+                              - value
+                              - weight
+                              - contribution
+                            additionalProperties: false
+                        competitor:
+                          type: array
+                          items:
+                            type: string
+                        decisions:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              at:
+                                type: string
+                              actor:
+                                type: string
+                              action:
+                                type: string
+                              rationale:
+                                type: string
+                            required:
+                              - at
+                              - actor
+                              - action
+                            additionalProperties: false
+                        openIssues:
+                          type: object
+                          properties:
+                            red:
+                              type: integer
+                              minimum: -9007199254740991
+                              maximum: 9007199254740991
+                            amber:
+                              type: integer
+                              minimum: -9007199254740991
+                              maximum: 9007199254740991
+                          required:
+                            - red
+                            - amber
+                          additionalProperties: false
+                        caseId:
+                          type: string
+                        caseTitle:
+                          type: string
+                        ownerName:
+                          type: string
+                      required:
+                        - requirementId
+                        - rank
+                        - score
+                        - title
+                        - description
+                        - status
+                        - release
+                        - marketScope
+                        - evidenceLevel
+                        - metrics
+                        - quotes
+                        - factors
+                        - competitor
+                        - decisions
+                        - openIssues
+                        - caseId
+                        - caseTitle
+                        - ownerName
+                      additionalProperties: false
+                required:
+                  - filename
+                  - series
+                  - successorName
+                  - generatedAt
+                  - slides
+                additionalProperties: false
+        "400":
+          description: Invalid request (Zod issues)
+        "403":
+          description: Not allowed for this user (e.g. not the owner)
+        "404":
+          description: Not found
+        "409":
+          description: Invalid state transition
   /threads/{type}/{id}/messages:
     get:
       operationId: messages
@@ -2313,6 +2598,8 @@ paths:
                 content:
                   type: string
                   minLength: 1
+                segment:
+                  type: string
               required:
                 - content
       responses:
@@ -4517,6 +4804,41 @@ components:
         - ref
         - label
       additionalProperties: false
+    ChatSegment:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        market:
+          type: string
+          enum:
+            - EU
+            - US
+            - CN
+            - RoW
+            - unknown
+        powertrain:
+          anyOf:
+            - type: string
+              enum:
+                - ICE
+                - PHEV
+                - BEV
+                - unknown
+            - type: "null"
+        verbatims:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - key
+        - label
+        - market
+        - powertrain
+        - verbatims
+      additionalProperties: false
     PlannedFeature:
       type: object
       properties:
@@ -4581,6 +4903,65 @@ components:
         - release
         - protected
         - note
+      additionalProperties: false
+    RequirementCheck:
+      type: object
+      properties:
+        requirementId:
+          type: string
+          minLength: 1
+        ranAt:
+          type: string
+        engine:
+          type: string
+          enum:
+            - rules
+            - rules+llm
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckIssue"
+      required:
+        - requirementId
+        - ranAt
+        - engine
+        - issues
+      additionalProperties: false
+    CheckIssue:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          enum:
+            - vague_word
+            - missing_scope
+            - out_of_scope
+            - duplicate
+            - conflict
+            - baukasten
+        severity:
+          type: string
+          enum:
+            - red
+            - amber
+        field:
+          type: string
+        message:
+          type: string
+        relatedId:
+          type: string
+          minLength: 1
+        suggestion:
+          type: string
+      required:
+        - id
+        - kind
+        - severity
+        - field
+        - message
       additionalProperties: false
     ScoredCase:
       type: object

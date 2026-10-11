@@ -41,6 +41,14 @@ async function call(name: EndpointName, opts: { params?: Record<string, string>;
   return json;
 }
 
+function expectTrue(ok: boolean, what: string) {
+  if (ok) console.log(`✓ ${what}`);
+  else {
+    failures++;
+    console.error(`✗ ${what}`);
+  }
+}
+
 async function main() {
   await call("reset", { body: {} });
 
@@ -64,6 +72,24 @@ async function main() {
   await call("questions");
   await call("requirements");
   await call("requirementBundle", { params: { id: "REQ-G60-0004" } });
+  // Quality check: the seeded wireless-projection requirement uses vague wording; the CLTC one mentions homologation.
+  const vague = (await call("runRequirementCheck", { params: { id: "REQ-G60-0019" }, body: {} })) as { issues: { kind: string }[] };
+  expectTrue(vague.issues.some((i) => i.kind === "vague_word"), "quality check flags vague wording on REQ-G60-0019");
+  const scope = (await call("runRequirementCheck", { params: { id: "REQ-G60-CN-0003" }, body: {} })) as { issues: { kind: string }[] };
+  expectTrue(scope.issues.some((i) => i.kind === "out_of_scope"), "quality check flags homologation on REQ-G60-CN-0003");
+  // Ask the segment: real verbatims only; a segment without data gets a proposal instead of a guess.
+  const segs = (await call("caseSegments", { params: { id: "CASE-G60-0012" } })) as { key: string; verbatims: number }[];
+  const full = segs.find((s) => s.verbatims > 0);
+  const empty = segs.find((s) => s.verbatims === 0);
+  if (full) {
+    const r = (await call("postMessage", { params: { type: "case", id: "CASE-G60-0012" }, body: { content: "What do they say?", segment: full.key } })) as { messages: { content: string; citations: unknown[] }[] };
+    expectTrue(r.messages[1].content.includes("Grounded in") && r.messages[1].citations.length > 0, "segment answer is grounded and cited");
+  }
+  if (empty) {
+    const r = (await call("postMessage", { params: { type: "case", id: "CASE-G60-0012" }, body: { content: "What do they say?", segment: empty.key } })) as { proposals: unknown[] };
+    expectTrue(r.proposals.length === 1, "segment without verbatims proposes an open question");
+  }
+  await call("postMessage", { params: { type: "case", id: "CASE-G60-0012" }, body: { content: "x", segment: "nowhere" }, expect: 400 });
   await call("scores", { query: { series: "G60" } });
   await call("previewScores", { body: { weights: { brand_fit: 1, customers: 0.1 } } });
   await call("weightProfiles");
@@ -118,6 +144,8 @@ async function main() {
   // 6. Katrin signs off, Lena plans, export.
   await call("transitionRequirement", { params: { id: "REQ-G60-0004" }, body: { action: "sign_off", rationale: "Quality baseline in place" }, as: "u-katrin" });
   await call("transitionRequirement", { params: { id: "REQ-G60-0004" }, body: { action: "plan", rationale: "Into the LCI plan" } });
+  const deck = (await call("requirementDeck", { params: { series: "G60" }, body: {} })) as { slides: { requirementId: string }[] };
+  expectTrue(deck.slides.some((s) => s.requirementId === "REQ-G60-0004"), "deck contains the newly planned REQ-G60-0004");
   await call("exportRequirements", { body: { series: "G60", format: "codebeamer_csv" } });
   // 7. Refresh run + alert resolution + misc mutations.
   await call("refresh", { body: { series: "G60" } });

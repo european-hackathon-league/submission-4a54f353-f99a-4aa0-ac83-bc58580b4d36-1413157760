@@ -188,6 +188,13 @@ export type CostSource = z.infer<typeof CostSource>;
 export const MetricBasis = z.enum(["evidence", "assumption"]);
 export type MetricBasis = z.infer<typeof MetricBasis>;
 
+/** Quality check on a requirement before PM approval (the checks engineering runs in Codebeamer). */
+export const CheckKind = z.enum(["vague_word", "missing_scope", "out_of_scope", "duplicate", "conflict", "baukasten"]);
+export type CheckKind = z.infer<typeof CheckKind>;
+
+export const CheckSeverity = z.enum(["red", "amber"]);
+export type CheckSeverity = z.infer<typeof CheckSeverity>;
+
 // ---------- Collaboration ----------
 export const Addressee = z.enum(["engineering", "finance", "design", "quality", "market_pm", "purchasing", "other"]);
 export type Addressee = z.infer<typeof Addressee>;

@@ -45,6 +45,34 @@ function contextBlock(c: Case, signals: Signal[], r?: Requirement) {
     .join("\n");
 }
 
+/** One-shot call with its own system prompt (quality check, segment summary). Null when the call fails. */
+export async function liveJson(system: string, content: string): Promise<string | null> {
+  const client = new Anthropic();
+  try {
+    const response = await client.beta.messages.create({
+      model: process.env.LLM_MODEL ?? "claude-opus-5-5",
+      max_tokens: 4000,
+      system,
+      output_config: { effort: "low" },
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      messages: [{ role: "user", content }],
+    });
+    if (response.stop_reason === "refusal") return null;
+    return (
+      response.content
+        .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim() || null
+    );
+  } catch (error) {
+    if (error instanceof Anthropic.APIError) console.error(`Live call failed (${error.status}): ${error.message}`);
+    else console.error("Live call failed:", error);
+    return null;
+  }
+}
+
 export async function liveReply(c: Case, signals: Signal[], history: ChatMessage[], content: string, r?: Requirement): Promise<string | null> {
   const client = new Anthropic();
   const messages: Anthropic.Beta.BetaMessageParam[] = [

@@ -8,10 +8,12 @@ import {
   CaseState,
   CaseType,
   ChangeDepth,
+  EvidenceLevel,
   FactorKey,
   InnovationHorizon,
   Market,
   Region,
+  ReleaseTarget,
   RequirementAction,
   RequirementStatus,
   Series,
@@ -25,9 +27,11 @@ import {
   BrandProfile,
   Case,
   ChatMessage,
+  ChatSegment,
   Comment,
   InnovationMeta,
   MeetingNote,
+  Metric,
   Notification,
   OpenQuestion,
   PlannedFeature,
@@ -36,6 +40,7 @@ import {
   QuarantineItem,
   Referral,
   Requirement,
+  RequirementCheck,
   ScoredCase,
   Signal,
   SignalCluster,
@@ -103,6 +108,7 @@ export const RequirementBundle = z.object({
   alerts: z.array(Alert),
   proposals: z.array(Proposal),
   plannedFeature: PlannedFeature.nullable(),
+  check: RequirementCheck.nullable(),
 });
 export type RequirementBundle = z.infer<typeof RequirementBundle>;
 
@@ -227,7 +233,11 @@ export const ReferralDecisionBody = z.object({
   resolution: z.enum(["one_market", "variant", "keep_both", "take_over", "return"]).optional(),
 });
 
-export const ChatPostBody = z.object({ content: z.string().min(1) });
+export const ChatPostBody = z.object({
+  content: z.string().min(1),
+  /** Segment key from GET /cases/:id/segments: answer only from that segment's real verbatims. */
+  segment: z.string().optional(),
+});
 export const ChatPostResponse = z.object({ messages: z.array(ChatMessage), proposals: z.array(Proposal) });
 
 export const ProposalDecisionBody = z.object({ decision: z.enum(["accept", "reject"]), rationale: z.string().optional() });
@@ -244,6 +254,38 @@ export const ExportBody = z.object({
   requirementIds: z.array(z.string()).optional(),
 });
 export const ExportResponse = z.object({ filename: z.string(), mime: z.string(), content: z.string(), count: z.number().int() });
+
+/** One slide of the engineering-round deck: the requirement and every argument behind it. */
+export const DeckSlide = z.object({
+  requirementId: z.string(),
+  rank: z.number().int(),
+  score: z.number(),
+  title: z.string(),
+  description: z.string(),
+  status: RequirementStatus,
+  release: ReleaseTarget,
+  marketScope: Region,
+  evidenceLevel: EvidenceLevel,
+  metrics: z.array(Metric),
+  quotes: z.array(z.object({ ref: z.string(), market: Market, text: z.string() })),
+  factors: z.array(z.object({ factor: FactorKey, value: z.number(), weight: z.number(), contribution: z.number() })),
+  competitor: z.array(z.string()),
+  decisions: z.array(z.object({ at: z.string(), actor: z.string(), action: z.string(), rationale: z.string().optional() })),
+  openIssues: z.object({ red: z.number().int(), amber: z.number().int() }),
+  caseId: z.string(),
+  caseTitle: z.string(),
+  ownerName: z.string(),
+});
+export type DeckSlide = z.infer<typeof DeckSlide>;
+
+export const DeckResponse = z.object({
+  filename: z.string(),
+  series: Series,
+  successorName: z.string(),
+  generatedAt: z.string(),
+  slides: z.array(DeckSlide),
+});
+export type DeckResponse = z.infer<typeof DeckResponse>;
 
 export const PlanFeaturePatch = z.object({
   patch: PlannedFeature.pick({ action: true, note: true, release: true, protected: true }).partial(),
@@ -347,6 +389,13 @@ export const endpoints = {
   }),
   generateRequirements: ep({ method: "POST", path: "/cases/:id/requirements/generate", tag: "cases", summary: "Draft requirement(s) from a confirmed case", body: z.object({}), response: z.array(Requirement) }),
   exportCaseMd: ep({ method: "GET", path: "/cases/:id/export.md", tag: "cases", summary: "Case as markdown with YAML front matter", response: z.object({ filename: z.string(), content: z.string() }) }),
+  caseSegments: ep({
+    method: "GET",
+    path: "/cases/:id/segments",
+    tag: "cases",
+    summary: "Customer segments of a case (market, market x powertrain) with their count of real BMW verbatims",
+    response: z.array(ChatSegment),
+  }),
 
   // Questions
   questions: ep({ method: "GET", path: "/questions", tag: "questions", summary: "Open questions (mine by default)", query: z.object({ all: z.coerce.boolean().optional() }), response: z.array(OpenQuestion) }),
@@ -357,6 +406,14 @@ export const endpoints = {
   requirementBundle: ep({ method: "GET", path: "/requirements/:id", tag: "requirements", summary: "Requirement with its case and evidence", response: RequirementBundle }),
   patchRequirement: ep({ method: "PATCH", path: "/requirements/:id", tag: "requirements", summary: "Edit a requirement", body: PatchRequirementBody, response: Requirement }),
   transitionRequirement: ep({ method: "POST", path: "/requirements/:id/transition", tag: "requirements", summary: "Move a requirement", body: RequirementTransitionBody, response: Requirement }),
+  runRequirementCheck: ep({
+    method: "POST",
+    path: "/requirements/:id/check",
+    tag: "requirements",
+    summary: "Run the quality check (vague words, scope, out of scope, duplicates, conflicts, Baukasten); rules plus an LLM pass when available",
+    body: z.object({}),
+    response: RequirementCheck,
+  }),
 
   // Scoring
   scores: ep({ method: "GET", path: "/scores", tag: "scoring", summary: "Ranked cases and requirements for a weight profile", query: z.object({ profileId: z.string().optional(), series: Series.optional() }), response: ScoresResponse }),
@@ -385,6 +442,14 @@ export const endpoints = {
   plan: ep({ method: "GET", path: "/plans/:series", tag: "plan", summary: "Successor vehicle plan", response: VehiclePlan }),
   patchPlanFeature: ep({ method: "PATCH", path: "/plans/:series/features/:featureId", tag: "plan", summary: "Edit a planned feature", body: PlanFeaturePatch, response: VehiclePlan }),
   exportRequirements: ep({ method: "POST", path: "/exports", tag: "plan", summary: "Export approved requirements (Codebeamer CSV or JSON)", body: ExportBody, response: ExportResponse }),
+  requirementDeck: ep({
+    method: "POST",
+    path: "/plans/:series/deck",
+    tag: "plan",
+    summary: "Slides for the engineering round: signed-off and planned requirements with quotes, score, competition and decisions",
+    body: z.object({}),
+    response: DeckResponse,
+  }),
 
   // Conversation
   messages: ep({ method: "GET", path: "/threads/:type/:id/messages", tag: "conversation", summary: "AI chat thread of a case or requirement", response: z.array(ChatMessage) }),

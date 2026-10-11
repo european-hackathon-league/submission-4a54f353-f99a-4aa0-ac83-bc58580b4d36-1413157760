@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronRight, Download, Lock } from "lucide-react";
+import { ChevronRight, Download, Lock, Presentation } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/contracts";
 import { api } from "@/lib/api/client";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
+import { downloadDeck } from "@/lib/deck";
 import { download } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PageHeader, PageSkeleton } from "@/components/common/page";
@@ -51,6 +52,7 @@ export function PlanView() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>("active");
   const [reqId, setReqId] = useState<string | null>(null);
+  const [deckPending, setDeckPending] = useState(false);
 
   if (!plan.data || !me.data) return <PageSkeleton />;
   const p = plan.data;
@@ -67,6 +69,24 @@ export function PlanView() {
     toast.success(`${res.count} requirements exported to ${res.filename}`);
   };
 
+  const exportDeck = async () => {
+    setDeckPending(true);
+    try {
+      const deck = await api("requirementDeck", { params: { series }, body: {} });
+      if (!deck.slides.length) {
+        toast.info("No signed-off or planned requirements yet: nothing to present.");
+        return;
+      }
+      await downloadDeck(deck);
+      await qc.invalidateQueries();
+      toast.success(`Deck with ${deck.slides.length} requirements saved as ${deck.filename}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Deck export failed");
+    } finally {
+      setDeckPending(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -80,6 +100,9 @@ export function PlanView() {
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
+            <Button size="sm" variant="outline" onClick={exportDeck} disabled={deckPending} title="One slide per signed-off requirement: SMART text, quotes, score, competition, decisions">
+              <Presentation className="size-3.5" /> {deckPending ? "Building deck…" : "Download deck"}
+            </Button>
             <Button size="sm" onClick={exportCsv}>
               <Download className="size-3.5" /> Export to Codebeamer
             </Button>

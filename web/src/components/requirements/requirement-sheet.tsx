@@ -11,6 +11,7 @@ import { ProposalCard } from "@/components/common/proposal-card";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { RequirementActionDialog } from "@/components/requirements/requirement-action-dialog";
 import { ArgumentSheet, requirementButtons, Spec, TraceChain } from "@/components/requirements/requirement-parts";
+import { QualityCheck } from "@/components/requirements/quality-check";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,6 +77,7 @@ function Body({ id }: { id: string }) {
           </div>
         )}
         <TraceChain b={b} />
+        <QualityCheck key={b.check?.ranAt} r={r} check={b.check} />
         {b.proposals
           .filter((p) => p.status === "pending")
           .map((p) => (
@@ -98,7 +100,7 @@ function Body({ id }: { id: string }) {
           <ChatPanel objectType="requirement" objectId={r.id} proposals={b.proposals} canEdit={canEdit} onCite={onCite} />
         </TabsContent>
       </Tabs>
-      <RequirementActionDialog r={r} action={action} onOpenChange={(o) => !o && setAction(null)} />
+      <RequirementActionDialog r={r} check={b.check} action={action} onOpenChange={(o) => !o && setAction(null)} />
     </>
   );
 }

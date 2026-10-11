@@ -18179,7 +18179,8 @@
     }
    ],
    "acceptanceCriteria": [
-    "Tested with the 5 most common phone models per market"
+    "Tested with the 5 most common phone models per market",
+    "Reconnection feels seamless and intuitive to the driver"
    ],
    "assumptions": [
     "Root cause is software (to confirm with engineering)"
