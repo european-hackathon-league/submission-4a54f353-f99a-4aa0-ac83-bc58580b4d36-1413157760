@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "enum": [
+        "scope",
+        "benchmark",
+        "solution",
+        "release",
+        "offer"
+      ]
+    },
+    "value": {
+      "type": "string"
+    },
+    "byDefault": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "key",
+    "value",
+    "byDefault"
+  ],
+  "additionalProperties": false
+}

@@ -27,6 +27,125 @@
     "description": {
       "type": "string"
     },
+    "descriptionParts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "evidence",
+              "pm_context",
+              "assumption"
+            ]
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "brand",
+                  "series_brief",
+                  "case_stance",
+                  "requirement_shape",
+                  "feedback"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "source",
+          "layer",
+          "ref",
+          "signalIds",
+          "label"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "version": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "shapeAnswers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "scope",
+              "benchmark",
+              "solution",
+              "release",
+              "offer"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "byDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "byDefault"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "briefId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "drafter": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "marketScope": {
       "type": "string",
       "enum": [
@@ -232,6 +351,12 @@
     "title",
     "shortTitle",
     "description",
+    "descriptionParts",
+    "provenance",
+    "version",
+    "shapeAnswers",
+    "briefId",
+    "drafter",
     "marketScope",
     "variantOf",
     "status",

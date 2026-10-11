@@ -1,12 +1,15 @@
 import { stringify as toYaml } from "yaml";
 import type { z } from "zod";
 import type {
+  BriefFieldKey,
+  BriefValues,
   Case,
   CaseState,
   ChatMessage,
   Dataset,
   EndpointName,
   endpoints,
+  FeedbackEntry,
   Market,
   OpenQuestion,
   Proposal,
@@ -14,16 +17,21 @@ import type {
   Requirement,
   RequirementCheck,
   RequirementStatus,
+  SeriesBrief,
   Signal,
   TaxonomyResponse,
   User,
 } from "@/contracts";
+import { BriefFieldKey as BriefFieldKeys, RequirementSnapshot, addresseeLabel, briefFieldLabel, feedbackResponseLabel, shapeKeyLabel } from "@/contracts";
 import { ApiError, audit, checks, db, must, nextId, notify, now, resetStore } from "./store";
 import { computeScores } from "./scoring";
-import { draftRequirements } from "./ai/drafts";
+import { getDrafter, type Draft } from "./ai/drafter";
+import { buildInput, changeSummary, feedbackPatch, redraft, regionOf, retagEdits, snapshotOf, snapshotsDiffer, stanceOf } from "./ai/drafting";
+import { briefFieldsUsed, provenanceCounts, provenanceLine, sentences } from "./ai/provenance";
+import { conflictsOf, extractFromDoc, needsOnboarding, overlayOf, overlayPrefill, resolveBrief, sharedBrief } from "./briefs";
 import { checkRequirement, ruleCheck } from "./ai/quality";
 import { caseSegments, segmentReply } from "./ai/segment";
-import { cite, followUpQuestions, scriptedReply, type ProposalDraft } from "./ai/chat";
+import { cite, followUpQuestions, scriptedReply, shapeQuestionsMessage, type ProposalDraft } from "./ai/chat";
 import { extractFromNote } from "./ai/notes";
 import { liveChatEnabled, liveReply } from "./ai/live";
 import { refreshPool } from "./authored/world";
@@ -105,20 +113,28 @@ function recomputeFigures(d: Dataset, c: Case) {
   c.factors.customers = Math.round(Math.min(1, Math.log10(1 + customers) / Math.log10(61)) * 100) / 100;
 }
 
-function createRequirement(d: Dataset, c: Case, draft: ReturnType<typeof draftRequirements>[number], actorId: string): Requirement {
+function createRequirement(
+  d: Dataset,
+  c: Case,
+  draft: Draft,
+  actorId: string,
+  opts: { ownerId?: string; briefId?: string | null; drafter?: string; variantOf?: string | null } = {},
+): Requirement {
   const prefix = `REQ-${c.series}-${draft.marketScope === "CN" ? "CN-" : ""}`;
   const r: Requirement = {
     id: nextId(prefix, d.requirements),
     caseId: c.id,
     series: c.series,
-    variantOf: null,
+    variantOf: opts.variantOf ?? null,
     status: "draft",
     carArea: c.carArea,
     changeDepth: c.changeDepth,
-    ownerId: c.ownerId,
-    shortTitle: draft.marketScope === "CN" && c.scope !== "CN" ? `${c.shortTitle} (China)` : c.shortTitle,
+    ownerId: opts.ownerId ?? c.ownerId,
     manualRank: null,
     plannedFeatureId: null,
+    version: 1,
+    briefId: opts.briefId ?? null,
+    drafter: opts.drafter ?? null,
     createdAt: now(),
     updatedAt: now(),
     synthetic: true,
@@ -126,9 +142,111 @@ function createRequirement(d: Dataset, c: Case, draft: ReturnType<typeof draftRe
   };
   d.requirements.push(r);
   c.requirementIds.push(r.id);
-  audit({ actorId, action: "requirement.drafted", objectType: "requirement", objectId: r.id, after: { title: r.title }, rationale: `Generated from ${c.id}` });
+  d.requirementVersions.push({ requirementId: r.id, version: 1, snapshot: snapshotOf(r), cause: "draft", rationale: `Drafted from ${c.id}`, createdAt: now(), createdBy: actorId });
+  const layers = [...new Set(r.provenance.map((p) => p.layer ?? p.source))];
+  audit({
+    actorId,
+    action: "requirement.drafted",
+    objectType: "requirement",
+    objectId: r.id,
+    after: { title: r.title, drafter: r.drafter, briefId: r.briefId, layers, shape: r.shapeAnswers.map((a) => `${a.key}=${a.value}${a.byDefault ? " (default)" : ""}`) },
+    rationale: `Generated from ${c.id}`,
+  });
   saveCheck(ruleCheck(d, r, now()), "After drafting");
   return r;
+}
+
+/** Apply a new version (feedback, brief change or edit): bump the version, keep the history, re-run the quality check. */
+function applyVersion(d: Dataset, r: Requirement, snapshot: RequirementSnapshot, cause: "feedback" | "brief_change" | "edit", actorId: string, rationale: string, feedbackId?: string) {
+  const before = snapshotOf(r);
+  Object.assign(r, snapshot);
+  r.version += 1;
+  touch(r);
+  d.requirementVersions.push({ requirementId: r.id, version: r.version, snapshot: snapshotOf(r), cause, feedbackId, rationale, createdAt: now(), createdBy: actorId });
+  audit({ actorId, action: "requirement.version_created", objectType: "requirement", objectId: r.id, before: { version: r.version - 1 }, after: { version: r.version, cause, change: changeSummary(before, snapshot) }, rationale });
+  saveCheck(ruleCheck(d, r, now()), `After version ${r.version}`);
+}
+
+/** PMs of the case's series may draft their own (regional) requirement on it, under their own brief. */
+function assertCanDraft(u: User, c: Case) {
+  if (canEditCase(u, c)) return;
+  if (u.role === "vehicle_pm" && u.series.includes(c.series)) return;
+  throw new ApiError(403, `Only the owner or a PM of the ${c.series} can draft requirements on ${c.id}.`);
+}
+
+function briefById(d: Dataset, id: string) {
+  return must(d.briefs.find((b) => b.id === id), `Brief ${id}`);
+}
+
+function assertBriefEditor(u: User, b: SeriesBrief) {
+  if (u.id !== b.ownerId && u.role !== "head") throw new ApiError(403, `Only ${b.ownerId} (or the head of product line) edits ${b.id}.`);
+}
+
+/**
+ * Requirements a brief change touches: their provenance references a changed field and they were
+ * composed with this brief (or, for a shared brief, an overlay that does not override the field).
+ * Composer-made requirements get a new-version proposal; hand-written ones are listed for review.
+ */
+async function briefImpact(d: Dataset, brief: SeriesBrief, values: Partial<BriefValues>) {
+  const changed = BriefFieldKeys.options.filter((k) => values[k] !== undefined && JSON.stringify(values[k]) !== JSON.stringify(brief.values[k]));
+  if (!changed.length) return [];
+  const overlays = d.briefs.filter((b) => b.parentId === brief.id);
+  const out = [];
+  for (const r of d.requirements) {
+    if (["rejected", "exported"].includes(r.status) || r.series !== brief.series) continue;
+    const viaOverlay = overlays.find((o) => o.id === r.briefId);
+    const usesThis = r.briefId === brief.id || (viaOverlay && brief.kind === "shared");
+    if (!usesThis) continue;
+    const live = changed.filter((k) => !(viaOverlay && viaOverlay.values[k] !== undefined));
+    if (!live.length) continue;
+    const tagged = briefFieldsUsed(r).filter((k) => live.includes(k));
+    if (!r.drafter?.startsWith("composer")) {
+      // Hand-written: only its provenance tells what it depends on; no automatic redraft.
+      if (tagged.length) out.push({ requirementId: r.id, title: r.title, fields: tagged, summary: "Written by hand: review it yourself (no automatic redraft).", changes: [], proposalId: null });
+      continue;
+    }
+    // Composer-made: redraft with the new values; a default the brief decided (e.g. ambition) may change too.
+    const baseResolved = resolveBrief(d, r.series, r.ownerId)!;
+    const nextResolved = { ...baseResolved, values: { ...baseResolved.values, ...Object.fromEntries(live.map((k) => [k, values[k]])) } };
+    const { draft } = await redraft(d, r, { brief: nextResolved });
+    const current = snapshotOf(r);
+    if (!snapshotsDiffer(current, draft)) continue;
+    const fields = tagged.length ? tagged : live;
+    const summary = `v${r.version + 1}: ${changeSummary(current, draft)} (brief: ${fields.map((k) => briefFieldLabel[k].toLowerCase()).join(", ")})`;
+    out.push({ requirementId: r.id, title: r.title, fields, summary, changes: [{ field: "version", before: current, after: draft }], proposalId: null as string | null });
+  }
+  return out;
+}
+
+/** Learning is proposed, never silent: after 3 expensive drafts were rejected or cut, suggest a stricter cost envelope. */
+function maybeLearnCost(d: Dataset, user: User) {
+  const expensive = new Set(d.requirements.filter((r) => r.ownerId === user.id).map((r) => r.id));
+  const signals = d.audit.filter(
+    (e) =>
+      expensive.has(e.objectId) &&
+      e.actorId === user.id &&
+      ((e.action === "requirement.status_changed" && (e.after as { status?: string })?.status === "rejected" && (e.before as { costSize?: string })?.costSize === "L") ||
+        (e.action === "requirement.edited" && (e.before as { cost?: { size?: string } })?.cost?.size === "L" && (e.after as { cost?: { size?: string } })?.cost?.size !== "L")),
+  ).length;
+  if (signals < 3) return;
+  const brief = overlayOf(d, user.series[0], user.id) ?? sharedBrief(d, user.series[0]);
+  if (!brief || (brief.ownerId !== user.id && user.role !== "head")) return;
+  const current = resolveBrief(d, brief.series, user.id)?.values.costEnvelope;
+  if (!current || current.sensitivity === "high") return;
+  if (d.proposals.some((p) => p.objectId === brief.id && p.source === "learning" && p.status === "pending")) return;
+  saveProposals(d, [
+    {
+      objectType: "brief",
+      objectId: brief.id,
+      source: "learning",
+      kind: "brief_field",
+      summary: `You rejected or cut ${signals} expensive (size L) drafts. Set cost sensitivity to high?`,
+      changes: [{ field: "costEnvelope", before: current, after: { ...current, sensitivity: "high" } }],
+      citations: [],
+    },
+  ]);
+  audit({ actorId: "agent:learning", action: "proposal.created", objectType: "brief", objectId: brief.id, after: { field: "costEnvelope" }, rationale: `${signals} expensive drafts rejected or cut` });
+  notify({ userId: user.id, kind: "alert", title: "Learned from your decisions", body: "Set cost sensitivity to high? See your series brief.", link: "/brief", actorId: "agent:learning" });
 }
 
 function saveCheck(check: RequirementCheck, trigger: string) {
@@ -183,7 +301,7 @@ function linkedCaseFor(d: Dataset, source: Case, owner: User, series = owner.ser
     state: "investigating",
     outcome: null,
     outcomeNote: undefined,
-    pmContext: null,
+    stances: [],
     originCaseId: source.id,
     mergedInto: null,
     requirementIds: [],
@@ -206,7 +324,154 @@ export const handlers: Handlers = {
   // Identity
   me: ({ user }) => {
     const d = db();
-    return { user, workspace: workspaceOf(d, user.id), weightProfile: profileOf(d, user.id) };
+    const brief = user.role === "vehicle_pm" ? resolveBrief(d, user.series[0], user.id) : null;
+    return { user, workspace: workspaceOf(d, user.id), weightProfile: profileOf(d, user.id), brief, needsOnboarding: needsOnboarding(d, user) };
+  },
+
+  // Series briefs (layer 1)
+  briefs: ({ query }) => db().briefs.filter((b) => !query.series || b.series === query.series),
+  myBrief: ({ user }) => {
+    const d = db();
+    const series = user.series[0];
+    const shared = sharedBrief(d, series) ?? null;
+    const overlay = overlayOf(d, series, user.id) ?? null;
+    const ids = new Set([shared?.id, overlay?.id].filter(Boolean));
+    return {
+      resolved: user.role === "vehicle_pm" ? resolveBrief(d, series, user.id) : null,
+      shared,
+      overlay,
+      proposals: d.proposals.filter((p) => p.objectType === "brief" && ids.has(p.objectId)),
+    };
+  },
+  createOverlay: ({ body, user }) => {
+    const d = db();
+    const shared = must(sharedBrief(d, body.series), `Shared brief of ${body.series}`);
+    if (user.role !== "vehicle_pm" || !user.series.includes(body.series)) throw new ApiError(403, `Only a PM of the ${body.series} creates a regional overlay.`);
+    if (shared.ownerId === user.id) throw new ApiError(409, "You own the shared brief; edit it directly.");
+    const existing = overlayOf(d, body.series, user.id);
+    if (existing) return existing;
+    const pre = overlayPrefill(user);
+    const at = now();
+    const overlay: SeriesBrief = {
+      id: `BRIEF-${body.series}-${user.region}`,
+      series: body.series,
+      kind: "overlay",
+      region: user.region,
+      parentId: shared.id,
+      ownerId: user.id,
+      values: pre.values,
+      meta: Object.fromEntries(Object.keys(pre.values).map((k) => [k, { source: "data", confirmed: false, reason: pre.reasons[k as BriefFieldKey], updatedAt: at, updatedBy: user.id }])),
+      version: 1,
+      createdAt: at,
+      updatedAt: at,
+      synthetic: true,
+    };
+    d.briefs.push(overlay);
+    audit({ actorId: user.id, action: "brief.created", objectType: "brief", objectId: overlay.id, after: { series: overlay.series, kind: "overlay", region: overlay.region, parentId: shared.id }, rationale: "Onboarding: regional overlay on the shared brief" });
+    return overlay;
+  },
+  saveBrief: async ({ params, body, user }) => {
+    const d = db();
+    const b = briefById(d, params.id);
+    assertBriefEditor(user, b);
+    const shared = b.kind === "overlay" ? briefById(d, b.parentId!) : b;
+    const values: Partial<BriefValues> = Object.fromEntries(Object.entries(body.values).filter(([, v]) => v !== undefined));
+    // An overlay holds only what differs from the shared brief, each difference with a reason.
+    if (b.kind === "overlay") {
+      for (const k of Object.keys(values) as BriefFieldKey[]) {
+        if (JSON.stringify(values[k]) === JSON.stringify(shared.values[k])) delete values[k];
+        else if (!body.reasons[k] && !b.meta[k]?.reason) throw new ApiError(400, `Say why ${briefFieldLabel[k].toLowerCase()} differs from the shared brief.`);
+      }
+    }
+    const current = resolveBrief(d, b.series, b.ownerId);
+    const impact = current ? await briefImpact(d, b, values) : [];
+    const before: Record<string, unknown> = {};
+    const at = now();
+    for (const k of Object.keys(values) as BriefFieldKey[]) {
+      before[k] = b.values[k];
+      (b.values as Record<string, unknown>)[k] = values[k];
+      b.meta[k] = { source: "pm", confirmed: true, reason: body.reasons[k] ?? b.meta[k]?.reason, updatedAt: at, updatedBy: user.id };
+    }
+    for (const k of body.confirm ?? []) {
+      const m = b.meta[k];
+      if (m) b.meta[k] = { ...m, confirmed: true, updatedAt: at, updatedBy: user.id };
+      else if (b.values[k] !== undefined) b.meta[k] = { source: "pm", confirmed: true, updatedAt: at, updatedBy: user.id };
+    }
+    for (const k of body.clear ?? []) {
+      if (b.kind !== "overlay") continue;
+      before[k] = b.values[k];
+      delete b.values[k];
+      delete b.meta[k];
+    }
+    const changedFields = [...Object.keys(values), ...(body.clear ?? [])];
+    if (changedFields.length || body.confirm?.length) {
+      b.version += 1;
+      touch(b);
+      audit({
+        actorId: user.id,
+        action: "brief.updated",
+        objectType: "brief",
+        objectId: b.id,
+        before,
+        after: { ...Object.fromEntries(changedFields.map((k) => [k, b.values[k as BriefFieldKey] ?? "(shared value)"])), confirmed: body.confirm ?? [] },
+        rationale: Object.values(body.reasons).filter(Boolean).join(" · ") || (body.confirm?.length ? "Confirmed pre-filled answers" : "Brief edited"),
+      });
+    }
+    // Impact: one new-version proposal per affected requirement, never a silent edit.
+    const created = [];
+    for (const i of impact) {
+      if (i.proposalId === null && i.changes.length) {
+        const r = d.requirements.find((x) => x.id === i.requirementId)!;
+        const [p] = saveProposals(d, [{ objectType: "requirement", objectId: r.id, source: "brief_change", kind: "new_version", summary: i.summary, changes: i.changes, citations: [] }]);
+        audit({ actorId: "agent:impact", action: "proposal.created", objectType: "requirement", objectId: r.id, after: { proposalId: p.id, fields: i.fields }, rationale: `Brief ${b.id} changed` });
+        if (r.ownerId !== user.id) notify({ userId: r.ownerId, kind: "alert", title: "A brief change affects your requirement", body: `${r.id}: ${i.summary}`, link: `/requirements/${r.id}`, actorId: "agent:impact" });
+        created.push({ ...i, proposalId: p.id });
+      } else created.push(i);
+    }
+    return { brief: b, impact: created };
+  },
+  previewBriefImpact: async ({ params, body, user }) => {
+    const d = db();
+    const b = briefById(d, params.id);
+    assertBriefEditor(user, b);
+    return briefImpact(d, b, body.values);
+  },
+  extractBrief: ({ params, body, user }) => {
+    const d = db();
+    const b = briefById(d, params.id);
+    assertBriefEditor(user, b);
+    const current = resolveBrief(d, b.series, b.ownerId);
+    if (!current) throw new ApiError(409, "The shared brief is incomplete; fill it before extracting a regional overlay.");
+    const drafts = extractFromDoc(body.text, current.values, b.id);
+    const proposals = saveProposals(d, drafts);
+    audit({ actorId: "agent:brief_extractor", action: "proposal.created", objectType: "brief", objectId: b.id, after: { count: proposals.length, fields: drafts.map((p) => p.changes[0].field) }, rationale: "Extracted from a pasted strategy doc" });
+    return proposals;
+  },
+  briefConflicts: () => {
+    const d = db();
+    return d.briefs
+      .filter((b) => b.kind === "overlay" && b.parentId)
+      .flatMap((o) => conflictsOf(briefById(d, o.parentId!), o).map((c) => ({ ...c, series: o.series, ownerId: o.ownerId })))
+      .sort((a, b) => (a.status === b.status ? 0 : a.status === "open" ? -1 : 1));
+  },
+  resolveBriefConflict: ({ params, body, user }) => {
+    const d = db();
+    if (user.role !== "head") throw new ApiError(403, "Only the head of product line resolves brief conflicts.");
+    const o = briefById(d, params.id);
+    const field = BriefFieldKeys.parse(params.field);
+    if (o.kind !== "overlay" || o.values[field] === undefined) throw new ApiError(404, `No regional difference on ${field}.`);
+    const before = o.values[field];
+    if (body.resolution === "align") {
+      delete o.values[field];
+      delete o.meta[field];
+    } else {
+      o.meta[field] = { ...o.meta[field]!, resolution: { status: "regional_variant", by: user.id, at: now(), note: body.rationale } };
+    }
+    o.version += 1;
+    touch(o);
+    audit({ actorId: user.id, action: "brief.conflict_resolved", objectType: "brief", objectId: o.id, before: { [field]: before }, after: { resolution: body.resolution, field }, rationale: body.rationale });
+    notify({ userId: o.ownerId, kind: "escalation", title: `Brief difference ${body.resolution === "align" ? "aligned" : "accepted as regional"}`, body: `${briefFieldLabel[field]}: ${body.rationale}`, link: "/brief", actorId: user.id });
+    return o;
   },
   users: () => db().users,
   updateWorkspace: ({ user, body }) => {
@@ -353,7 +618,7 @@ export const handlers: Handlers = {
       featureName: body.title,
       highlights: [body.summary],
       topicId: mostFrequentTopic(d.signals.filter((s) => body.signalIds.includes(s.id))),
-      pmContext: null,
+      stances: [],
       bodyMd: `## Problem\n\n${body.summary}\n\n## Who is affected\n\n_To fill._\n\n## Evidence summary\n\n${body.signalIds.length} signals selected on the radar.\n\n## Today's car\n\n_To fill._\n\n## Competitors\n\n_To fill._\n\n## Brand fit\n\n_AI proposal pending._\n\n## Options considered\n\n_None yet._\n\n## Decision log\n\n- ${now().slice(0, 10)} · Case opened by ${user.name}: ${body.rationale}`,
       bodyVersion: 1,
       signalIds: body.signalIds,
@@ -465,10 +730,8 @@ export const handlers: Handlers = {
       c.outcomeNote = body.rationale;
       switch (body.action) {
         case "confirm": {
+          // No auto-draft: step 3 asks the shape questions (layer 3) before the drafter runs.
           c.outcome = "confirmed";
-          if (!d.requirements.some((r) => r.caseId === c.id && r.status !== "rejected")) {
-            for (const draft of draftRequirements(c, d)) createRequirement(d, c, draft, "agent:requirement_writer");
-          }
           break;
         }
         case "refer": {
@@ -550,28 +813,39 @@ export const handlers: Handlers = {
     if (proposals.length) audit({ actorId: "agent:note_extractor", action: "proposal.created", objectType: "case", objectId: c.id, after: { count: proposals.length }, rationale: "Extracted from meeting note" });
     return { note, proposals };
   },
-  savePmContext: ({ params, body, user }) => {
+  saveCaseStance: ({ params, body, user }) => {
     const d = db();
     const c = findCase(d, params.id);
-    assertCaseEditor(user, c);
-    const before = c.pmContext;
-    c.pmContext = { ...body, updatedAt: now(), updatedBy: user.id };
+    assertCanDraft(user, c);
+    const before = stanceOf(c, user.id);
+    for (const k of Object.keys(body.overrides) as BriefFieldKey[])
+      if ((body.overrides as Record<string, unknown>)[k] !== undefined && !body.overrideReasons[k]) throw new ApiError(400, `Say why this case differs from your brief (${briefFieldLabel[k].toLowerCase()}).`);
+    const stance = { ...body, authorId: user.id, pendingShape: before?.pendingShape ?? [], updatedAt: now() };
+    c.stances = [...c.stances.filter((s) => s.authorId !== user.id), stance];
     const parts = [
-      body.marketFocus && `focus ${body.marketFocus}`,
-      body.costSensitivity && `cost sensitivity ${body.costSensitivity}`,
-      body.positioning && `${body.positioning} positioning`,
-      body.timing && `timing ${body.timing}`,
+      stance.ambition && `ambition ${stance.ambition}`,
+      ...Object.keys(stance.overrides).map((k) => `overrides ${briefFieldLabel[k as BriefFieldKey].toLowerCase()}`),
+      ...stance.evidenceTakes.map((t) => `${t.effect}: ${t.text}`),
+      ...stance.inside.map((x) => x.text),
     ].filter(Boolean);
-    c.context.pmInputs = c.context.pmInputs.filter((i) => i.ref !== "pm-context");
-    c.context.pmInputs.push({ kind: "note", label: "PM knowledge", detail: [parts.join(" · "), body.note].filter(Boolean).join(" — "), at: now(), ref: "pm-context" });
+    c.context.pmInputs = c.context.pmInputs.filter((i) => i.ref !== `stance-${user.id}`);
+    c.context.pmInputs.push({ kind: "note", label: `${user.name}'s stance`, detail: parts.join(" · ") || "No changes to the brief", at: now(), ref: `stance-${user.id}` });
     touch(c);
-    audit({ actorId: user.id, action: "case.pm_context_saved", objectType: "case", objectId: c.id, before, after: c.pmContext });
+    audit({
+      actorId: user.id,
+      action: "case.stance_saved",
+      objectType: "case",
+      objectId: c.id,
+      before: before ? { ambition: before.ambition, overrides: before.overrides } : undefined,
+      after: { ambition: stance.ambition, overrides: stance.overrides, takes: stance.evidenceTakes.length, inside: stance.inside.length },
+      rationale: Object.values(stance.overrideReasons).filter(Boolean).join(" · ") || "Stance saved",
+    });
     const message: ChatMessage = {
       id: nextId("MSG-", d.messages),
       objectType: "case",
       objectId: c.id,
       role: "assistant",
-      content: followUpQuestions(d, c),
+      content: followUpQuestions(d, c, user.id),
       citations: [],
       proposalIds: [],
       createdAt: now(),
@@ -579,12 +853,57 @@ export const handlers: Handlers = {
     d.messages.push(message);
     return { case: c, message };
   },
-  generateRequirements: ({ params, user }) => {
+  shapeQuestions: ({ params, user }) => {
     const d = db();
     const c = findCase(d, params.id);
-    assertCaseEditor(user, c);
+    const input = buildInput(d, c, user);
+    const region = regionOf(d, c, user);
+    const global = d.requirements.find((r) => r.caseId === c.id && r.marketScope === "global" && r.status !== "rejected" && r.ownerId !== user.id);
+    return { questions: getDrafter().shapeQuestions(input), brief: input.brief, stance: input.stance, variantOf: region !== "global" && global ? global.id : null };
+  },
+  askShapeQuestions: ({ params, user }) => {
+    const d = db();
+    const c = findCase(d, params.id);
+    const questions = getDrafter().shapeQuestions(buildInput(d, c, user));
+    const message: ChatMessage = {
+      id: nextId("MSG-", d.messages),
+      objectType: "case",
+      objectId: c.id,
+      role: "assistant",
+      content: shapeQuestionsMessage(questions, c.signalIds.length),
+      citations: [],
+      proposalIds: [],
+      createdAt: now(),
+    };
+    d.messages.push(message);
+    audit({ actorId: "agent:drafter", action: "requirement.shape_asked", objectType: "case", objectId: c.id, after: { questions: questions.map((q) => q.key), for: user.id } });
+    return message;
+  },
+  generateRequirements: async ({ params, body, user }) => {
+    const d = db();
+    const c = findCase(d, params.id);
+    assertCanDraft(user, c);
     if (c.outcome !== "confirmed") throw new ApiError(409, "Requirements are generated only from confirmed cases.");
-    return draftRequirements(c, d).map((draft) => createRequirement(d, c, draft, "agent:requirement_writer"));
+    const input = buildInput(d, c, user, { answers: (body.answers ?? []).map((a) => ({ ...a, byDefault: false })) });
+    const out = await getDrafter().draft(input);
+    const created = out.drafts.map((draft) => {
+      const variantOf = draft.marketScope !== "global" ? (input.siblings.find((r) => r.marketScope === "global")?.id ?? null) : null;
+      return createRequirement(d, c, draft, user.id, { ownerId: canEditCase(user, c) && user.role !== "head" ? user.id : user.role === "head" ? c.ownerId : user.id, briefId: input.briefId, drafter: out.drafter, variantOf });
+    });
+    for (const r of created) {
+      audit({
+        actorId: user.id,
+        action: "requirement.shape_answered",
+        objectType: "requirement",
+        objectId: r.id,
+        after: Object.fromEntries(r.shapeAnswers.map((a) => [a.key, `${a.value}${a.byDefault ? " (default)" : ""}`])),
+        rationale: r.shapeAnswers.length ? r.shapeAnswers.map((a) => `${shapeKeyLabel[a.key]}: ${a.value}`).join(" · ") : "No shape questions for this case",
+      });
+    }
+    // The chat answers were used; clear them.
+    const stance = stanceOf(c, user.id);
+    if (stance) stance.pendingShape = [];
+    return created;
   },
   exportCaseMd: ({ params, user }) => {
     const d = db();
@@ -658,6 +977,9 @@ export const handlers: Handlers = {
       proposals: d.proposals.filter((p) => p.objectId === r.id),
       plannedFeature: plan?.features.find((f) => f.id === r.plannedFeatureId) ?? null,
       check: currentCheck(d, r),
+      versions: d.requirementVersions.filter((v) => v.requirementId === r.id).sort((a, b) => b.version - a.version),
+      feedback: d.feedback.filter((f) => f.requirementId === r.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      brief: r.briefId ? (d.briefs.find((b) => b.id === r.briefId) ?? null) : null,
     };
   },
   patchRequirement: ({ params, body, user }) => {
@@ -666,11 +988,44 @@ export const handlers: Handlers = {
     assertReqEditor(user, r);
     const before: Record<string, unknown> = {};
     for (const k of Object.keys(body.patch) as (keyof typeof body.patch)[]) before[k] = structuredClone(r[k]);
-    Object.assign(r, body.patch);
-    touch(r);
+    const next = { ...snapshotOf(r), ...body.patch } as RequirementSnapshot;
+    if (body.patch.description !== undefined) next.descriptionParts = sentences(body.patch.description);
+    next.provenance = retagEdits(snapshotOf(r), next, body.rationale);
     audit({ actorId: user.id, action: "requirement.edited", objectType: "requirement", objectId: r.id, before, after: body.patch, rationale: body.rationale });
-    saveCheck(ruleCheck(d, r, now()), "After edit");
+    if (body.patch.manualRank !== undefined) r.manualRank = body.patch.manualRank;
+    applyVersion(d, r, RequirementSnapshot.parse(next), "edit", user.id, body.rationale);
+    maybeLearnCost(d, user);
     return r;
+  },
+  addFeedback: async ({ params, body, user }) => {
+    const d = db();
+    const r = findReq(d, params.id);
+    assertReqEditor(user, r);
+    const fb: FeedbackEntry = {
+      id: nextId("FB-", d.feedback),
+      requirementId: r.id,
+      from: body.from,
+      text: body.text,
+      response: body.response,
+      pmRationale: body.rationale,
+      signalIds: body.signalIds ?? [],
+      proposalId: null,
+      resultingVersion: null,
+      createdAt: now(),
+      createdBy: user.id,
+    };
+    d.feedback.push(fb);
+    const current = snapshotOf(r);
+    // Composer-made requirements are redrafted with the feedback layer; hand-written ones get a minimal patch.
+    const draft = r.drafter?.startsWith("composer") ? (await redraft(d, r, { extraFeedback: fb })).draft : feedbackPatch(current, fb);
+    const summary = `v${r.version + 1}: ${changeSummary(current, draft)} (${addresseeLabel[fb.from].toLowerCase()} feedback, you ${feedbackResponseLabel[fb.response].toLowerCase()})`;
+    const [p] = saveProposals(d, [{ objectType: "requirement", objectId: r.id, source: "feedback", kind: "new_version", summary, changes: [{ field: "version", before: current, after: draft }], citations: fb.signalIds }]);
+    fb.proposalId = p.id;
+    const c = findCase(d, r.caseId);
+    c.context.pmInputs.push({ kind: "answer", label: `${addresseeLabel[fb.from]} feedback on ${r.id}`, detail: `"${fb.text}" → you ${feedbackResponseLabel[fb.response].toLowerCase()}: ${fb.pmRationale}`, at: now(), ref: fb.id });
+    audit({ actorId: user.id, action: "requirement.feedback_recorded", objectType: "requirement", objectId: r.id, after: { feedbackId: fb.id, from: fb.from, response: fb.response }, rationale: fb.pmRationale });
+    audit({ actorId: "agent:drafter", action: "proposal.created", objectType: "requirement", objectId: r.id, after: { proposalId: p.id, kind: "new_version" }, rationale: summary });
+    return { feedback: fb, proposal: p };
   },
   runRequirementCheck: async ({ params, user }) => {
     const d = db();
@@ -749,7 +1104,8 @@ export const handlers: Handlers = {
         break;
     }
     touch(r);
-    audit({ actorId: user.id, action: "requirement.status_changed", objectType: "requirement", objectId: r.id, before: { status: before }, after: { status: r.status, ...(openIssues && { openIssues }) }, rationale: body.rationale });
+    audit({ actorId: user.id, action: "requirement.status_changed", objectType: "requirement", objectId: r.id, before: { status: before, costSize: r.cost.size }, after: { status: r.status, ...(openIssues && { openIssues }) }, rationale: body.rationale });
+    if (body.action === "reject") maybeLearnCost(d, user);
     return r;
   },
 
@@ -912,6 +1268,8 @@ export const handlers: Handlers = {
         "Linked case": c.id,
         "Linked findings": sigs.map((s) => s.id).join(" "),
         Rationale: `${c.summary} Brand fit ${c.brandFit.value}.`,
+        Provenance: provenanceLine(r),
+        Version: r.version,
         Status: r.status,
       };
     });
@@ -985,6 +1343,8 @@ export const handlers: Handlers = {
         competitor: comp.length ? comp.map((s) => `${s.competitor ?? s.sourceName}: ${s.summary}`) : c.figures.competitorOffer,
         decisions,
         openIssues: { red, amber: issues.length - red },
+        provenance: provenanceCounts(r),
+        version: r.version,
         caseId: c.id,
         caseTitle: c.title,
         ownerName: userName(d, r.ownerId),
@@ -1012,6 +1372,39 @@ export const handlers: Handlers = {
       d.messages.push(segMsg);
       audit({ actorId: "agent:segment", action: "segment.asked", objectType, objectId: params.id, after: { segment: body.segment, citations: seg.citations.length }, rationale: body.content });
       return { messages: [userMsg, segMsg], proposals: segProposals };
+    }
+
+    // Replies to the shape questions asked in the chat pre-fill the step-3 form (layer 3, the PM's own input).
+    const thread = d.messages.filter((m) => m.objectType === "case" && m.objectId === c.id && m.id !== userMsg.id);
+    const lastAssistant = [...thread].reverse().find((m) => m.role === "assistant");
+    if (objectType === "case" && lastAssistant?.content.startsWith("Before I draft")) {
+      const questions = getDrafter().shapeQuestions(buildInput(d, c, user));
+      const text = body.content.toLowerCase();
+      const picked = questions
+        .map((q) => ({ q, o: q.options.find((o) => text.includes(o.value.replace("_", " ")) || text.includes(o.label.toLowerCase())) }))
+        .filter((x): x is { q: (typeof questions)[number]; o: { value: string; label: string } } => !!x.o);
+      if (picked.length) {
+        let stance = stanceOf(c, user.id);
+        if (!stance) {
+          stance = { authorId: user.id, overrides: {}, overrideReasons: {}, evidenceTakes: [], inside: [], ambition: null, pendingShape: [], updatedAt: now() };
+          c.stances.push(stance);
+        }
+        stance.pendingShape = [...stance.pendingShape.filter((a) => !picked.some((p) => p.q.key === a.key)), ...picked.map((p) => ({ key: p.q.key, value: p.o.value }))];
+        stance.updatedAt = now();
+        audit({ actorId: user.id, action: "requirement.shape_answered", objectType: "case", objectId: c.id, after: Object.fromEntries(picked.map((p) => [p.q.key, p.o.value])), rationale: `Answered in the case chat: "${body.content}"` });
+        const reply: ChatMessage = {
+          id: nextId("MSG-", d.messages),
+          objectType,
+          objectId: c.id,
+          role: "assistant",
+          content: `Noted: ${picked.map((p) => `**${shapeKeyLabel[p.q.key]}** → ${p.o.label}`).join(", ")}. The form in step 3 is pre-filled; press **Create requirements** when you're ready.`,
+          citations: [],
+          proposalIds: [],
+          createdAt: now(),
+        };
+        d.messages.push(reply);
+        return { messages: [userMsg, reply], proposals: [] };
+      }
     }
 
     const scripted = scriptedReply(d, { objectType, c, r }, body.content, user.id, now());
@@ -1047,6 +1440,42 @@ export const handlers: Handlers = {
     if (p.status !== "pending") throw new ApiError(409, "Proposal already decided.");
     if (body.decision === "reject") {
       p.status = "rejected";
+      if (p.kind === "new_version") {
+        const fb = d.feedback.find((f) => f.proposalId === p.id);
+        if (fb) fb.resultingVersion = null;
+      }
+    } else if (p.objectType === "brief") {
+      // Strategy-doc extraction or a learning proposal: apply one brief field.
+      const b = briefById(d, p.objectId);
+      assertBriefEditor(user, b);
+      const ch = p.changes[0];
+      const field = BriefFieldKeys.parse(ch.field);
+      const shared = b.kind === "overlay" ? briefById(d, b.parentId!) : b;
+      const differs = JSON.stringify(ch.after) !== JSON.stringify(shared.values[field]);
+      if (b.kind === "overlay" && !differs) {
+        delete b.values[field];
+        delete b.meta[field];
+      } else {
+        (b.values as Record<string, unknown>)[field] = structuredClone(ch.after);
+        b.meta[field] = {
+          source: p.source === "strategy_doc" ? "doc" : "pm",
+          confirmed: true,
+          reason: b.kind === "overlay" ? (p.citations[0] ? `From your strategy doc: "${p.citations[0]}"` : p.summary) : undefined,
+          updatedAt: now(),
+          updatedBy: user.id,
+        };
+      }
+      b.version += 1;
+      touch(b);
+      audit({ actorId: user.id, action: "brief.updated", objectType: "brief", objectId: b.id, before: { [field]: ch.before }, after: { [field]: ch.after }, rationale: body.rationale ?? p.summary });
+      p.status = "accepted";
+    } else if (p.kind === "new_version") {
+      const r = findReq(d, p.objectId);
+      assertReqEditor(user, r);
+      const fb = d.feedback.find((f) => f.proposalId === p.id);
+      applyVersion(d, r, RequirementSnapshot.parse(p.changes[0].after), p.source === "brief_change" ? "brief_change" : "feedback", user.id, body.rationale ?? p.summary, fb?.id);
+      if (fb) fb.resultingVersion = r.version;
+      p.status = "accepted";
     } else {
       const target = p.objectType === "case" ? findCase(d, p.objectId) : findReq(d, p.objectId);
       if (p.objectType === "case") assertCaseEditor(user, target as Case);
@@ -1072,9 +1501,11 @@ export const handlers: Handlers = {
         }
         case "new_requirement": {
           const c = target as Case;
-          createRequirement(d, c, p.changes[0].after as ReturnType<typeof draftRequirements>[number], user.id);
+          createRequirement(d, c, p.changes[0].after as Draft, user.id);
           break;
         }
+        default:
+          break;
       }
       if ("context" in target) target.context.pmInputs.push({ kind: "diff", label: "AI proposal accepted", detail: p.summary, at: now(), ref: p.id });
       touch(target);
@@ -1088,7 +1519,7 @@ export const handlers: Handlers = {
       objectType: p.objectType,
       objectId: p.objectId,
       before: p.kind === "field" || p.kind === "body" ? Object.fromEntries(p.changes.map((c) => [c.field, c.before])) : undefined,
-      after: p.kind === "field" || p.kind === "body" ? Object.fromEntries(p.changes.map((c) => [c.field, c.after])) : p.changes[0]?.after,
+      after: p.kind === "field" || p.kind === "body" ? Object.fromEntries(p.changes.map((c) => [c.field, c.after])) : p.kind === "new_version" ? { kind: "new_version", summary: p.summary } : p.changes[0]?.after,
       rationale: body.rationale ?? p.summary,
     });
     return p;

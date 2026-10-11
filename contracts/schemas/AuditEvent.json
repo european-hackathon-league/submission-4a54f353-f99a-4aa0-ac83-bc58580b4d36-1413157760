@@ -33,7 +33,8 @@
         "question",
         "plan",
         "profile",
-        "workspace"
+        "workspace",
+        "brief"
       ]
     },
     "objectId": {

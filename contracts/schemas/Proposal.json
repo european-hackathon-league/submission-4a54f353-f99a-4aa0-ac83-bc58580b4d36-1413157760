@@ -10,7 +10,8 @@
       "type": "string",
       "enum": [
         "case",
-        "requirement"
+        "requirement",
+        "brief"
       ]
     },
     "objectId": {
@@ -22,7 +23,11 @@
       "enum": [
         "chat",
         "meeting_note",
-        "monitor"
+        "monitor",
+        "strategy_doc",
+        "feedback",
+        "brief_change",
+        "learning"
       ]
     },
     "kind": {
@@ -32,7 +37,9 @@
         "body",
         "question_answer",
         "new_question",
-        "new_requirement"
+        "new_requirement",
+        "brief_field",
+        "new_version"
       ]
     },
     "summary": {

@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "authorId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "overrides": {
+      "type": "object",
+      "properties": {
+        "marketWeights": {
+          "type": "object",
+          "properties": {
+            "EU": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "US": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "CN": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "RoW": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "EU",
+            "US",
+            "CN",
+            "RoW"
+          ],
+          "additionalProperties": false
+        },
+        "targetCustomer": {
+          "type": "object",
+          "properties": {
+            "who": {
+              "type": "string",
+              "enum": [
+                "keep_owners",
+                "conquest",
+                "both"
+              ]
+            },
+            "positioning": {
+              "type": "string",
+              "enum": [
+                "base",
+                "premium",
+                "luxury"
+              ]
+            }
+          },
+          "required": [
+            "who",
+            "positioning"
+          ],
+          "additionalProperties": false
+        },
+        "costEnvelope": {
+          "type": "object",
+          "properties": {
+            "sensitivity": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "perCarBand": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sensitivity",
+            "perCarBand"
+          ],
+          "additionalProperties": false
+        },
+        "givens": {
+          "type": "object",
+          "properties": {
+            "platform": {
+              "type": "string"
+            },
+            "sop": {
+              "type": "string"
+            },
+            "frozen": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "openReleases": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "next_gen",
+                  "lci",
+                  "ota"
+                ]
+              }
+            },
+            "cycle": {
+              "type": "string",
+              "enum": [
+                "WLTP",
+                "EPA",
+                "CLTC"
+              ]
+            }
+          },
+          "required": [
+            "platform",
+            "sop",
+            "frozen",
+            "openReleases",
+            "cycle"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "overrideReasons": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "enum": [
+          "thesis",
+          "targetCustomer",
+          "marketWeights",
+          "changeAmbition",
+          "protectList",
+          "dontFightOn",
+          "givens",
+          "costEnvelope"
+        ]
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "evidenceTakes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string"
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "discount",
+              "focus"
+            ]
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "EU",
+              "US",
+              "CN",
+              "RoW",
+              "unknown"
+            ]
+          },
+          "powertrain": {
+            "type": "string",
+            "enum": [
+              "ICE",
+              "PHEV",
+              "BEV",
+              "unknown"
+            ]
+          },
+          "keyword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "effect"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "inside": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "past_decision",
+              "supplier_tech",
+              "engineering_on_it",
+              "other"
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "ambition": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "fix",
+            "match",
+            "beat"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pendingShape": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "scope",
+              "benchmark",
+              "solution",
+              "release",
+              "offer"
+            ]
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "authorId",
+    "overrides",
+    "overrideReasons",
+    "evidenceTakes",
+    "inside",
+    "ambition",
+    "pendingShape",
+    "updatedAt"
+  ],
+  "additionalProperties": false
+}

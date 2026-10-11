@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CornerUpLeft, ExternalLink } from "lucide-react";
+import { CornerUpLeft, ExternalLink, MessageSquareReply } from "lucide-react";
 import type { RequirementAction } from "@/contracts";
 import { useApi } from "@/lib/api/hooks";
 import { Pill, RegionChip, ReleaseChip, ReqStatusBadge } from "@/components/common/badges";
@@ -12,6 +12,9 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { RequirementActionDialog } from "@/components/requirements/requirement-action-dialog";
 import { ArgumentSheet, requirementButtons, Spec, TraceChain } from "@/components/requirements/requirement-parts";
 import { QualityCheck } from "@/components/requirements/quality-check";
+import { FeedbackDialog } from "@/components/requirements/feedback-dialog";
+import { VariantsCompare } from "@/components/requirements/variants-compare";
+import { VersionsPanel } from "@/components/requirements/versions-panel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +34,7 @@ function Body({ id }: { id: string }) {
   const me = useApi("me");
   const router = useRouter();
   const [action, setAction] = useState<RequirementAction | null>(null);
+  const [feedback, setFeedback] = useState(false);
   if (!bundle.data || !me.data)
     return (
       <div className="space-y-3 p-6">
@@ -60,13 +64,18 @@ function Body({ id }: { id: string }) {
         </div>
         <SheetTitle className="text-lg leading-snug">{r.title}</SheetTitle>
         <SheetDescription className="sr-only">Requirement {r.id}</SheetDescription>
-        {requirementButtons(r, user).length > 0 && (
+        {(requirementButtons(r, user).length > 0 || canEdit) && (
           <div className="flex flex-wrap gap-2 pt-1">
             {requirementButtons(r, user).map(([a, label, variant]) => (
               <Button key={a} size="sm" variant={variant} onClick={() => setAction(a)}>
                 {label}
               </Button>
             ))}
+            {canEdit && !["rejected", "exported"].includes(r.status) && (
+              <Button size="sm" variant="outline" onClick={() => setFeedback(true)}>
+                <MessageSquareReply className="size-3.5" /> Engineering feedback
+              </Button>
+            )}
           </div>
         )}
       </SheetHeader>
@@ -83,15 +92,20 @@ function Body({ id }: { id: string }) {
           .map((p) => (
             <ProposalCard key={p.id} p={p} canDecide={canEdit} />
           ))}
+        <VariantsCompare r={r} others={b.variants} onOpen={(x) => router.push(`/requirements/${x}`)} onCite={onCite} />
       </div>
       <Tabs defaultValue="spec" className="px-6 py-4">
         <TabsList>
           <TabsTrigger value="spec">Spec</TabsTrigger>
+          <TabsTrigger value="versions">Versions ({b.versions.length})</TabsTrigger>
           <TabsTrigger value="argument">Argument sheet</TabsTrigger>
           <TabsTrigger value="chat">Harden with AI</TabsTrigger>
         </TabsList>
         <TabsContent value="spec" className="pt-3">
-          <Spec key={r.id + r.updatedAt} r={r} canEdit={canEdit} />
+          <Spec key={r.id + r.updatedAt} r={r} canEdit={canEdit} onCite={onCite} />
+        </TabsContent>
+        <TabsContent value="versions" className="pt-3">
+          <VersionsPanel versions={b.versions} feedback={b.feedback} />
         </TabsContent>
         <TabsContent value="argument" className="pt-3">
           <ArgumentSheet b={b} />
@@ -101,6 +115,7 @@ function Body({ id }: { id: string }) {
         </TabsContent>
       </Tabs>
       <RequirementActionDialog r={r} check={b.check} action={action} onOpenChange={(o) => !o && setAction(null)} />
+      <FeedbackDialog r={r} open={feedback} onOpenChange={setFeedback} />
     </>
   );
 }

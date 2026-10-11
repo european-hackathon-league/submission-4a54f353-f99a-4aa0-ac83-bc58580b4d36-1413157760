@@ -20,7 +20,7 @@ const copy: Record<UiCaseAction, { title: string; description: string; confirm: 
   reopen: { title: "Reopen the case", description: "Clears the decision and moves the case back to Investigating.", confirm: "Reopen" },
   confirm: {
     title: "Confirm: build requirement(s)",
-    description: "The problem is real and worth solving. The requirement agent drafts SMART requirement(s) you then edit, discuss with engineering and approve.",
+    description: "The problem is real and worth solving. Next, answer up to three questions and the AI drafts SMART requirement(s) from your brief and stance; you then edit, discuss with engineering and approve.",
     confirm: "Confirm case",
   },
   refer: { title: "Refer to another PM", description: "Hand the case to the PM who owns the series or attribute. You stay linked; they accept or send it back.", confirm: "Refer" },
@@ -44,7 +44,7 @@ export function CaseActionDialog({ c, action, onOpenChange }: { c: Case; action:
   const [mergeIntoId, setMergeIntoId] = useState<string>("");
   const [horizon, setHorizon] = useState<InnovationHorizon>("next_gen");
   const mutation = useApiMutation("transitionCase", {
-    success: (r) => (action === "escalate" ? "Escalated to the head of product line" : `${r.id}: ${action === "confirm" ? "confirmed, requirement drafted" : "updated"}`),
+    success: (r) => (action === "escalate" ? "Escalated to the head of product line" : `${r.id}: ${action === "confirm" ? "confirmed, ready to draft" : "updated"}`),
   });
 
   if (!action) return null;

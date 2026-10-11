@@ -1,0 +1,344 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { Bot, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
+import {
+  ambitionLabel,
+  costSensitivityLabel,
+  evidenceEffectLabel,
+  insideKindLabel,
+  marketLabel,
+  releaseLabel,
+  targetCustomerLabel,
+  type Ambition,
+  type Case,
+  type CaseStance,
+  type CostSensitivity,
+  type EvidenceEffect,
+  type InsideKind,
+  type Market,
+  type Powertrain,
+  type ReleaseTarget,
+  type ResolvedBrief,
+  type TargetCustomer,
+} from "@/contracts";
+import { useApiMutation } from "@/lib/api/hooks";
+import { fromNow } from "@/lib/format";
+import { Pill } from "@/components/common/badges";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+type Take = CaseStance["evidenceTakes"][number];
+type Inside = CaseStance["inside"][number];
+type Overrides = CaseStance["overrides"];
+
+const uid = () => Math.random().toString(36).slice(2, 8);
+
+/**
+ * Step 2 of a case: the PM's stance (layer 2). Everything the series brief already says is
+ * inherited and shown; the PM only adds what is different for this case (with a reason),
+ * their reading of the evidence, inside knowledge and the ambition. Three questions at most.
+ */
+export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; brief: ResolvedBrief | null; userId: string; canEdit: boolean; onSaved: () => void }) {
+  const mine = c.stances.find((s) => s.authorId === userId) ?? null;
+  const [overrides, setOverrides] = useState<Overrides>(mine?.overrides ?? {});
+  const [reasons, setReasons] = useState<CaseStance["overrideReasons"]>(mine?.overrideReasons ?? {});
+  const [takes, setTakes] = useState<Take[]>(mine?.evidenceTakes ?? []);
+  const [inside, setInside] = useState<Inside[]>(mine?.inside ?? []);
+  const [ambition, setAmbition] = useState<Ambition | null>(mine?.ambition ?? null);
+  const [editing, setEditing] = useState<"costEnvelope" | "targetCustomer" | "givens" | null>(null);
+  const save = useApiMutation("saveCaseStance", { success: "Stance saved. Your AI colleague has a question." });
+  const v = brief?.values;
+  const missingReason = (Object.keys(overrides) as (keyof Overrides)[]).some((k) => overrides[k] && !reasons[k]?.trim());
+
+  const setOverride = <K extends keyof Overrides>(k: K, value: Overrides[K] | undefined) =>
+    setOverrides((o) => {
+      const next = { ...o };
+      if (value === undefined) delete next[k];
+      else next[k] = value;
+      return next;
+    });
+
+  return (
+    <div className="space-y-5 rounded-xl border bg-card p-5 shadow-xs">
+      {/* Inherited from the brief */}
+      <div>
+        <div className="mb-2 flex items-center gap-2">
+          <h3 className="text-sm font-semibold">Inherited from your brief</h3>
+          {v ? (
+            <Link href="/brief" className="text-xs text-primary hover:underline">
+              Open brief
+            </Link>
+          ) : (
+            <span className="text-xs text-muted-foreground">No series brief for you, so the drafter uses defaults (shown as assumptions).</span>
+          )}
+        </div>
+        {v && (
+          <div className="flex flex-wrap gap-2">
+            <InheritedChip
+              label="Markets"
+              value={(Object.entries(v.marketWeights) as [Market, number][])
+                .filter(([, w]) => w > 0)
+                .sort((a, b) => b[1] - a[1])
+                .map(([m, w]) => `${marketLabel[m]} ${Math.round(w * 100)}%`)
+                .join(" · ")}
+              origin={brief.origin.marketWeights}
+            />
+            <InheritedChip
+              label="Customer"
+              value={targetCustomerLabel[(overrides.targetCustomer ?? v.targetCustomer).who]}
+              origin={brief.origin.targetCustomer}
+              overridden={!!overrides.targetCustomer}
+              onEdit={canEdit ? () => setEditing(editing === "targetCustomer" ? null : "targetCustomer") : undefined}
+            />
+            <InheritedChip
+              label="Cost"
+              value={costSensitivityLabel[(overrides.costEnvelope ?? v.costEnvelope).sensitivity]}
+              origin={brief.origin.costEnvelope}
+              overridden={!!overrides.costEnvelope}
+              onEdit={canEdit ? () => setEditing(editing === "costEnvelope" ? null : "costEnvelope") : undefined}
+            />
+            <InheritedChip
+              label="Open releases"
+              value={(overrides.givens ?? v.givens).openReleases.map((r) => releaseLabel[r]).join(", ")}
+              origin={brief.origin.givens}
+              overridden={!!overrides.givens}
+              onEdit={canEdit ? () => setEditing(editing === "givens" ? null : "givens") : undefined}
+            />
+            {v.dontFightOn.length > 0 && <InheritedChip label="Don't fight on" value={v.dontFightOn[0]} origin={brief.origin.dontFightOn} />}
+          </div>
+        )}
+        {v && editing && (
+          <div className="mt-3 space-y-2 rounded-lg border border-dashed p-3">
+            {editing === "costEnvelope" && (
+              <Choice<CostSensitivity>
+                label="Cost sensitivity for this case"
+                value={(overrides.costEnvelope ?? v.costEnvelope).sensitivity}
+                options={(["low", "medium", "high"] as const).map((x) => [x, costSensitivityLabel[x]])}
+                onChange={(x) => setOverride("costEnvelope", x === v.costEnvelope.sensitivity ? undefined : { ...v.costEnvelope, sensitivity: x })}
+              />
+            )}
+            {editing === "targetCustomer" && (
+              <Choice<TargetCustomer>
+                label="Target customer for this case"
+                value={(overrides.targetCustomer ?? v.targetCustomer).who}
+                options={(["keep_owners", "conquest", "both"] as const).map((x) => [x, targetCustomerLabel[x]])}
+                onChange={(x) => setOverride("targetCustomer", x === v.targetCustomer.who ? undefined : { ...v.targetCustomer, who: x })}
+              />
+            )}
+            {editing === "givens" && (
+              <div className="space-y-1.5">
+                <div className="text-xs font-medium text-muted-foreground">Open releases for this case</div>
+                <ToggleGroup
+                  type="multiple"
+                  variant="outline"
+                  size="sm"
+                  value={(overrides.givens ?? v.givens).openReleases}
+                  onValueChange={(xs) => {
+                    const open = (["next_gen", "lci", "ota"] as const).filter((r) => xs.includes(r)) as ReleaseTarget[];
+                    setOverride("givens", JSON.stringify(open) === JSON.stringify(v.givens.openReleases) || !open.length ? undefined : { ...v.givens, openReleases: open });
+                  }}
+                >
+                  {(["next_gen", "lci", "ota"] as const).map((r) => (
+                    <ToggleGroupItem key={r} value={r} className="px-3 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                      {releaseLabel[r]}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
+            )}
+            {overrides[editing] && (
+              <div className="flex items-center gap-2">
+                <Input value={reasons[editing] ?? ""} onChange={(e) => setReasons({ ...reasons, [editing]: e.target.value })} placeholder="Why is this case different from your brief?" aria-label="Override reason" />
+                <Button size="icon-xs" variant="ghost" aria-label="Back to the brief value" onClick={() => setOverride(editing, undefined)}>
+                  <Undo2 className="size-3.5" />
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Q1: take on the evidence */}
+      <Question n={1} title="Your take on the evidence" hint='e.g. "focus on BEV owners" or "discount fleet drivers". The drafter counts the evidence your way and says so.'>
+        {takes.map((t, i) => (
+          <div key={t.id} className="flex flex-wrap items-center gap-2">
+            <ToggleGroup type="single" variant="outline" size="sm" value={t.effect} disabled={!canEdit} onValueChange={(x) => x && setTakes(takes.map((y, j) => (j === i ? { ...y, effect: x as EvidenceEffect } : y)))}>
+              {(["focus", "discount"] as const).map((e) => (
+                <ToggleGroupItem key={e} value={e} className="px-2.5 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                  {evidenceEffectLabel[e]}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <FilterSelect take={t} disabled={!canEdit} onChange={(next) => setTakes(takes.map((y, j) => (j === i ? next : y)))} />
+            <Input className="min-w-48 flex-1" value={t.text} disabled={!canEdit} onChange={(e) => setTakes(takes.map((y, j) => (j === i ? { ...y, text: e.target.value } : y)))} placeholder="Why, in one line" />
+            {canEdit && (
+              <Button size="icon-xs" variant="ghost" aria-label="Remove" onClick={() => setTakes(takes.filter((_, j) => j !== i))}>
+                <Trash2 className="size-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
+        {canEdit && takes.length < 2 && (
+          <Button size="xs" variant="ghost" onClick={() => setTakes([...takes, { id: `ET-${uid()}`, text: "", effect: "focus" }])}>
+            <Plus className="size-3" /> Add a take
+          </Button>
+        )}
+      </Question>
+
+      {/* Q2: inside knowledge */}
+      <Question n={2} title="What do you know that the data can't show?" hint="Past decisions, supplier tech, engineering already on it. It becomes a tagged assumption in the draft.">
+        {inside.map((x, i) => (
+          <div key={x.id} className="flex flex-wrap items-center gap-2">
+            <Select value={x.kind} disabled={!canEdit} onValueChange={(k) => setInside(inside.map((y, j) => (j === i ? { ...y, kind: k as InsideKind } : y)))}>
+              <SelectTrigger size="sm" className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(insideKindLabel) as InsideKind[]).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {insideKindLabel[k]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input className="min-w-48 flex-1" value={x.text} disabled={!canEdit} onChange={(e) => setInside(inside.map((y, j) => (j === i ? { ...y, text: e.target.value } : y)))} placeholder="e.g. Battery team is sampling next-gen cells" />
+            {canEdit && (
+              <Button size="icon-xs" variant="ghost" aria-label="Remove" onClick={() => setInside(inside.filter((_, j) => j !== i))}>
+                <Trash2 className="size-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
+        {canEdit && inside.length < 3 && (
+          <Button size="xs" variant="ghost" onClick={() => setInside([...inside, { id: `IN-${uid()}`, kind: "engineering_on_it", text: "" }])}>
+            <Plus className="size-3" /> Add
+          </Button>
+        )}
+      </Question>
+
+      {/* Q3: ambition */}
+      <Question n={3} title="How far do you want to go on this problem?" hint={v ? `Left empty, your brief decides (${v.changeAmbition.level}, ${targetCustomerLabel[v.targetCustomer.who].toLowerCase()}).` : "Left empty, the drafter picks from the evidence."}>
+        <ToggleGroup type="single" variant="outline" size="sm" value={ambition ?? ""} disabled={!canEdit} onValueChange={(x) => setAmbition((x || null) as Ambition | null)}>
+          {(["fix", "match", "beat"] as const).map((a) => (
+            <ToggleGroupItem key={a} value={a} className="px-3 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+              {ambitionLabel[a]}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </Question>
+
+      <div className="flex items-center gap-3">
+        {mine && <span className="text-xs text-muted-foreground">Saved {fromNow(mine.updatedAt)}</span>}
+        {missingReason && <span className="text-xs text-amber-700 dark:text-amber-400">Every override needs a reason.</span>}
+        <span className="flex-1" />
+        {canEdit && (
+          <Button
+            disabled={save.isPending || missingReason}
+            onClick={async () => {
+              await save.mutateAsync({
+                params: { id: c.id },
+                body: {
+                  overrides,
+                  overrideReasons: Object.fromEntries(Object.entries(reasons).filter(([k]) => k in overrides)),
+                  evidenceTakes: takes.filter((t) => t.text.trim()),
+                  inside: inside.filter((x) => x.text.trim()),
+                  ambition,
+                },
+              });
+              setEditing(null);
+              onSaved();
+            }}
+          >
+            <Bot className="size-4" /> Save stance and ask the AI
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InheritedChip({ label, value, origin, overridden, onEdit }: { label: string; value: string; origin: string; overridden?: boolean; onEdit?: () => void }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${overridden ? "border-violet-300 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/40" : "bg-muted/40"}`}>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium">{value}</span>
+      <Pill className="px-1 py-0 text-[10px]">{overridden ? "this case" : origin === "overlay" ? "regional" : origin === "data" ? "from data" : origin === "brand" ? "brand" : "brief"}</Pill>
+      {onEdit && (
+        <button type="button" onClick={onEdit} aria-label={`Override ${label}`} className="text-muted-foreground hover:text-foreground">
+          <Pencil className="size-3" />
+        </button>
+      )}
+    </span>
+  );
+}
+
+function Question({ n, title, hint, children }: { n: number; title: string; hint: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <div className="text-sm font-medium">
+          <span className="mr-1.5 text-muted-foreground">{n}.</span>
+          {title}
+        </div>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Choice<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <ToggleGroup type="single" variant="outline" size="sm" value={value} onValueChange={(x) => x && onChange(x as T)}>
+        {options.map(([id, text]) => (
+          <ToggleGroupItem key={id} value={id} className="px-3 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+            {text}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
+  );
+}
+
+const filters: [string, string, Partial<Take>][] = [
+  ["none", "All records", {}],
+  ["BEV", "BEV owners", { powertrain: "BEV" }],
+  ["ICE", "ICE owners", { powertrain: "ICE" }],
+  ["PHEV", "PHEV owners", { powertrain: "PHEV" }],
+  ["US", "USA", { market: "US" }],
+  ["EU", "Europe", { market: "EU" }],
+  ["CN", "China", { market: "CN" }],
+  ["fleet", "Mentions 'fleet'", { keyword: "fleet" }],
+  ["lease", "Mentions 'lease'", { keyword: "lease" }],
+];
+
+function FilterSelect({ take, disabled, onChange }: { take: Take; disabled: boolean; onChange: (t: Take) => void }) {
+  const current = filters.find(([, , f]) => (f.powertrain ?? null) === (take.powertrain ?? null) && (f.market ?? null) === (take.market ?? null) && (f.keyword ?? null) === (take.keyword ?? null))?.[0] ?? "none";
+  return (
+    <Select
+      value={current}
+      disabled={disabled}
+      onValueChange={(key) => {
+        const f = filters.find(([k]) => k === key)![2];
+        onChange({ id: take.id, text: take.text, effect: take.effect, powertrain: f.powertrain as Powertrain | undefined, market: f.market as Market | undefined, keyword: f.keyword });
+      }}
+    >
+      <SelectTrigger size="sm" className="w-40">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {filters.map(([k, label]) => (
+          <SelectItem key={k} value={k}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}

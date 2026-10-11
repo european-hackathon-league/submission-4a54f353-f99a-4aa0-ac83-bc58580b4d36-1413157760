@@ -23,6 +23,7 @@ import {
 import { useApiMutation } from "@/lib/api/hooks";
 import { EvidenceBadge, Pill, RegionChip, ReleaseChip } from "@/components/common/badges";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
+import { ProvChip, ProvenanceLegend, ProvText, provenanceMap } from "@/components/requirements/provenance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,18 +80,22 @@ export function TraceChain({ b }: { b: RequirementBundle }) {
   );
 }
 
-export function Spec({ r, canEdit }: { r: Requirement; canEdit: boolean }) {
+export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean; onCite?: (ref: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Requirement>(r);
   const [save, setSave] = useState(false);
   const patch = useApiMutation("patchRequirement", { success: "Requirement updated" });
   const d = editing ? draft : r;
   const set = <K extends keyof Requirement>(k: K, v: Requirement[K]) => setDraft((x) => ({ ...x, [k]: v }));
+  const prov = provenanceMap(r);
+  const parts = r.descriptionParts.length ? r.descriptionParts : [r.description];
 
   return (
     <div className="space-y-4 rounded-lg border bg-card p-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">SMART specification</h3>
+        <h3 className="text-sm font-semibold">
+          SMART specification <span className="ml-1 text-xs font-normal text-muted-foreground">v{r.version}</span>
+        </h3>
         {canEdit && !editing && (
           <Button
             size="xs"
@@ -132,10 +137,19 @@ export function Spec({ r, canEdit }: { r: Requirement; canEdit: boolean }) {
         </>
       ) : (
         <>
-          <p className="text-sm leading-relaxed">{d.description}</p>
-          <div className="flex flex-wrap gap-2 text-xs">
-            <ReleaseChip release={d.releaseTarget} />
-            <RegionChip region={d.marketScope} />
+          <ProvenanceLegend r={r} />
+          <p className="text-sm leading-7">
+            {parts.map((t, i) => (
+              <ProvText key={i} text={t} p={prov.get(`description#${i}`)} onCite={onCite} />
+            ))}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+            <span className="inline-flex items-center gap-1">
+              <ReleaseChip release={d.releaseTarget} /> <ProvChip p={prov.get("releaseTarget")} onCite={onCite} />
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <RegionChip region={d.marketScope} /> <ProvChip p={prov.get("marketScope")} onCite={onCite} />
+            </span>
             <EvidenceBadge level={d.evidenceLevel} />
           </div>
         </>
@@ -201,7 +215,7 @@ export function Spec({ r, canEdit }: { r: Requirement; canEdit: boolean }) {
                       {m.target} {m.unit && !m.target.includes(m.unit) ? m.unit : ""}
                     </td>
                     <td className="py-1.5 pr-2">
-                      <Pill t={m.basis === "evidence" ? "emerald" : "red"}>{m.basis}</Pill>
+                      <ProvChip p={prov.get(`metrics.${m.id}.target`)} onCite={onCite} />
                     </td>
                     <td className="py-1.5 text-xs text-muted-foreground">{m.benchmark ?? "—"}</td>
                   </>
@@ -213,8 +227,8 @@ export function Spec({ r, canEdit }: { r: Requirement; canEdit: boolean }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <ListField title="Acceptance criteria" items={d.acceptanceCriteria} editing={editing} onChange={(v) => set("acceptanceCriteria", v)} />
-        <ListField title="Assumptions & uncertainties" items={d.assumptions} editing={editing} onChange={(v) => set("assumptions", v)} />
+        <ListField title="Acceptance criteria" items={d.acceptanceCriteria} editing={editing} onChange={(v) => set("acceptanceCriteria", v)} chip={(i) => <ProvChip p={prov.get(`acceptanceCriteria#${i}`)} onCite={onCite} />} />
+        <ListField title="Assumptions & uncertainties" items={d.assumptions} editing={editing} onChange={(v) => set("assumptions", v)} chip={(i) => <ProvChip p={prov.get(`assumptions#${i}`)} onCite={onCite} />} />
       </div>
 
       <div>
@@ -230,7 +244,7 @@ export function Spec({ r, canEdit }: { r: Requirement; canEdit: boolean }) {
           </div>
         ) : (
           <p className="text-sm">
-            <Pill>Size {d.cost.size}</Pill> {d.cost.eurBand} <span className="text-muted-foreground">({d.cost.source.replace("_", " ")}: {d.cost.note})</span>
+            <Pill>Size {d.cost.size}</Pill> {d.cost.eurBand} <span className="text-muted-foreground">({d.cost.source.replace("_", " ")}: {d.cost.note})</span> <ProvChip p={prov.get("cost")} onCite={onCite} />
           </p>
         )}
       </div>
@@ -272,7 +286,7 @@ function SelectField({ label, value, options, onChange }: { label: string; value
   );
 }
 
-function ListField({ title, items, editing, onChange }: { title: string; items: string[]; editing: boolean; onChange: (v: string[]) => void }) {
+function ListField({ title, items, editing, onChange, chip }: { title: string; items: string[]; editing: boolean; onChange: (v: string[]) => void; chip?: (i: number) => React.ReactNode }) {
   return (
     <div>
       <h4 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
@@ -280,8 +294,10 @@ function ListField({ title, items, editing, onChange }: { title: string; items: 
         <Textarea rows={4} value={items.join("\n")} onChange={(e) => onChange(e.target.value.split("\n").filter((x) => x.trim()))} placeholder="One per line" />
       ) : (
         <ul className="list-disc space-y-1 pl-5 text-sm">
-          {items.map((x) => (
-            <li key={x}>{x}</li>
+          {items.map((x, i) => (
+            <li key={x}>
+              {x} {chip?.(i)}
+            </li>
           ))}
           {items.length === 0 && <li className="list-none text-muted-foreground">—</li>}
         </ul>

@@ -47,7 +47,7 @@ export async function buildDeck(deck: DeckResponse) {
   for (const s of deck.slides) {
     const slide = pptx.addSlide();
     slide.addText(
-      `#${s.rank}  ${s.requirementId}  ·  ${requirementStatusLabel[s.status]}  ·  ${releaseLabel[s.release]}  ·  ${regionLabel[s.marketScope]}  ·  ${evidenceLabel[s.evidenceLevel]}  ·  owner ${s.ownerName}`,
+      `#${s.rank}  ${s.requirementId} v${s.version}  ·  ${requirementStatusLabel[s.status]}  ·  ${releaseLabel[s.release]}  ·  ${regionLabel[s.marketScope]}  ·  ${evidenceLabel[s.evidenceLevel]}  ·  owner ${s.ownerName}  ·  ${s.provenance.evidence} evidence / ${s.provenance.pm_context} PM context / ${s.provenance.assumption} assumptions`,
       { x: 0.5, y: 0.25, w: 10.3, h: 0.35, fontSize: 10.5, color: muted, fontFace: font },
     );
     if (s.openIssues.red || s.openIssues.amber) {

@@ -4,11 +4,20 @@ import { diffLines, diffWords } from "diff";
 import { Check, Sparkles, X } from "lucide-react";
 import type { Proposal } from "@/contracts";
 import { useApiMutation } from "@/lib/api/hooks";
+import { showBriefValue } from "@/lib/brief";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Pill } from "./badges";
 
-const sourceLabel = { chat: "from chat", meeting_note: "from meeting note", monitor: "from monitor" } as const;
+const sourceLabel: Record<Proposal["source"], string> = {
+  chat: "from chat",
+  meeting_note: "from meeting note",
+  monitor: "from monitor",
+  strategy_doc: "from your strategy doc",
+  feedback: "from feedback",
+  brief_change: "from a brief change",
+  learning: "learned from your decisions",
+};
 
 function show(v: unknown): string {
   if (v === null || v === undefined) return "—";
@@ -57,7 +66,15 @@ export function ProposalCard({ p, canDecide = true }: { p: Proposal; canDecide?:
             <Pill>{sourceLabel[p.source]}</Pill>
             {p.status !== "pending" && <Pill t={p.status === "accepted" ? "emerald" : "red"}>{p.status}</Pill>}
           </div>
-          {p.changes.map((c, i) =>
+          {p.kind === "brief_field" &&
+            p.changes.map((c, i) => (
+              <div key={i} className="space-y-1">
+                <Diff before={showBriefValue(c.field, c.before)} after={showBriefValue(c.field, c.after)} />
+                {p.citations[0] && <p className="text-[11px] text-muted-foreground italic">&ldquo;{p.citations[0]}&rdquo;</p>}
+              </div>
+            ))}
+          {p.kind !== "brief_field" &&
+            p.changes.map((c, i) =>
             c.before === null || c.before === undefined ? (
               <pre key={i} className="max-h-64 overflow-auto rounded-md bg-emerald-50 p-2 font-sans text-xs leading-relaxed whitespace-pre-wrap dark:bg-emerald-950/40">
                 {show(c.after)}

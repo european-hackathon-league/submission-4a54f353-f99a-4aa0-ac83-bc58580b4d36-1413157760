@@ -35,6 +35,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const alerts = useApi("alerts", {}, { enabled: ready });
   const notifications = useApi("notifications", {}, { enabled: ready });
   const user = me.data?.user;
+  // First login of a vehicle PM without a confirmed brief: onboarding (layer 1) before anything else.
+  const onboarding = me.data?.needsOnboarding;
+  useEffect(() => {
+    if (onboarding && !pathname.startsWith("/brief")) router.replace("/brief?onboarding=1");
+  }, [onboarding, pathname, router]);
 
   const pendingIn = (referrals.data ?? []).filter((r) => r.toUserId === user?.id && r.status === "pending").length;
   const myAlerts = (alerts.data ?? []).filter((a) => a.status === "open" && (a.ownerId === user?.id || user?.role === "head")).length;

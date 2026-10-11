@@ -10,7 +10,7 @@ The clickable demo of our BMW hackathon tool: **Signals → Cases → Requiremen
 
 | Nav | What the PM does there |
 |---|---|
-| **My desk** | Four cards sorted by kind of work: *Agent flags* (competitor alerts, @mentions) · *My cases* · *Review* (requirements sent back or in progress; for the head: sign-off and escalations inline) · *Follow up* (answers that came back, questions due) |
+| **My desk** | Four cards sorted by kind of work: *Agent flags* (competitor alerts, @mentions) · *My cases* · *Review* (requirements sent back or in progress; for the head: regional brief differences, sign-off and escalations inline) · *Follow up* (answers that came back, questions due) |
 | **Inbox** | Referrals to accept or decline, agent flags, all notifications |
 | **Cases** | Kanban (drag = state change with a reason). A *Ranked* toggle shows the score order; weights sit behind one button |
 | **Vehicle plan** | All requirements of a series as a list grouped by car area, with status filter chips, plan action and release; today's equipment folds per area; Codebeamer export |
@@ -22,7 +22,32 @@ Three things borrowed from the market (see the competitor research):
 - **Ask the segment** in the case chat (like Dovetail's digital twins, but grounded): chips such as *USA (24) · USA BEV (9) · China (0)* answer only from that segment's real BMW verbatims, with citations. No verbatims means "no evidence" plus a proposed open question, never a guess.
 - **Engineering deck** next to *Export to Codebeamer* (like Aha! roadmap decks): one slide per signed-off or planned requirement with the SMART text, three customer quotes, the score breakdown, the competition and the decision log.
 
-A **case** opens with a Sankey of its evidence (*sources → what they say → case*, where "what they say" is a taxonomy topic × type, e.g. *Public charging · hard to use*). Every node is clickable and shows its quotes. Then three steps: **① Evidence** (Sankey + three bullets, full analysis on demand) → **② Your knowledge** (four one-click questions + a note; the AI colleague answers with follow-up questions; open questions to engineering and finance) → **③ Requirements** (create, then open each in a side panel and harden it with the AI). Settings and the audit trail live in the persona menu.
+A **case** opens with a Sankey of its evidence (*sources → what they say → case*, where "what they say" is a taxonomy topic × type, e.g. *Public charging · hard to use*). Every node is clickable and shows its quotes. Then three steps: **① Evidence** (Sankey + three bullets, full analysis on demand) → **② Your stance** (brief values you inherit, overridable with a reason; your take on the evidence; what you know that the data can't show; how far to go. The AI colleague answers with follow-up questions; open questions to engineering and finance) → **③ Requirements** (up to three shape questions with defaults, then the draft in a side panel). Settings, the audit trail and **My series brief** live in the persona menu.
+
+### PM context layers (why a draft reads like the PM wrote it)
+The drafter combines five layers; [docs/05-solution/ux-and-collaboration.md](../docs/05-solution/ux-and-collaboration.md#5a-pm-context-layers-requirements-that-read-like-the-pm-wrote-them) has the design.
+
+| Layer | UI | Budget |
+|---|---|---|
+| 0 Brand profile | Settings (head) | existing |
+| 1 Series brief (shared + regional overlay) | `/brief`; onboarding on first login; *Paste your strategy doc* proposes values | ≤ 8 questions, pre-filled from data |
+| 2 Case stance | step ② | 3 questions |
+| 3 Shape questions | step ③ form, mirrored in the case chat | ≤ 3, each with a default and "why I'm asking" |
+| 4 Engineering / finance feedback | *Engineering feedback* on a requirement → proposal for the next version | per round |
+
+Every part of a drafted requirement shows where it came from (evidence with signal IDs, your context with the layer, or assumption). The **Versions** tab keeps the history on the same ID; a brief change shows the affected requirements and creates a version proposal per owner; a regional PM's variant shows a side-by-side "two briefs" comparison.
+
+### The brain seam (for the AI track)
+Drafting goes through one interface, `src/mock/ai/drafter.ts`:
+
+```ts
+interface Drafter {
+  shapeQuestions(input: DraftInput): ShapeQuestion[];      // ≤ 3, with defaults and "why"
+  draft(input: DraftInput): Promise<DraftOutput>;           // RequirementSnapshot[] with provenance on every path
+}
+```
+
+`DraftInput` already carries everything: case, its signals, brand profile, resolved brief (shared + overlay), the PM's stance, shape answers, feedback, the previous version and sibling requirements. Today `getDrafter()` returns the scripted, deterministic composer (`composer@1` in `src/mock/ai/composer.ts`). To plug in the real brain, implement `Drafter` (an LLM call that returns the same snapshot shape) and return it from `getDrafter()`; handlers, versions, impact proposals and the UI stay as they are. The contract test checks that every part has provenance (`fullyTagged`).
 
 ## Run it
 
@@ -75,7 +100,7 @@ web/scripts/               seed, contract export, contract test
 - Case score = weighted mean of 8 factors (0..1), with no cost. Requirement rank = case score × cost multiplier (S/M/L). Evidence level is separate from the score.
 
 ### Contract additions vs. `data-model.mmd` (to sync with Ghassen)
-`User` · `Workspace.projectType` · case and requirement `shortTitle` (2–4 words for lists; the title stays the full sentence) · signal `topicId` + `aspectGroup` (fixed taxonomy, see `../taxonomy/`) and `GET /taxonomy` · case `highlights`, `topicId`, `pmContext` (`PUT /cases/:id/pm-context`) · case `outcome` (confirmed / referred / innovation pool / parked / merged / rejected) plus the states `investigating`, `awaiting_answers`, `ready` · case taxonomy `carArea` / `type` / `changeDepth` and `relatedSeries` · `context` (preset context + PM inputs) · `OpenQuestion` · `MeetingNote` · `Proposal` · `Referral` (referral or escalation) · `InnovationMeta` · `VehiclePlan` / `PlannedFeature` · `Comment` · `Notification` · `Alert` · requirement statuses `pm_approved`, `signed_off`, `planned`.
+`User` · `Workspace.projectType` · case and requirement `shortTitle` (2–4 words for lists; the title stays the full sentence) · signal `topicId` + `aspectGroup` (fixed taxonomy, see `../taxonomy/`) and `GET /taxonomy` · case `highlights`, `topicId`, `stances` (one `CaseStance` per PM, `PUT /cases/:id/stance`; replaces `pmContext`) · `SeriesBrief` (shared + regional overlay with per-field source and reason; `/briefs`, `/briefs/mine`, `PUT /briefs/:id` returns the impact, `/briefs/:id/impact`, `/briefs/:id/extract`, `/brief-conflicts`, `POST /briefs/:id/conflicts/:field`) · shape questions (`GET /cases/:id/shape-questions`, `POST /cases/:id/shape-questions/ask` posts them to the chat; `POST /cases/:id/requirements/generate` takes the answers) · requirement `descriptionParts`, `provenance[]` (path → source, layer, ref, signal IDs), `version`, `shapeAnswers`, `briefId`, `drafter` · `RequirementVersion` snapshots · `FeedbackEntry` (`POST /requirements/:id/feedback` → new-version proposal) · proposal kinds `brief_field` and `new_version` · case `outcome` (confirmed / referred / innovation pool / parked / merged / rejected) plus the states `investigating`, `awaiting_answers`, `ready` · case taxonomy `carArea` / `type` / `changeDepth` and `relatedSeries` · `context` (preset context + PM inputs) · `OpenQuestion` · `MeetingNote` · `Proposal` · `Referral` (referral or escalation) · `InnovationMeta` · `VehiclePlan` / `PlannedFeature` · `Comment` · `Notification` · `Alert` · requirement statuses `pm_approved`, `signed_off`, `planned`.
 
 ## Synthetic data, honestly labelled
 
@@ -87,17 +112,28 @@ web/scripts/               seed, contract export, contract test
 
 | Persona | Role | Demo focus |
 |---|---|---|
-| Lena Hofmann | PM 5 Series · Rest of World | Refer the buttons case, paste a meeting note, what-if weights |
-| Wei Zhang | PM 5 Series · China | Escalate the equipment conflict, react to the CLTC alert |
+| Lena Hofmann | PM 5 Series · Rest of World, owns the shared G60 brief | Brief → stance → shape questions → provenance; engineering feedback; brief change. Also: refer the buttons case, paste a meeting note, what-if weights |
+| Wei Zhang | PM 5 Series · China, not onboarded yet | Onboarding from a pasted strategy doc; co-drafts the China variant. Also: escalate the equipment conflict, react to the CLTC alert |
 | Jonas Berger | PM Operating concept & HMI (cross-series) | Accept referrals into one Baukasten case |
-| Katrin Maier | Head of product line | Sign-off and escalations from her desk, brand profile |
+| Katrin Maier | Head of product line | Regional brief differences, sign-off and escalations from her desk, brand profile |
 | Sofia Rossi / Daniel Okafor | PM 1 Series / PM 7 Series | Light series for referrals and the portfolio |
 
-## Demo script (about 6 minutes)
+## Demo script: context layers (about 5 minutes, after *Reset demo data*)
+
+1. **Lena → persona menu → My series brief:** eight answers, most pre-filled (*from data*, *from the brand profile*). The thesis names the A6 e-tron.
+2. **CASE-G60-0003 → ② Your stance:** the brief values show as inherited chips. Add a take (*Focus on BEV owners*) and inside knowledge (*Battery team is sampling next-gen cells*), then *Save stance and ask the AI*: the AI colleague asks what the brief and the data can't answer (China weighted 25% with no Chinese records).
+3. **③ Requirements → Confirm case:** three shape questions open, each with a default and *Why I'm asking*. Pick *Beat the best competitor* → *Create requirements*. The draft says *≥ 800 km, beating Audi A6 e-tron 756 km*; every sentence carries a chip (green evidence with signal IDs, blue your context, amber assumption), and the inside knowledge is an assumption.
+4. **Engineering feedback:** "800 km needs the next-gen cells; 700 km is the max for the current pack" → *Compromise* + reason → a v2 proposal with the diff. Accept: **Versions** shows v1 → v2 on the same ID.
+5. **My series brief → Cost envelope → High, ≤ +1%** → *Save*: the dialog lists the affected requirement first; saving creates a v3 proposal on it instead of editing it.
+6. **Switch to Wei:** he lands on onboarding. *Create my regional brief* (China pre-filled at 100%) → *Paste your strategy doc → Use demo doc → Propose brief values*: six field proposals with quotes; accept them → *Confirm*.
+7. **Wei → CASE-G60-0003 → Draft my regional variant:** different questions (China variant, Mercedes CLA, beat), and the draft is *CLTC range ≥ 920 km (China)*, a CN variant of Lena's requirement with the "two briefs" comparison.
+8. **Katrin, My desk → Review → 5 Series brief:** Wei differs on seven fields; decide each as regional variant or align, with one rationale.
+
+## Demo script: the rest (about 6 minutes)
 
 1. **Lena, My desk:** four cards, one per kind of work. A competitor flag sits on top.
 2. **CASE-G60-0003** (i5 range and charging): the Sankey shows 36 customers, where they spoke and what they say. Click *Public charging · hard to use* to read the six quotes; the competitor facts are the grey nodes.
-3. **② Your knowledge:** choose *Europe · Premium · Mid-life update* and save. The AI colleague opens with two questions the data can't answer (Europe vs. US evidence, platform change vs. LCI).
+3. **② Your stance:** see the context-layer script above. The AI colleague opens with questions the data can't answer.
 4. **CASE-G60-0001 → Decide → Refer** to Jonas (Baukasten). **Switch to Jonas → Inbox → Accept:** a linked case appears in his workspace.
 5. **Lena, CASE-G60-0005 → ② → Paste meeting notes → Use demo note:** the AI proposes the answers; accept them, the audit trail logs each one.
    - **Ask owners** in the case chat (e.g. CASE-G60-0012): click a chip with data for a cited summary, then *China (0)*: "no evidence", plus a proposed question to the market PM.

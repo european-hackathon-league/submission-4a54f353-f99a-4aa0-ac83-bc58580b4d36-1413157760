@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requirementId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "from": {
+      "type": "string",
+      "enum": [
+        "engineering",
+        "finance",
+        "design",
+        "quality",
+        "market_pm",
+        "purchasing",
+        "other"
+      ]
+    },
+    "text": {
+      "type": "string"
+    },
+    "response": {
+      "type": "string",
+      "enum": [
+        "accept",
+        "push_back",
+        "compromise"
+      ]
+    },
+    "pmRationale": {
+      "type": "string"
+    },
+    "signalIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "proposalId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resultingVersion": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "createdBy": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "id",
+    "requirementId",
+    "from",
+    "text",
+    "response",
+    "pmRationale",
+    "signalIds",
+    "proposalId",
+    "resultingVersion",
+    "createdAt",
+    "createdBy"
+  ],
+  "additionalProperties": false
+}

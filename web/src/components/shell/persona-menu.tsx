@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, FileClock, LogOut, RotateCcw, Settings } from "lucide-react";
+import { Check, Compass, FileClock, LogOut, RotateCcw, Settings } from "lucide-react";
 import type { User } from "@/contracts";
 import { api } from "@/lib/api/client";
 import { setUserId } from "@/lib/session";
@@ -51,6 +51,9 @@ export function PersonaMenu({ user }: { user: User }) {
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => router.push("/brief")}>
+          <Compass className="size-4" /> My series brief
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/settings")}>
           <Settings className="size-4" /> Settings and weights
         </DropdownMenuItem>

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "EU": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "US": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "CN": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "RoW": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": [
+    "EU",
+    "US",
+    "CN",
+    "RoW"
+  ],
+  "additionalProperties": false
+}

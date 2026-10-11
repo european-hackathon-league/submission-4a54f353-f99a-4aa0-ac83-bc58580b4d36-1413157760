@@ -92,13 +92,13 @@ export type CaseSpec = Omit<
   | "highlights"
   | "shortTitle"
   | "topicId"
-  | "pmContext"
+  | "stances"
 > & {
   /** Three short bullets; derived from the body when missing. */
   highlights?: string[];
   /** Main taxonomy topic; derived from the case's BMW verbatims when missing. */
   topicId?: string;
-  pmContext?: PmContext;
+  stances?: CaseStance[];
   createdAt: string;
   updatedAt?: string;
   markets?: Market[];
