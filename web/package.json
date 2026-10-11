@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "export-contract": "tsx scripts/export-contract.ts",
-    "contract-test": "tsx scripts/contract-test.ts"
+    "contract-test": "tsx scripts/contract-test.ts",
+    "map-test": "tsx scripts/map-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

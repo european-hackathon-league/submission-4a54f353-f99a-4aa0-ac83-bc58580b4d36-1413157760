@@ -41,7 +41,7 @@ export interface Ctx<K extends EndpointName> {
   user: User;
 }
 type Out<K extends EndpointName> = z.input<Ep[K]["response"]>;
-type Handlers = { [K in EndpointName]: (ctx: Ctx<K>) => Out<K> | Promise<Out<K>> };
+export type Handlers = { [K in EndpointName]: (ctx: Ctx<K>) => Out<K> | Promise<Out<K>> };
 
 // ---------- helpers ----------
 const findCase = (d: Dataset, id: string) => must(d.cases.find((c) => c.id === id), `Case ${id}`);
