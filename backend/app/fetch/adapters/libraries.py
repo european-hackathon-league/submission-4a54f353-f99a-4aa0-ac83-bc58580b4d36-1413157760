@@ -16,7 +16,7 @@ import time
 
 from app import storage
 from app.config import get_settings
-from app.fetch.adapters.api import youtube_channels
+from app.fetch.adapters.api import youtube_channels, youtube_since
 from app.fetch.adapters.base import FetchContext, FetchResult, NotConfigured, adapter, cursor_key
 from app.fetch.http import BudgetExhausted, Response
 from app.fetch.records import data_record, text_record
@@ -139,7 +139,9 @@ def youtube_transcripts(ctx: FetchContext, source: dict, subject: Subject, curso
     api = YouTubeTranscriptApi()
     for channel in youtube_channels():
         r = ctx.client.get("https://www.googleapis.com/youtube/v3/search", source_id="youtube-transcripts", params={
-            "part": "snippet", "channelId": channel, "q": term, "type": "video", "maxResults": 3, "key": key})
+            "part": "snippet", "channelId": channel, "q": term, "type": "video", "maxResults": 3, "key": key,
+            # The videos of the last two months, newest first.
+            "order": "date", "publishedAfter": youtube_since(subject)})
         out.requests += 1
         for item in r.json().get("items", []):
             vid = item["id"]["videoId"]

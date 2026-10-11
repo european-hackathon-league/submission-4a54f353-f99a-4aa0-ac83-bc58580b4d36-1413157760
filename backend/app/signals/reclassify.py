@@ -28,15 +28,27 @@ class _Row:
     text: str
 
 
-def run(conn) -> dict:
-    if not llm_available():
-        return {"skipped": "no OPENAI_API_KEY"}
-    rows = conn.execute(
+def pending(conn) -> list[dict]:
+    """Signals that still need a classification from their text."""
+    return conn.execute(
         "select id, quote, validation, extra, feature_id from signal"
         " where (reject_reason like 'unclassified%%' or extra->>'kind_source' = 'heuristic'"
         " or (feature_id is null and validation = 'valid'))"
-        " and validation <> 'deleted' and quote is not null"
+        " and validation <> 'deleted' and quote is not null order by id"
     ).fetchall()
+
+
+def prefetch(rows: list[dict]) -> int:
+    """Classify the texts outside any database transaction; ``run`` then reads the cache."""
+    if llm_available() and rows:
+        classify_rows([_Row(i, r["quote"]) for i, r in enumerate(rows)])
+    return len(rows)
+
+
+def run(conn) -> dict:
+    if not llm_available():
+        return {"skipped": "no OPENAI_API_KEY"}
+    rows = pending(conn)
     verdicts = classify_rows([_Row(i, r["quote"]) for i, r in enumerate(rows)])
     counts = {"released": 0, "updated": 0, "still_unclassified": 0}
     topics = {r["topic_id"]: r for r in conn.execute(

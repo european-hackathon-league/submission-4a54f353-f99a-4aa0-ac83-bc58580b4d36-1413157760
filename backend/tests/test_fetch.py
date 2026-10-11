@@ -295,3 +295,30 @@ def test_source_decisions_disable_reddit(conn):
     assert rows["reddit"]["enabled"] is False and "developer" in rows["reddit"]["disabled_reason"]
     assert (rows["motor-talk"]["refresh_days"], rows["kba"]["refresh_days"]) == (1, 30)
     assert registry.apply_source_decisions(conn) == 0  # idempotent
+
+
+def test_relevance_filter_keeps_no_text_without_a_signal(conn):
+    """A fetched record the LLM finds nothing in keeps only its marker row."""
+    from app import audit
+    from app.fetch import worker
+    from app.llm import client as llm_client
+
+    audit.insert(conn, "source_registry", {"source_id": "bmwblog", "name": "bmwblog"}, actor="seed:test",
+                 key="source_id", on_conflict_do_nothing=True)
+    record = audit.insert(conn, "source_record", {
+        "record_id": "bmwblog-offtopic", "source_id": "bmwblog", "category": "C", "content_type": "news",
+        "content_hash": "x", "title": "Factory tour", "text_original": "The museum opens a new exhibition in May."},
+        actor="fetch:bmwblog", key="record_id")
+    llm_client.set_llm(llm_client.FakeLLM({"signal_extract": lambda v: {"signals": []}}))
+    out = worker.run_agents(conn, [record], None)
+    assert out["not_relevant"] == 1 and out["valid"] == 0
+    row = conn.execute("select text_original, title, deleted_at from source_record where record_id = 'bmwblog-offtopic'"
+                       ).fetchone()
+    assert row["text_original"] is None and row["title"] is None and row["deleted_at"] is not None
+    # Without an LLM nothing is judged, so nothing is purged.
+    llm_client.set_llm(None)
+    other = audit.insert(conn, "source_record", {
+        "record_id": "bmwblog-unread", "source_id": "bmwblog", "category": "C", "content_type": "news",
+        "content_hash": "y", "text_original": "The museum opens a new exhibition in May."},
+        actor="fetch:bmwblog", key="record_id")
+    assert worker.run_agents(conn, [other], None)["not_relevant"] == 0

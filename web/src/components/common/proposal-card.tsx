@@ -4,6 +4,7 @@ import { diffLines, diffWords } from "diff";
 import { Check, Sparkles, X } from "lucide-react";
 import type { Proposal } from "@/contracts";
 import { useApiMutation } from "@/lib/api/hooks";
+import { plainText } from "@/lib/audit";
 import { showBriefValue } from "@/lib/brief";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ function show(v: unknown): string {
     const r = v as { title: string; description: string; metrics?: { question: string; target: string; basis: string }[] };
     return `${r.title}\n\n${r.description}${r.metrics ? "\n\n" + r.metrics.map((m) => `• ${m.question}: ${m.target} (${m.basis})`).join("\n") : ""}`;
   }
-  return JSON.stringify(v, null, 1);
+  return plainText(v);
 }
 
 function Diff({ before, after }: { before: string; after: string }) {

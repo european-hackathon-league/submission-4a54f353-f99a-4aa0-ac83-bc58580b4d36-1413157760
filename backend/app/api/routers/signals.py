@@ -20,10 +20,23 @@ router = APIRouter(tags=["signals"])
 def list_signals(case_id: str | None = None, vehicle: str | None = None, market: str | None = None,
                  kind: str | None = None, evidence_role: str | None = None, source_id: str | None = None,
                  content_type: str | None = None, car_area: str | None = None, topic_id: str | None = None,
+                 unassigned: bool = False, q: str | None = None,
                  limit: int = 50, offset: int = 0, c=Depends(conn), user: User = Depends(current_user)) -> dict:
+    """Valid signals. ``unassigned`` = not in a case yet (loose signals), ``q`` = text in summary or quote."""
     return queries.signals(c, case_id=case_id, vehicle=vehicle, market=market, kind=kind, evidence_role=evidence_role,
                            source_id=source_id, content_type=content_type, car_area=car_area, topic_id=topic_id,
-                           limit=min(limit, 500), offset=offset)
+                           unassigned=unassigned, q=q, limit=min(limit, 2000), offset=offset)
+
+
+@router.get("/signals/flow")
+def signal_flow(vehicle: str, c=Depends(conn), user: User = Depends(current_user)) -> list[dict]:
+    """Aggregated evidence flow of a line for the overview diagram: signals counted
+    per source, content type, car area and case (never the 13,000 rows themselves)."""
+    return c.execute(
+        "select r.source_id, r.content_type, s.evidence_role, f.car_area, s.case_id, count(*) as signals"
+        " from signal s join source_record r using (record_id) left join feature f on f.id = s.feature_id"
+        " where s.validation = 'valid' and (s.vehicle = %s or s.vehicle is null)"
+        " group by 1, 2, 3, 4, 5 order by signals desc", (vehicle,)).fetchall()
 
 
 @router.get("/signals/{signal_id}")

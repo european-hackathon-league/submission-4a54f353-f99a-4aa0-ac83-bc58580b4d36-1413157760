@@ -48,4 +48,5 @@ def install(app: FastAPI) -> None:
     app.add_exception_handler(audit.StaleVersion, _error(409))
     app.add_exception_handler(InvalidTransition, _error(409))
     app.add_exception_handler(InvalidAction, _error(409))
+    app.add_exception_handler(PermissionError, _error(403))
     app.add_exception_handler(ValueError, _error(422))

@@ -18,7 +18,7 @@ from app.rag import index
 from app.requirements import service
 
 router = APIRouter(prefix="/requirements", tags=["requirements"])
-STATUSES = ("draft", "in_discussion", "approved", "rejected", "deleted")
+STATUSES = (*service.LIVE, "rejected", "deleted")
 
 
 def _vehicle(c, rid: str) -> str:
@@ -114,6 +114,7 @@ def get_requirement(rid: str, c=Depends(conn), user: User = Depends(current_user
                                  (rid,)).fetchall()
     row["ranks"] = c.execute("select weight_profile_id, rank_score, cost_missing from requirement_rank"
                              " where requirement_id = %s", (rid,)).fetchall()
+    row.update(service.bundle(c, rid))
     audit.log_access(c, action="view", object_type="requirement", object_id=rid, actor=user.actor,
                      request_id=request_id())
     return row

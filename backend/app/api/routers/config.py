@@ -18,7 +18,7 @@ router = APIRouter(tags=["configuration"])
 @router.get("/me")
 def me(user: User = Depends(current_user)) -> dict:
     return {"id": user.id, "name": user.name, "role": user.role, "vehicles": list(user.vehicles),
-            "actor": user.actor}
+            "actor": user.actor, "pm_role": user.pm_role, "region": user.region, "is_head": user.is_head}
 
 
 @router.get("/vehicles")
@@ -111,6 +111,7 @@ def patch_config(config_id: str, body: ConfigPatch, c=Depends(conn), user: User 
 
 
 class ProfileIn(BaseModel):
+    description: str | None = None
     name: str
     case_weights: dict[str, float]
     brand_multipliers: dict[str, float] | None = None
@@ -123,10 +124,12 @@ def create_profile(config_id: str, body: ProfileIn, c=Depends(conn), user: User 
     require_pm(user, _config(c, config_id)["vehicle"])
     return profiles.create_profile(c, config_id, body.name, body.case_weights, actor=user.actor,
                                    brand_multipliers=body.brand_multipliers, cost_multipliers=body.cost_multipliers,
-                                   rationale=body.rationale, request_id=request_id())
+                                   rationale=body.rationale, request_id=request_id(),
+                                   description=body.description, owner_id=user.id)
 
 
 class ProfilePatch(BaseModel):
+    description: str | None = None
     name: str | None = None
     case_weights: dict[str, float] | None = None
     brand_multipliers: dict[str, float] | None = None
@@ -174,10 +177,14 @@ def brand_profile(c=Depends(conn), user: User = Depends(current_user)) -> dict:
 class BrandProfileIn(BaseModel):
     body_md: str
     rationale: str
+    pillars: list[dict] | None = None   # [{name, description}]
+    do_not: list[str] | None = None
 
 
 @router.post("/brand-profile", status_code=201)
 def new_brand_profile(body: BrandProfileIn, c=Depends(conn), user: User = Depends(current_user)) -> dict:
     require_pm(user)
+    if not user.is_head:
+        raise HTTPException(403, "only the head of product line edits the brand profile")
     return profiles.new_brand_profile(c, body.body_md, actor=user.actor, rationale=body.rationale,
-                                      request_id=request_id())
+                                      pillars=body.pillars, do_not=body.do_not, request_id=request_id())

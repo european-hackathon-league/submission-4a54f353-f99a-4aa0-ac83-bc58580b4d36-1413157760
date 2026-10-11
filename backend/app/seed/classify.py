@@ -183,7 +183,9 @@ def classify_rows(rows, batch_size: int = 25) -> dict[int, Verdict]:
             return answers
 
         try:
-            with ThreadPoolExecutor(max_workers=8) as pool:
+            from app.llm.cache import WORKERS
+
+            with ThreadPoolExecutor(max_workers=WORKERS) as pool:
                 for answers in pool.map(run, batches):
                     verdicts.update(answers)
         except LLMUnavailable:

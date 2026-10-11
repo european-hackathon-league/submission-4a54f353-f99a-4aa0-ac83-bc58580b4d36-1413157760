@@ -19,7 +19,8 @@ ACTOR = "agent:embedder"
 
 def backfill(conn, batch: int = 500, all_rows: bool = False) -> int:
     embedder = get_embedder()
-    where = "validation = 'valid'" + ("" if all_rows else
+    # Out-of-scope signals (pricing) stay visible but are never grouped or searched by similarity.
+    where = "validation = 'valid' and scope_tag = 'in_scope'" + ("" if all_rows else
                                       " and (embedding is null or coalesce(extra->>'embedding_provider', '') <> %s)")
     params = () if all_rows else (embedder.name,)
     rows = conn.execute(f"select id, summary, quote, extra from signal where {where} order by id", params).fetchall()

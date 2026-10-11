@@ -29,6 +29,10 @@ _GENERIC = {"customer", "stated", "vehicle", "car", "advised", "writer", "really
 
 class CaseText(BaseModel):
     title: str = Field(description="the problem in at most 12 words, never a solution")
+    short_title: str = Field(default="", description="2 to 4 words for cards and diagrams")
+    summary: str = Field(default="", description="one or two sentences: the problem and who has it")
+    highlights: list[str] = Field(default_factory=list,
+                                  description="three short bullets: the problem, who is affected, the competition")
     body_md: str
 
 
@@ -82,11 +86,28 @@ def template(feature: str, signals: list[dict]) -> CaseText:
         quote = " ".join((s["quote"] or "").split())[:280]
         lines.append(f"> \"{quote}\" [signal:{s['id']}] ({s['kind']}, {s['market']}, {s.get('vehicle') or 'brand'})")
         lines.append("")
-    return CaseText(title=title[:120], body_md="\n".join(lines).strip() + "\n")
+    competitor = sum(1 for s in signals if s["evidence_role"] == "competitor")
+    summary = (f"{customers} BMW customers on {feature}: {kinds['complaint']} complaints, {kinds['wish']} wishes, "
+               f"{kinds['like']} likes.")
+    highlights = [
+        f"{kinds['complaint']} complaints ({severities['defect']} defects), {kinds['wish']} wishes, "
+        f"{kinds['like']} likes about {feature}.",
+        f"{customers} distinct BMW customers; signals by market: "
+        + ", ".join(f"{m} {c}" for m, c in markets.most_common(3)) + ".",
+        f"{competitor} competitor signals in the case." if competitor else "No competitor evidence in the signals.",
+    ]
+    return CaseText(title=title[:120], short_title=_short(feature), summary=summary, highlights=highlights,
+                    body_md="\n".join(lines).strip() + "\n")
+
+
+def _short(text: str, words: int = 4) -> str:
+    """At most four words of a label: the fallback short title."""
+    return " ".join(text.replace("(", " ").replace(")", " ").replace(",", " ").split()[:words])
 
 
 def _cache_key(feature: str, signals: list[dict]) -> str:
     return cache.key(prompts.load("case_writer").prompt_version, get_settings().llm_model_for("case_writer"),
+                     get_settings().llm_reasoning_for("case_writer"),
                      feature, len(signals), sorted(str(s["id"]) for s in _sample(signals)))
 
 
@@ -100,8 +121,11 @@ def _llm_text(feature: str, signals: list[dict]) -> dict:
     )
     allowed = {str(s["id"]) for s in sample}
     body = CITATION.sub(lambda m: m.group(0) if m.group(1) in allowed else "", result.data.body_md)
-    return {"title": result.data.title[:120], "body_md": body, "model": result.model,
-            "prompt_version": result.prompt_version}
+    d = result.data
+    return {"title": d.title[:120], "short_title": " ".join(d.short_title.split()[:5]) or _short(feature),
+            "summary": CITATION.sub("", d.summary).strip(),
+            "highlights": [CITATION.sub("", h).strip() for h in d.highlights][:3],
+            "body_md": body, "model": result.model, "prompt_version": result.prompt_version}
 
 
 def prefetch(groups: list[tuple[str, list[dict]]]) -> dict:
@@ -121,7 +145,9 @@ def write(feature: str, signals: list[dict]) -> tuple[CaseText, str | None, str 
             if hit is None:
                 hit = _llm_text(feature, signals)
                 cache.put("case_writer", k, hit)
-            return CaseText(title=hit["title"], body_md=hit["body_md"]), hit["model"], hit["prompt_version"]
+            return (CaseText(title=hit["title"], short_title=hit.get("short_title") or _short(feature),
+                             summary=hit.get("summary") or "", highlights=hit.get("highlights") or [],
+                             body_md=hit["body_md"]), hit["model"], hit["prompt_version"])
         except LLMUnavailable:
             pass
     return template(feature, signals), None, "case_template@v1"

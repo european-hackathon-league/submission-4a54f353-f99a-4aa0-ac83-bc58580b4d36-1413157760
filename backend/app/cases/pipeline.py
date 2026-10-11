@@ -56,7 +56,11 @@ def update_case(conn, case_id: str, *, run_id=None, brand_profile: str = "", fig
             if case["segment_source"] != "pm":
                 case_changes.update(segment=t["segment"], segment_source="ai")
             if case["brand_fit_source"] != "pm" and t["brand_fit"]:
-                case_changes.update(brand_fit=t["brand_fit"], brand_fit_source="ai")
+                case_changes.update(brand_fit=t["brand_fit"], brand_fit_source="ai",
+                                    brand_fit_reason=t["brand_fit_reason"])
+            for tag in ("case_type", "change_depth"):
+                if case[f"{tag}_source"] != "pm" and t.get(tag):
+                    case_changes.update({tag: t[tag], f"{tag}_source": "ai"})
             if case_changes:
                 case = audit.update(conn, "case_item", {"id": case_id}, case_changes, actor=ACTOR, run_id=run_id,
                                     rationale=f"tags proposed ({t['source']})")
@@ -73,26 +77,61 @@ def update_case(conn, case_id: str, *, run_id=None, brand_profile: str = "", fig
 
 
 def run(initial: bool = False) -> dict:
+    """One pipeline run. The LLM never works inside a database transaction: each
+    stage reads what it needs, closes the transaction, lets the LLM calls run in
+    parallel into the disk cache, then writes in a short transaction that only
+    reads the cache. A dropped connection or a crash loses one stage at most, and
+    a re-run pays for no LLM call twice."""
     with db.transaction() as conn:
         run_id = conn.execute("insert into agent_run (agent, mode) values (%s, %s) returning id",
                               (ACTOR, "backfill" if initial else "incremental")).fetchone()["id"]
+    try:
+        result = _stages(initial, run_id)
+    except Exception as exc:
+        with db.transaction() as conn:
+            conn.execute("update agent_run set status = 'failed', ended_at = now(), error = %s where id = %s",
+                         (repr(exc)[:2000], run_id))
+        raise
+    with db.transaction() as conn:
+        conn.execute("update agent_run set status = 'ok', ended_at = now(), params = %s where id = %s",
+                     (json.dumps(result, default=str), run_id))
+    return result
+
+
+def _stages(initial: bool, run_id) -> dict:
+    # 1. Signals that still have no topic go through the LLM classifier (closed lists). Without an
+    #    OpenAI key they wait: a topic is never guessed.
+    with db.transaction() as conn:
+        waiting = reclassify.pending(conn)
+    reclassify.prefetch(waiting)
     with db.transaction() as conn:
         th = thresholds_for(conn)
-        # Signals that still have no topic go through the LLM classifier (closed lists). Without an
-        # OpenAI key they wait: a topic is never guessed.
         classified = reclassify.run(conn)
         sim = feature_link.threshold(th, "similarity_case", 0.55)
+        split_min = int(th.get("case_split_min_signals", cluster.SPLIT_MIN))
+
+    # 2. Grouping. The pages of the new cases are written in parallel first (cached).
+    if initial:
+        with db.transaction() as conn:
+            planned = cluster.plan_initial(conn, sim, split_min=split_min)
+        cluster.writer.prefetch(planned)
+    with db.transaction() as conn:
         if initial:
-            grouped = cluster.initial(conn, sim, run_id=run_id,
-                                      split_min=int(th.get("case_split_min_signals", cluster.SPLIT_MIN)))
+            grouped = cluster.initial(conn, sim, run_id=run_id, split_min=split_min)
         else:
             grouped = cluster.incremental(conn, sim, run_id=run_id)
+
+    # 3. Figures, then the AI tags of every case and line in parallel (cached), then the writes.
+    with db.transaction() as conn:
         profile = conn.execute("select body_md from brand_profile order by version desc limit 1").fetchone()
-        touched = [r["id"] for r in conn.execute(
-            "select distinct c.id from case_item c join signal s on s.case_id = c.id"
-            " where s.updated_at >= (select started_at from agent_run where id = %s)", (run_id,)).fetchall()]
         brand = profile["body_md"] if profile else ""
-        # Figures first, then the AI tags of every case and line in parallel (cached), then the writes.
+        # Cases this run touched, and cases a failed earlier run left without figures.
+        touched = [r["id"] for r in conn.execute(
+            "select c.id from case_item c where c.figures = '{}'::jsonb"
+            " and exists (select 1 from signal s where s.case_id = c.id)"
+            " union select distinct s.case_id from signal s where s.case_id is not null"
+            " and s.updated_at >= (select started_at from agent_run where id = %s) order by 1",
+            (run_id,)).fetchall()]
         figs = {cid: figures.compute(conn, cid, reach_cap=int(th.get("reach_cap", 100000))) for cid in touched}
         jobs = []
         for cid in touched:
@@ -102,14 +141,12 @@ def run(initial: bool = False) -> dict:
                                    (cid,)).fetchall():
                 if cv["release_fit_source"] != "pm":
                     jobs.append((case, feature, figs[cid], cv["vehicle"], brand))
-        tags.prefetch(jobs)
+    tags.prefetch(jobs)
+    with db.transaction() as conn:
         opened = sum(update_case(conn, cid, run_id=run_id, brand_profile=brand, fig=figs[cid])["opened"]
                      for cid in touched)
-        result = {"classify": classified, "cluster": grouped, "cases_updated": len(touched), "opened": opened,
-                  "provider": feature_link.provider_key(), "similarity_case": sim}
-        conn.execute("update agent_run set status = 'ok', ended_at = now(), params = %s where id = %s",
-                     (json.dumps(result, default=str), run_id))
-    return result
+    return {"classify": classified, "cluster": grouped, "cases_updated": len(touched), "opened": opened,
+            "provider": feature_link.provider_key(), "similarity_case": sim}
 
 
 if __name__ == "__main__":

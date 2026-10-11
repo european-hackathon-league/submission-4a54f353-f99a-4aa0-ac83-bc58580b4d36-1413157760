@@ -13,7 +13,8 @@ from pydantic import BaseModel
 from app import audit
 from app.api.auth import User, current_user, require_pm
 from app.api.deps import conn, request_id
-from app.cases import cluster, lifecycle, pages, queries
+from app.cases import cluster, lifecycle, pages, queries  # noqa: F401
+from app.collab import casework
 from app.rag import index
 from app.requirements import generator
 from app.scoring import rank
@@ -92,19 +93,33 @@ def save_page(case_id: str, body: PageSave, c=Depends(conn), user: User = Depend
 
 
 class Transition(BaseModel):
-    action: Literal["open", "confirm", "reject", "reopen"]
+    action: Literal["open", "start", "await", "ready", "confirm", "reject", "park", "refer", "innovation", "reopen"]
     rationale: str | None = None
+    to_user: str | None = None        # refer: the PM who receives the case
+    horizon: Literal["next_gen", "gen_after", "new_product"] | None = None   # innovation pool
+    escalate: bool = False            # refer + escalate: ask the head of product line instead
+    generate: bool = True             # confirm: draft the requirement(s) now (the PM workspace drafts later,
+                                      # after the shape questions)
 
 
 @router.post("/{case_id}/vehicles/{vehicle}/transition")
 def transition(case_id: str, vehicle: str, body: Transition, c=Depends(conn),
                user: User = Depends(current_user)) -> dict:
-    """PM lifecycle action for one line. Confirm generates the requirement(s)."""
-    require_pm(user, vehicle)
-    row = lifecycle.transition(c, case_id, vehicle, body.action, actor=user.actor, rationale=body.rationale,
-                               request_id=request_id())
-    out = {"case_id": case_id, "vehicle": vehicle, "state": row["state"], "requirements": []}
-    if body.action == "confirm":
+    """PM action for one line: move the case (open, start, await, ready, reopen) or decide
+    it (confirm, reject, park, refer to another PM, innovation pool). Only the owner, a
+    co-owner or the head changes a case; anyone may escalate to the head (refer + escalate).
+    Confirm generates the requirement(s) unless ``generate`` is false."""
+    if not (body.action == "refer" and body.escalate):
+        require_pm(user, vehicle)
+    row = casework.transition(c, case_id, vehicle, user, body.action, body.rationale, to_user=body.to_user,
+                              horizon=body.horizon, escalate=body.escalate, request_id=request_id())
+    out = {"case_id": case_id, "vehicle": vehicle, "state": row["state"], "workflow": row["workflow"],
+           "outcome": row["outcome"], "requirements": []}
+    if body.action in ("open", "reopen"):
+        from app.scoring import score
+
+        score.score_case(c, case_id, vehicle)  # observed cases carry no score
+    if body.action == "confirm" and body.generate:
         created = generator.generate(c, case_id, vehicle, request_id=request_id())
         out["requirements"] = [r["id"] for r in created]
         for r in created:

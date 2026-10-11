@@ -3,16 +3,18 @@ import { ZodError } from "zod";
 import { endpoints, type EndpointName } from "@/contracts";
 import { handlers } from "@/mock/handlers";
 import { ApiError, db } from "@/mock/store";
-import { backendHandlers } from "@/backend/handlers";
-import { personaUsers } from "@/backend/personas";
+import { backendHandlers, backendUsers } from "@/backend/handlers";
 
 /**
- * MOCK BACKEND. One catch-all route that implements the REST contract in
- * src/contracts/api.ts on the in-memory store. With DATA_SOURCE=backend the
- * adapter in src/backend serves the endpoints it implements from the FastAPI
- * backend (BACKEND_URL); this mock serves the rest (INTEGRATION-GUIDE.md section 8).
+ * One catch-all route that serves the REST contract in src/contracts/api.ts.
+ * Default: the mock on the in-memory store (synthetic demo data). With
+ * DATA_SOURCE=backend every endpoint is served by the adapter in src/backend from
+ * the FastAPI backend (BACKEND_URL); the two data sources are never mixed.
  */
 const USE_BACKEND = process.env.DATA_SOURCE === "backend";
+/** Who a request without a user is (the login page lists the users before one is picked). */
+const DEFAULT_BACKEND_USER = process.env.BACKEND_DEFAULT_USER ?? "00000000-0000-4000-8000-000000000001";
+const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
 const routes = (Object.keys(endpoints) as EndpointName[]).map((name) => {
   const def = endpoints[name];
@@ -43,8 +45,10 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
   if (!route) return Response.json({ error: `No endpoint ${req.method} /${path.join("/")}` }, { status: 404 });
 
   try {
-    const userId = req.headers.get("x-user-id") ?? req.cookies.get("rs_user")?.value ?? "u-lena";
-    const user = (USE_BACKEND ? personaUsers() : db().users).find((u) => u.id === userId);
+    let userId = req.headers.get("x-user-id") ?? req.cookies.get("rs_user")?.value ?? "u-lena";
+    // A cookie left over from the mock (u-lena) is not a backend user: fall back to the default one.
+    if (USE_BACKEND && !isUuid(userId)) userId = DEFAULT_BACKEND_USER;
+    const user = (USE_BACKEND ? await backendUsers(userId) : db().users).find((u) => u.id === userId);
     if (!user) throw new ApiError(401, `Unknown user ${userId}`);
 
     const def = route.def as { query?: { parse(v: unknown): unknown }; body?: { parse(v: unknown): unknown }; response: { safeParse(v: unknown): { success: boolean; error?: ZodError } } };
@@ -55,12 +59,12 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       body = def.body.parse(text ? JSON.parse(text) : {});
     }
 
-    const handler = ((USE_BACKEND && backendHandlers[route.name]) || handlers[route.name]) as (c: unknown) => unknown;
+    const handler = (USE_BACKEND ? backendHandlers[route.name] : handlers[route.name]) as (c: unknown) => unknown;
     const result = await handler({ params: route.params, query, body, user });
 
     if (process.env.NODE_ENV !== "production") {
       const check = def.response.safeParse(result);
-      if (!check.success) console.error(`[${USE_BACKEND && backendHandlers[route.name] ? "backend" : "mock"}] ${route.name} response breaks the contract:`, check.error?.issues.slice(0, 5));
+      if (!check.success) console.error(`[${USE_BACKEND ? "backend" : "mock"}] ${route.name} response breaks the contract:`, check.error?.issues.slice(0, 5));
     }
     return Response.json(result);
   } catch (error) {

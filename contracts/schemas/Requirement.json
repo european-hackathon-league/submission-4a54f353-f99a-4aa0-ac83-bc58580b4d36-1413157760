@@ -225,6 +225,9 @@
           "target": {
             "type": "string"
           },
+          "today": {
+            "type": "string"
+          },
           "unit": {
             "type": "string"
           },
@@ -289,6 +292,7 @@
             "option_price",
             "ai_estimate",
             "pm",
+            "engineering",
             "finance"
           ]
         },

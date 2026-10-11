@@ -29,6 +29,13 @@ class User:
     name: str
     role: str
     vehicles: tuple[str, ...]
+    pm_role: str | None = None   # vehicle_pm | attribute_pm | head
+    region: str = "global"       # global | RoW | CN
+
+    @property
+    def is_head(self) -> bool:
+        """The head of product line signs off, sends back and resolves escalations."""
+        return self.pm_role == "head" or self.role == "admin"
 
     @property
     def actor(self) -> str:
@@ -68,10 +75,12 @@ def load_user(user_id: str) -> User:
     except ValueError as exc:
         raise HTTPException(401, "user id is not a uuid") from exc
     with db.transaction() as conn:
-        row = conn.execute("select id, name, role, vehicles from app_user where id = %s", (uid,)).fetchone()
+        row = conn.execute("select id, name, role, vehicles, pm_role, region from app_user where id = %s",
+                           (uid,)).fetchone()
     if row is None:
         raise HTTPException(403, "unknown user: add the user to app_user first")
-    return User(str(row["id"]), row["name"], row["role"], tuple(row["vehicles"] or ()))
+    return User(str(row["id"]), row["name"], row["role"], tuple(row["vehicles"] or ()), row["pm_role"],
+                row["region"])
 
 
 def current_user(authorization: str | None = Header(default=None),
