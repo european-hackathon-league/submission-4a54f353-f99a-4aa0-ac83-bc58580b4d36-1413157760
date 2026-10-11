@@ -213,3 +213,7 @@ brl stlm tne gpt 6 luna is better than gpt 6.1 sol in terms of pricing
 <status>killed</status>
 <summary>Task "timeout 10800 uv run python -m app.demo build &gt; "C:/Users/Zaara/AppData/Local/Temp/claude/C--TU-Projects-BMW-Product-Management-Challenge/dc01fb1e-9d43-40d6-a987-a626018ae662/scratchpad/supabase_build.txt" 2&gt;&amp;1" was stopped by the user</summary>
 </task-notification>
+
+---
+
+its pretty good combination go on clean supabase and restart the process with this setting
