@@ -22,6 +22,8 @@ const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const OUT = resolve(process.cwd(), args.out ?? "out");
 const CHROME = process.env.CHROME_TEST_PATH ?? `${process.env.USERPROFILE}\\.browser-driver-manager\\chrome\\win64-155.0.8059.39\\chrome-win64\\chrome.exe`;
 const targets = JSON.parse(readFileSync(resolve(here, args.targets ?? "targets.json"), "utf8")).filter((t) => !args.only || String(args.only).split(",").includes(t.name));
+const WIDTHS = (process.env.WIDTHS ?? "1440,768").split(",").map(Number);
+const CDP_PORT = Number(process.env.CDP_PORT ?? 9333);
 const axeSource = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
 mkdirSync(resolve(OUT, "screens"), { recursive: true });
 
@@ -49,6 +51,7 @@ async function open(page, t) {
   else await sleep(1500);
   for (const a of t.actions ?? []) {
     if (a.click) await clickText(page, a.click);
+    if (a.sel) await page.click(a.sel);
     if (a.key) await page.keyboard.press(a.key);
     if (a.wait) await page.waitForFunction((w) => document.body.innerText.includes(w), { timeout: 20000 }, a.wait);
     await sleep(a.ms ?? 900);
@@ -56,7 +59,7 @@ async function open(page, t) {
   await sleep(t.settle ?? 600);
 }
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--remote-debugging-port=9333", "--no-first-run"], defaultViewport: null });
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: [`--remote-debugging-port=${CDP_PORT}`, "--no-first-run"], defaultViewport: null });
 const results = [];
 let lastSetup = null;
 try {
@@ -68,7 +71,7 @@ try {
     await page.setCookie({ name: "rs_user", value: t.persona ?? "u-lena", url: BASE });
     const shots = [];
     for (const theme of ["light", "dark"]) {
-      for (const width of [1440, 768]) {
+      for (const width of WIDTHS) {
         await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
         await page.evaluateOnNewDocument((th) => localStorage.setItem("theme", th), theme);
         await open(page, t);
@@ -89,7 +92,7 @@ try {
     // Lighthouse on route-level targets only (it reloads the page, so actions are not replayed).
     let lh = null;
     if (!args["no-lighthouse"] && !t.actions?.length) {
-      const run = await lighthouse(`${BASE}${t.path}`, { port: 9333, output: "json", logLevel: "error", onlyCategories: ["accessibility", "best-practices"], disableStorageReset: true, formFactor: "desktop", screenEmulation: { mobile: false, width: 1440, height: 900, deviceScaleFactor: 1, disabled: false }, throttlingMethod: "provided" });
+      const run = await lighthouse(`${BASE}${t.path}`, { port: CDP_PORT, output: "json", logLevel: "error", onlyCategories: ["accessibility", "best-practices"], disableStorageReset: true, formFactor: "desktop", screenEmulation: { mobile: false, width: 1440, height: 900, deviceScaleFactor: 1, disabled: false }, throttlingMethod: "provided" });
       const c = run.lhr.categories;
       lh = {
         accessibility: Math.round((c.accessibility?.score ?? 0) * 100),
