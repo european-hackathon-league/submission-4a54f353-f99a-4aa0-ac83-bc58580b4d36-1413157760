@@ -1,6 +1,6 @@
 # UX and Collaboration Design (demo v1)
 
-The decisions behind the clickable demo in [`web/`](../../web/README.md). Agreed with Amine on 10.10.2026; the code follows this page. Related: [end-to-end-flow.md](end-to-end-flow.md), [web-intelligence-loop.md](web-intelligence-loop.md), Ghassen's `architecture.mmd` and `data-model.mmd` at the repo root.
+The decisions behind the clickable demo in [`web/`](../../../web/README.md). Agreed with Amine on 10.10.2026; the code follows this page. Related: [end-to-end-flow.md](end-to-end-flow.md), [web-intelligence-loop.md](web-intelligence-loop.md), Ghassen's `architecture.mmd` and `data-model.mmd` at the repo root.
 
 **Where this page goes beyond the backend (checked 2026-10-11).** This page describes the UI demo, which runs on a mock contract. The backend in `backend/` currently has less:
 - **Case states:** the backend has observed → open → confirmed / rejected (plus merge and split). Investigating, awaiting answers, ready to decide, referred, innovation pool and parked exist only in the UI.
@@ -44,7 +44,7 @@ Every status change needs a reason and writes an audit event. The AI only create
 - **Type:** new feature, fix/improve, performance target, quality perception, market variant, brand differentiator, regression
 - **Change depth (rough effort proxy):** trim/option, part/module, platform/powertrain, software/OTA
 - **Scope:** global, Rest of World, China
-- **Signal topic:** every signal carries one of 219 fixed topics (BMW VFC level 2) that maps to exactly one car area. Agents classify into this list and never invent themes; see [`taxonomy/`](../../taxonomy/README.md).
+- **Signal topic:** every signal carries one of 219 fixed topics (BMW VFC level 2) that maps to exactly one car area. Agents classify into this list and never invent themes; see [`taxonomy/`](../../../taxonomy/README.md).
 - **Aspect group:** every signal also carries one of 11 aspect groups (function, usability, reliability, performance, efficiency_range, design, comfort, space, quality, sound, price). A case is one topic + one aspect group.
 
 ## 4. The case as "markdown + JSON"

@@ -2,7 +2,7 @@
 
 The design of our **core differentiator**: an agent loop that keeps fetching external voices (YouTube reviews, Reddit, Chinese platforms, professional reviews and blogs, competitor news), turns them into traceable findings, and alerts the right product manager when something changes. It runs on **one shared data layer** with a **personalized workspace per PM** (e.g. a China PM and a rest-of-world PM for the same car).
 
-**Status:** design and build plan. No code exists yet. Related: [scope-and-focus.md](scope-and-focus.md) (priorities), [end-to-end-flow.md](end-to-end-flow.md) (the full process), [external-sources.md](../../All-context/02-data-provided-by-pm/external-sources.md) (source list and trust levels).
+**Status:** design and build plan. No code exists yet. Related: [scope-and-focus.md](scope-and-focus.md) (priorities), [end-to-end-flow.md](end-to-end-flow.md) (the full process), [external-sources.md](../../docs/02-bmw-data/external-sources.md) (source list and trust levels).
 
 ---
 
@@ -26,7 +26,7 @@ The design of our **core differentiator**: an agent loop that keeps fetching ext
 ---
 
 ## 3. Where it sits in BMW's process
-| Stage ([process-cycle.md](../../All-context/01-challenge/process-cycle.md)) | What the web loop contributes |
+| Stage ([process-cycle.md](../../docs/01-challenge/process-cycle.md)) | What the web loop contributes |
 |---|---|
 | **1 Situation analysis:** Competition, Customer/public feedback, Product & global trends | Produces **external Findings** in the same format as the Excel verbatims, tagged with source, market, language, audience and trust level |
 | **2 Structure & context** | External and internal findings are clustered into the **same Themes**. A theme like "too many menus" then shows G60 verbatims *and* Reddit and YouTube voices side by side |
@@ -220,7 +220,7 @@ The PM sees all of this in the evidence panel of a requirement (filterable by so
 |---|---|
 | Count **distinct authors or documents**, not views, likes or subscribers | "Reach is not relevance" (the Carwow example, "10 million is a city in China") `[PM2]` |
 | `audience = owner` weighs more than `public` | Focus on current customers `[PM1]` |
-| Trust tier multiplies evidence strength (B > C > D); E is an assumption | [external-sources.md](../../All-context/02-data-provided-by-pm/external-sources.md) §5 |
+| Trust tier multiplies evidence strength (B > C > D); E is an assumption | [external-sources.md](../../docs/02-bmw-data/external-sources.md) §5 |
 | Region match: a finding only counts in workspaces whose region it belongs to (or global) | China vs. RoW preferences differ `[PM2]` |
 | Recency decay for competitor facts and trends | Facts get outdated; the monitor re-checks them |
 

@@ -38,4 +38,4 @@ Informal team notes, grouped by theme. Early brainstorm (10.10.2026, before the 
 
 ## Related
 - Mission and deliverables: [`../01-challenge/mission-and-deliverables.md`](../01-challenge/mission-and-deliverables.md)
-- Meeting notes: [`../03-meetings-with-pm/`](../03-meetings-with-pm/)
+- Meeting notes: [`../03-meetings/`](../03-meetings/)

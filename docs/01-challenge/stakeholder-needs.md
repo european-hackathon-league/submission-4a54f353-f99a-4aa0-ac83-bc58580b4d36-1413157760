@@ -7,10 +7,10 @@ One page that merges the official challenge documents with everything BMW people
 - `[MISSION]` [mission-and-deliverables.md](mission-and-deliverables.md)
 - `[EVAL]` [evaluation-criteria.md](evaluation-criteria.md)
 - `[PROC]` [process-cycle.md](process-cycle.md)
-- `[DE]` [team discussion 14:24](../03-meetings-with-pm/2026-10-10_1424_team-discussion-de_summary.md)
-- `[EN]` [team discussion 14:39 with BMW contact](../03-meetings-with-pm/2026-10-10_1439_team-discussion-en_summary.md)
-- `[PM1]` [group PM interview 16:05](../03-meetings-with-pm/2026-10-10_1605_pm-interview-2_notes.md)
-- `[PM2]` [interview with Patrick](../03-meetings-with-pm/2026-10-10_pm-interview_summary.md)
+- `[DE]` [team discussion 14:24](../03-meetings/2026-10-10_1424_team-discussion-de_summary.md)
+- `[EN]` [team discussion 14:39 with BMW contact](../03-meetings/2026-10-10_1439_team-discussion-en_summary.md)
+- `[PM1]` [group PM interview 16:05](../03-meetings/2026-10-10_1605_pm-interview-2_notes.md)
+- `[PM2]` [interview with Patrick](../03-meetings/2026-10-10_pm-interview_summary.md)
 
 Statements from official documents are **requirements**. Statements from conversations are **user research**: strong signals, but from a handful of people, partly via noisy transcripts.
 

@@ -82,7 +82,7 @@ Pipeline: configuration → one-time seed of BMW's data → daily fetch loop →
 
 ## Data
 
-BMW provided customer feedback for the 1, 5 and 7 Series (about 10,000 verbatims), a 2025 customer study, sales volumes to 2030 and German option lists. They are kept unmodified in [`All-context/02-data-provided-by-pm/raw/`](All-context/02-data-provided-by-pm/README.md) and loaded from the original files, so every value keeps its sheet and row. Competitors and 3-to-5-year trends come only from web research and are labelled as external or assumption. Known gaps (no Chinese feedback, US-heavy 5 and 7 Series data, no dates, no study sample sizes) are shown in the product, not hidden.
+BMW provided customer feedback for the 1, 5 and 7 Series (about 10,000 verbatims), a 2025 customer study, sales volumes to 2030 and German option lists. They are kept unmodified in [`docs/02-bmw-data/raw/`](docs/02-bmw-data/README.md) and loaded from the original files, so every value keeps its sheet and row. Competitors and 3-to-5-year trends come only from web research and are labelled as external or assumption. Known gaps (no Chinese feedback, US-heavy 5 and 7 Series data, no dates, no study sample sizes) are shown in the product, not hidden.
 
 ## Repository
 
@@ -92,8 +92,7 @@ BMW provided customer feedback for the 1, 5 and 7 Series (about 10,000 verbatims
 | [`backend/`](backend/API.md) | API, agents, scoring, seed, Supabase migrations, tests and reports |
 | [`taxonomy/`](taxonomy/README.md) | The fixed classification (car areas, topics, aspect groups), build script and classifier eval |
 | [`contracts/`](contracts/openapi.yaml) | REST contract between UI and backend (OpenAPI 3.1 + JSON Schemas) |
-| [`All-context/`](All-context/README.md) | Challenge brief, provided data, PM interviews and meeting notes, web source list |
-| [`docs/`](docs/) | UI solution design, design assets and logos, UX audit reports |
+| [`docs/`](docs/README.md) | Challenge brief, BMW's data, PM interviews, team notes, web source list, solution concept, design and UX audit |
 | [`landing/`](landing/index.html) | Intro loading page |
 | [`architecture.mmd`](architecture.mmd), [`database-design.md`](database-design.md), [`data-model.mmd`](data-model.mmd) | Pipeline, database design and ER diagram |
 | [`plan.md`](plan.md), [`changes.md`](changes.md), [`HANDOFF.md`](HANDOFF.md) | Implementation plan, every changed decision with its reason, current state |

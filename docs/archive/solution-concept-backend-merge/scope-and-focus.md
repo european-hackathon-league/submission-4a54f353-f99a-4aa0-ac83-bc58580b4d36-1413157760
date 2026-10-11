@@ -1,8 +1,8 @@
 # Scope and Focus: What We Build
 
-How we cut the challenge into buildable pieces and where we put our effort. It builds on [stakeholder-needs.md](../01-challenge/stakeholder-needs.md) (what BMW asked for), [evaluation-criteria.md](../01-challenge/evaluation-criteria.md) (how we are judged) and [insights.md](../02-data-provided-by-pm/insights.md) (what the data supports).
+How we cut the challenge into buildable pieces and where we put our effort. It builds on [stakeholder-needs.md](../../01-challenge/stakeholder-needs.md) (what BMW asked for), [evaluation-criteria.md](../../01-challenge/evaluation-criteria.md) (how we are judged) and [insights.md](../../02-bmw-data/insights.md) (what the data supports).
 
-Rewritten on 2026-10-11 to match the decided design (Signal → Case → Requirement, fixed taxonomy, one config per vehicle and market). The binding sources are [`CLAUDE.md`](../../CLAUDE.md), [`architecture.mmd`](../../architecture.mmd) and [`plan.md`](../../plan.md) (progress per phase).
+Rewritten on 2026-10-11 to match the decided design (Signal → Case → Requirement, fixed taxonomy, one config per vehicle and market). The binding sources are [`CLAUDE.md`](../../../CLAUDE.md), [`architecture.mmd`](../../../architecture.mmd) and [`plan.md`](../../../plan.md) (progress per phase).
 
 ---
 
@@ -32,7 +32,7 @@ Whatever we pick, the same pipeline runs for all three models. The second end-to
 
 ## 2. Workstreams
 
-Each maps to a part of the [end-to-end flow](end-to-end-flow.md) and to the judging criteria. Status per phase is in [`plan.md`](../../plan.md).
+Each maps to a part of the [end-to-end flow](end-to-end-flow.md) and to the judging criteria. Status per phase is in [`plan.md`](../../../plan.md).
 
 | # | Workstream | What it does | Criteria it serves |
 |---|---|---|---|
@@ -79,8 +79,8 @@ The brief says: "You do not need to develop every capability to the same level o
 |---|---|
 | Backend ("the brain") | W1 to W4, W6 to W8: data model, seed, gate, cases, scoring, requirements, RAG agent, fetch loop, API |
 | UI | W5, W9: boards, Notion-like pages, sidebar, on the API contract |
-| Web sources | The source list and record format in [`fetching-sources.md`](../05-web-sources/fetching-sources.md) |
-| Taxonomy | The fixed lists and the classifier eval in [`taxonomy/`](../../taxonomy/README.md) |
+| Web sources | The source list and record format in [`fetching-sources.md`](../../05-web-sources/fetching-sources.md) |
+| Taxonomy | The fixed lists and the classifier eval in [`taxonomy/`](../../../taxonomy/README.md) |
 | Story | W10 |
 
 ---
@@ -96,4 +96,4 @@ The brief says: "You do not need to develop every capability to the same level o
 - [ ] Asks the sidebar a question and gets an answer that cites signal IDs; accepts a proposed edit as a diff.
 - [ ] Sees external signals next to BMW signals in a case, each with its exact quote and source.
 - [ ] New evidence on a confirmed case raises a flag; the case itself is unchanged.
-- [ ] Approves the top 10; the sample requirement list has all mandatory fields ([smart-requirements.md](../01-challenge/smart-requirements.md)).
+- [ ] Approves the top 10; the sample requirement list has all mandatory fields ([smart-requirements.md](../../01-challenge/smart-requirements.md)).

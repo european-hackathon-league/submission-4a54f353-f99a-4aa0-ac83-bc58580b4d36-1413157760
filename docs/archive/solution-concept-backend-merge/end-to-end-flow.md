@@ -1,10 +1,10 @@
 # End-to-End Flow: From Data to the PM's Decision
 
-How the platform walks BMW's five-stage process ([process-cycle.md](../01-challenge/process-cycle.md)) from raw data to an approved, traceable requirement. For each stage: what goes in, what the AI does on its own, where the PM decides, and what comes out.
+How the platform walks BMW's five-stage process ([process-cycle.md](../../01-challenge/process-cycle.md)) from raw data to an approved, traceable requirement. For each stage: what goes in, what the AI does on its own, where the PM decides, and what comes out.
 
-Rewritten on 2026-10-11 to match the decided design (Signal → Case → Requirement, fixed taxonomy). The binding sources are [`CLAUDE.md`](../../CLAUDE.md), [`architecture.mmd`](../../architecture.mmd) and [`database-design.md`](../../database-design.md); this page explains them along BMW's process. Scope and priorities: [scope-and-focus.md](scope-and-focus.md). Web fetching: [web-intelligence-loop.md](web-intelligence-loop.md). Screens: [ux-and-collaboration.md](ux-and-collaboration.md).
+Rewritten on 2026-10-11 to match the decided design (Signal → Case → Requirement, fixed taxonomy). The binding sources are [`CLAUDE.md`](../../../CLAUDE.md), [`architecture.mmd`](../../../architecture.mmd) and [`database-design.md`](../../../database-design.md); this page explains them along BMW's process. Scope and priorities: [scope-and-focus.md](scope-and-focus.md). Web fetching: [web-intelligence-loop.md](web-intelligence-loop.md). Screens: [ux-and-collaboration.md](ux-and-collaboration.md).
 
-![BMW process slide](../01-challenge/assets/process-cycle.png)
+![BMW process slide](../../01-challenge/assets/process-cycle.png)
 
 ---
 
@@ -75,7 +75,7 @@ Markets are separate worlds: China, the US and the Middle East have their own PM
 ### Stage 1 · Situation analysis: evidence in, as signals
 | | |
 |---|---|
-| **Inputs** | **Seed (once, logged):** BMW feedback (10,128 verbatims), customer study, sales volumes, option lists (equipment today). **Daily fetch loop:** competitor facts, public feedback, trends, innovations from the sources in [`fetching-sources.md`](../05-web-sources/fetching-sources.md) |
+| **Inputs** | **Seed (once, logged):** BMW feedback (10,128 verbatims), customer study, sales volumes, option lists (equipment today). **Daily fetch loop:** competitor facts, public feedback, trends, innovations from the sources in [`fetching-sources.md`](../../05-web-sources/fetching-sources.md) |
 | **AI does (autonomous)** | Stores every raw record first, then turns it into **signals**: one statement about one topic from one source record, with the exact quote, a short English summary, market, vehicle role, reach. Non-English quotes keep the original plus a translation |
 | **Human does** | May exclude sources; may delete quarantined signals (content purged, tombstone kept) |
 | **Output** | `source_record`, `data_record`, `signal` |
@@ -83,7 +83,7 @@ Markets are separate worlds: China, the US and the Middle East have their own PM
 ### Stage 2 · Structure & context: from signals to cases
 | | |
 |---|---|
-| **AI does (autonomous)** | 1. **Validation gate:** schema, record stored, quote found in the record, duplicates, dated competitor facts. Failures go to a visible quarantine. 2. **Classification into the fixed taxonomy** ([`taxonomy/`](../../taxonomy/README.md)): topic (219, BMW's VFC level 2) and aspect group (11). BMW rows by lookup from their labels; everything else by the LLM from closed lists. The car area (11) is derived from the topic. `other` goes to a review queue; no topic is ever created automatically. 3. **Cases:** signals are grouped by topic + aspect group ("Seats + comfort" and "Seats + reliability" are separate cases). Only large groups are split further by similarity, never across a topic. 4. **Figures per case:** distinct customers per market and powertrain, opinions, capped reach, study satisfaction, equipment today, competitor offer, trend. 5. **Tags proposed:** scope, brand fit, segment, release fit. 6. **Conflict flag** when one market is mostly negative and another mostly positive (≥ 5 distinct customers each); the AI shows the statistics and never decides |
+| **AI does (autonomous)** | 1. **Validation gate:** schema, record stored, quote found in the record, duplicates, dated competitor facts. Failures go to a visible quarantine. 2. **Classification into the fixed taxonomy** ([`taxonomy/`](../../../taxonomy/README.md)): topic (219, BMW's VFC level 2) and aspect group (11). BMW rows by lookup from their labels; everything else by the LLM from closed lists. The car area (11) is derived from the topic. `other` goes to a review queue; no topic is ever created automatically. 3. **Cases:** signals are grouped by topic + aspect group ("Seats + comfort" and "Seats + reliability" are separate cases). Only large groups are split further by similarity, never across a topic. 4. **Figures per case:** distinct customers per market and powertrain, opinions, capped reach, study satisfaction, equipment today, competitor offer, trend. 5. **Tags proposed:** scope, brand fit, segment, release fit. 6. **Conflict flag** when one market is mostly negative and another mostly positive (≥ 5 distinct customers each); the AI shows the statistics and never decides |
 | **Lifecycle (per vehicle)** | **observed** (overview map only) → **open** (enough distinct customers, a defect, a competitor gap or a removed feature; or opened by the PM) → **confirmed** or **rejected** |
 | **Gate A: confirm the case** | **The PM** confirms or rejects (reason required), merges or splits cases, overrides tags. A case is the problem and has no cost |
 | **Output** | `case_item`, `case_vehicle`, `case_score` |
@@ -115,7 +115,7 @@ Not built yet: the export to codebeamer / Jira (later feature), and a monitor th
 
 ## 3. Data objects: the traceability chain
 
-Everything is linked by IDs, so any requirement can be walked back to the sentence a customer wrote. Tables and columns: [`database-design.md`](../../database-design.md).
+Everything is linked by IDs, so any requirement can be walked back to the sentence a customer wrote. Tables and columns: [`database-design.md`](../../../database-design.md).
 
 ```
 source_record (stored text, raw_ref) ──< signal >── feature (= topic) ── car_area

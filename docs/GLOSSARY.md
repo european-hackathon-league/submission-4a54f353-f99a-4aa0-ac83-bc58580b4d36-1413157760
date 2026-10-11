@@ -40,13 +40,13 @@ Terms, codes and names that appear across the material. German terms come from t
 | VFC level 2 / level 3 | BMW's feedback topic taxonomy: level 2 = topic (e.g. *Seats*), level 3 = aspect or sentiment (e.g. *Not user-friendly*) |
 | Feedback types | `Likes`, `Difficult to Use` (**DTU**), `Defect`, `Wants`, or empty |
 | DTU | "Difficult to use". Also appears inside Source C texts ("…/DTU") |
-| Source A–D | Anonymized feedback channels (see [02-data-provided-by-pm/insights.md](02-data-provided-by-pm/insights.md) for what each looks like) |
+| Source A–D | Anonymized feedback channels (see [02-bmw-data/insights.md](02-bmw-data/insights.md) for what each looks like) |
 | Top-2 box / bottom-3 box | Share of US study respondents choosing the two best levels (Delightful, I Love It) / the three worst (I Hate It, A Failure, Unsatisfactory) |
 | Social listening | Monitoring what people post online (YouTube, forums, social media) |
 | Car clinic | BMW event where owners react to concepts, up to 10 years before SOP |
 | Benchmarking | Systematic comparison with competitor vehicles |
 | RoW | Rest of World (sales sheet) |
-| Evidence level | How strongly a requirement is backed by data vs. assumption (see the trust levels in [02-data-provided-by-pm/external-sources.md](02-data-provided-by-pm/external-sources.md)) |
+| Evidence level | How strongly a requirement is backed by data vs. assumption (see the trust levels in [02-bmw-data/external-sources.md](02-bmw-data/external-sources.md)) |
 
 ## Process and organisation
 | Term | Meaning |

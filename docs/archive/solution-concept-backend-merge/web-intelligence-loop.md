@@ -2,7 +2,7 @@
 
 How the platform keeps fetching external evidence (owner complaints and reviews, forums, expert reviews, competitor equipment, launches, market and trend data), turns it into traceable signals, and tells the PM when new evidence arrives.
 
-Rewritten on 2026-10-11 to match the decided design and what is built. The binding sources are [`CLAUDE.md`](../../CLAUDE.md) (pipeline step 2), [`fetching-sources.md`](../05-web-sources/fetching-sources.md) (sources, fetch order, record format) and the code in `backend/app/fetch/`. The earlier version of this page (Exa search, SQLite, a `research/` folder, one workspace per PM) was a plan that was not followed.
+Rewritten on 2026-10-11 to match the decided design and what is built. The binding sources are [`CLAUDE.md`](../../../CLAUDE.md) (pipeline step 2), [`fetching-sources.md`](../../05-web-sources/fetching-sources.md) (sources, fetch order, record format) and the code in `backend/app/fetch/`. The earlier version of this page (Exa search, SQLite, a `research/` folder, one workspace per PM) was a plan that was not followed.
 
 ---
 
@@ -36,7 +36,7 @@ flowchart LR
 ```
 
 ## 3. Sources
-The source list, URL patterns, categories and fetch order are in [`fetching-sources.md`](../05-web-sources/fetching-sources.md) (owned by a teammate). Categories:
+The source list, URL patterns, categories and fetch order are in [`fetching-sources.md`](../../05-web-sources/fetching-sources.md) (owned by a teammate). Categories:
 
 | Cat | Category | Question it answers |
 |---|---|---|
@@ -75,7 +75,7 @@ A general search provider is only needed for discovery (e.g. new launches) and s
 ## 5. From record to signal
 Agents only **propose** signals; the validation gate decides, and agents can never write a case.
 
-1. **Extraction (LLM, strict output schema):** kind, severity, exact quote in the original language, English translation, summary of at most 20 words, market, and **topic + aspect group picked from the closed lists** of the fixed taxonomy ([`taxonomy/`](../../taxonomy/README.md)). The model cannot return an invented topic; `other` is the only way out and goes to a review queue. The car area is derived from the topic in code.
+1. **Extraction (LLM, strict output schema):** kind, severity, exact quote in the original language, English translation, summary of at most 20 words, market, and **topic + aspect group picked from the closed lists** of the fixed taxonomy ([`taxonomy/`](../../../taxonomy/README.md)). The model cannot return an invented topic; `other` is the only way out and goes to a review queue. The car area is derived from the topic in code.
 2. **Validation gate:** the record is stored; the quote is found in the stored text; kind and severity fit; topic and aspect group exist; no duplicate (same record, or the same author posting the same text elsewhere); competitor facts are dated. A failed check sends the signal to a visible quarantine with the reason.
 3. **Tagging in code:** records published before the line went on sale are tagged `predecessor` and kept; pricing, regulation and homologation statements are tagged out of scope and kept.
 4. **Cases:** the signal joins the case of its topic + aspect group. Competitor signals attach as competitor evidence and never count as BMW customers.
@@ -100,7 +100,7 @@ Markets are `USA`, `China`, `Europe`, `Rest of World`, `unknown`. Every signal s
 ## 8. Reach is not relevance
 - Cases count **distinct customers** (BMW verbatim ID, or `author_hash` for web authors), not rows, views or likes.
 - Reach is stored, **capped per signal** and log-scaled, with a default weight of 0.05: one influencer is one opinion.
-- Evidence level (BMW data / web / assumption) is shown next to every requirement and is not part of the score. Background on source trust: [external-sources.md](../02-data-provided-by-pm/external-sources.md).
+- Evidence level (BMW data / web / assumption) is shown next to every requirement and is not part of the score. Background on source trust: [external-sources.md](../../02-bmw-data/external-sources.md).
 
 ## 9. Monitoring
 What exists: new signals keep attaching to cases after confirmation. A confirmed case never changes by itself; it gets a new-evidence flag and a notification ("+40 complaints since confirmation"), and the PM decides.

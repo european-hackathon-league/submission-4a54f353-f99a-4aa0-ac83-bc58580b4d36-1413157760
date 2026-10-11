@@ -1,8 +1,8 @@
-"""Build agent-friendly derived files in 02-data-provided-by-pm/processed/ from the raw BMW data.
+"""Build agent-friendly derived files in 02-bmw-data/processed/ from the raw BMW data.
 
-Raw files in 02-data-provided-by-pm/raw/ are never modified. Re-run after the raw data changes:
+Raw files in 02-bmw-data/raw/ are never modified. Re-run after the raw data changes:
 
-    python 02-data-provided-by-pm/scripts/build_processed.py
+    python 02-bmw-data/scripts/build_processed.py
 
 Needs pandas + openpyxl, and `pdftotext` (poppler) on PATH for the option lists.
 """
