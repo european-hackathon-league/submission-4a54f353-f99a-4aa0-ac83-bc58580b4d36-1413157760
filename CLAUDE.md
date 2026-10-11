@@ -142,7 +142,7 @@ End filters on the case and requirement boards: market, car area / category, sta
 - A separate confidence axis in the score (evidence level is display only).
 - A graph database.
 - A separate car-area classifier step (Jev); the car area is derived from the topic.
-- Loading the database from the processed CSVs (`docs/02-data/processed`); it is loaded from BMW's original files, which keep the sheet and row of every value.
+- Loading the database from the processed CSVs (`All-context/02-data-provided-by-pm/processed`); it is loaded from BMW's original files, which keep the sheet and row of every value.
 - Deleting BMW feedback rows that are not relevant; they are kept out of cases, scores and the index instead.
 - Copying a case when it is handed to another PM.
 - Brand fit as a score factor (it is a multiplier) and dropping `reach` as a factor, although the UI's weight panel still shows it that way.

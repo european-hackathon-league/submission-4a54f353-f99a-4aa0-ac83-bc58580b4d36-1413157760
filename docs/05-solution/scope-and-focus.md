@@ -1,6 +1,6 @@
 # Scope and Focus: What We Build
 
-How we cut the challenge into buildable pieces and where we put our effort. It builds on [stakeholder-needs.md](../01-challenge/stakeholder-needs.md) (what BMW asked for), [evaluation-criteria.md](../01-challenge/evaluation-criteria.md) (how we're judged) and [insights.md](../02-data/insights.md) (what the data supports).
+How we cut the challenge into buildable pieces and where we put our effort. It builds on [stakeholder-needs.md](../../All-context/01-challenge/stakeholder-needs.md) (what BMW asked for), [evaluation-criteria.md](../../All-context/01-challenge/evaluation-criteria.md) (how we're judged) and [insights.md](../../All-context/02-data-provided-by-pm/insights.md) (what the data supports).
 
 **Status:** proposal for the team to confirm. Items marked *decision* still need a team call.
 
@@ -101,4 +101,4 @@ Agree the **JSON contracts** (User, Workspace, Finding incl. external fields, Co
 - [ ] A watchlist refresh runs live (one run) and adds new, deduplicated findings; a coverage meter shows findings per region and source.
 - [ ] One monitoring alert ("competitor now raises the bar") reaches the owning PM, who dismisses or reworks it; the audit trail shows `agent:monitor`.
 - [ ] One China-only requirement exists as a variant of a global one, and one conflict card shows China vs. RoW.
-- [ ] Sample list of 10 to 15 requirements with all mandatory fields ([smart-requirements.md](../01-challenge/smart-requirements.md)).
+- [ ] Sample list of 10 to 15 requirements with all mandatory fields ([smart-requirements.md](../../All-context/01-challenge/smart-requirements.md)).

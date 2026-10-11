@@ -1,8 +1,8 @@
 # End-to-End Flow: From Data to the PM's Decision
 
-How our tool walks BMW's five-stage process ([process-cycle.md](../01-challenge/process-cycle.md)) from raw data to an approved, traceable requirement. For each stage: what goes in, what the AI does on its own, where the PM decides, what comes out, and which screen shows it. Scope and priorities are in [scope-and-focus.md](scope-and-focus.md). The external fetching loop and the per-PM workspaces are detailed in [web-intelligence-loop.md](web-intelligence-loop.md).
+How our tool walks BMW's five-stage process ([process-cycle.md](../../All-context/01-challenge/process-cycle.md)) from raw data to an approved, traceable requirement. For each stage: what goes in, what the AI does on its own, where the PM decides, what comes out, and which screen shows it. Scope and priorities are in [scope-and-focus.md](scope-and-focus.md). The external fetching loop and the per-PM workspaces are detailed in [web-intelligence-loop.md](web-intelligence-loop.md).
 
-![BMW process slide](../01-challenge/assets/process-cycle.png)
+![BMW process slide](../../All-context/01-challenge/assets/process-cycle.png)
 
 ---
 
@@ -77,7 +77,7 @@ The PMs said they want to start the flow themselves ("a new model focused on spe
 | | |
 |---|---|
 | **Inputs** | **Baseline:** previous model = current G60 (`equipment-baseline.md`, option lists), portfolio (F70, G70 for Baukasten comparisons), sales volumes (`sales_volumes.csv`) · **Customer/public feedback:** `feedback_verbatims.csv`, `study_*.csv`, plus web voices (YouTube comments and transcripts, Reddit, owner forums, Chinese platforms) · **Competition and trends:** professional reviews, competitor facts, launches, all from the **web intelligence loop** (Exa + YouTube API, run per workspace watchlist) |
-| **AI does (autonomous)** | Load and normalize everything into **Findings**: one atomic, source-linked statement each (a verbatim, a study attribute score, a sales figure, a competitor fact, a trend claim). Tag market, powertrain, source type, trust level (A to F, see [external-sources.md](../02-data/external-sources.md)), date. For web sources: fetch → relevance filter → translate (keep original) → extract → dedupe, with a **deep link to the exact quote** and a stored **snapshot** of the page or transcript |
+| **AI does (autonomous)** | Load and normalize everything into **Findings**: one atomic, source-linked statement each (a verbatim, a study attribute score, a sales figure, a competitor fact, a trend claim). Tag market, powertrain, source type, trust level (A to F, see [external-sources.md](../../All-context/02-data-provided-by-pm/external-sources.md)), date. For web sources: fetch → relevance filter → translate (keep original) → extract → dedupe, with a **deep link to the exact quote** and a stored **snapshot** of the page or transcript |
 | **Human does** | Reviews the **situation dashboard**: where the car sells, what customers love (protect list) and hate, data gaps. May exclude sources |
 | **Output** | Shared findings store (~10k verbatim findings + ~400 study findings + sales + external findings and `CompetitorFact`s), visible per workspace by region |
 | **Screen** | *Situation dashboard* |
@@ -101,7 +101,7 @@ PM question (research agent) ────┼─> Exa · YouTube ─> Documents �
 ### Stage 3 · Requirements definition: specification and quantification
 | | |
 |---|---|
-| **AI does (proposes)** | Draft a **SMART** requirement ([smart-requirements.md](../01-challenge/smart-requirements.md)): description, category (Exterior, Interior, Powertrain, Driver assistance, Infotainment …), **metric questions with proposed targets** ("Range: 600 or 700 km?"), using benchmarks where available. Each target is marked **evidence** (from data) or **assumption** (forward-looking), with sources. Lists uncertainties and conflicts |
+| **AI does (proposes)** | Draft a **SMART** requirement ([smart-requirements.md](../../All-context/01-challenge/smart-requirements.md)): description, category (Exterior, Interior, Powertrain, Driver assistance, Infotainment …), **metric questions with proposed targets** ("Range: 600 or 700 km?"), using benchmarks where available. Each target is marked **evidence** (from data) or **assumption** (forward-looking), with sources. Lists uncertainties and conflicts |
 | **Gate B: spec approval** | **PM edits and approves** the text and targets (e.g. chooses 700 km over 600). Every edit needs a short rationale and is logged with before/after |
 | **Output** | `Requirement` in status `specified`, with `metrics[]`, `assumptions[]`, `evidence_level` |
 | **Screen** | *Requirement detail* (the core screen) |
