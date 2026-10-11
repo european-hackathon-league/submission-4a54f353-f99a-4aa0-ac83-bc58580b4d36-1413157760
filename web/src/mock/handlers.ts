@@ -35,6 +35,7 @@ import { caseSegments, segmentReply } from "./ai/segment";
 import { cite, followUpQuestions, scriptedReply, shapeQuestionsMessage, type ProposalDraft } from "./ai/chat";
 import { extractFromNote } from "./ai/notes";
 import { liveChatEnabled, liveReply } from "./ai/live";
+import { argusReply } from "./ai/argus";
 import { refreshPool } from "./authored/world";
 import { WEB_CLASSIFIER, webSnapshotRecord, webSpecToSignal } from "./convert";
 import { buildReplay } from "./replay";
@@ -1563,6 +1564,7 @@ export const handlers: Handlers = {
     d.messages.push(reply);
     return { messages: [userMsg, reply], proposals };
   },
+  argusAsk: ({ body, user }) => argusReply(db(), body, user, now()),
   decideProposal: ({ params, body, user }) => {
     const d = db();
     const p = must(d.proposals.find((x) => x.id === params.id), "Proposal");

@@ -6,7 +6,6 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ArrowRight,
-  Bot,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -24,6 +23,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { ArgusMark } from "@/components/brand/marks";
 import type { Alert, Case, Requirement, Signal } from "@/contracts";
 import { caseStateLabel, marketLabel } from "@/contracts";
 import { api } from "@/lib/api/client";
@@ -45,6 +45,7 @@ import { ShapeForm } from "@/components/cases/shape-form";
 import { QuestionsPanel } from "@/components/cases/questions-panel";
 import { useScores } from "@/components/cases/use-scores";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { useHideArgusBubble } from "@/components/argus/store";
 import { RequirementSheet } from "@/components/requirements/requirement-sheet";
 import { SankeyChart } from "@/components/sankey/sankey-chart";
 import { SignalCard } from "@/components/signals/signal-card";
@@ -75,6 +76,7 @@ export function CaseView() {
   const { name } = useUsers();
   const step = (params.get("step") as Step | null) ?? "evidence";
   const [chat, setChat] = useState(params.get("chat") === "1");
+  useHideArgusBubble(chat);
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [quotes, setQuotes] = useState<QuoteSet | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -146,7 +148,7 @@ export function CaseView() {
             </IconButton>
             <MoreMenu c={c} onAction={setAction} canEdit={canEdit} />
             <Button variant={chat ? "secondary" : "outline"} size="sm" className="ml-1" onClick={() => setChat(!chat)}>
-              <Bot className="size-4" /> AI colleague
+              <ArgusMark className="size-4" /> Ask Argus
             </Button>
             {canEdit && c.state !== "decided" && c.state !== "observed" && <DecideMenu onAction={setAction} />}
           </div>
@@ -217,7 +219,7 @@ export function CaseView() {
       {chat && (
         <aside className="sticky top-0 flex h-[calc(100dvh-3.5rem)] w-[360px] shrink-0 flex-col border-l bg-card 2xl:w-[420px]">
           <div className="flex items-center gap-2 border-b px-4 py-2 text-sm font-semibold">
-            <Bot className="size-4 text-primary" /> AI colleague
+            <ArgusMark className="size-4 text-primary" /> Argus
             <span className="flex-1" />
             <Button size="icon-sm" variant="ghost" aria-label="Close" onClick={() => setChat(false)}>
               <X className="size-4" />
@@ -545,7 +547,7 @@ function RequirementsStep({
         )}
         {requirements.length > 0 && (
           <Button variant="outline" onClick={onChat}>
-            <Bot className="size-4" /> Harden with the AI
+            <ArgusMark className="size-4" /> Ask Argus
           </Button>
         )}
         {!confirmed && !canEdit && <p className="text-sm text-muted-foreground">No requirements yet.</p>}

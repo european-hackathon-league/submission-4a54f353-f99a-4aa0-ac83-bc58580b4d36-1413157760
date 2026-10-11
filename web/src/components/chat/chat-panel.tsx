@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Send, Users } from "lucide-react";
+import { Loader2, Send, Users } from "lucide-react";
+import { ArgusMark } from "@/components/brand/marks";
 import type { Proposal } from "@/contracts";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { fromNow } from "@/lib/format";
@@ -50,13 +51,13 @@ export function ChatPanel({
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
         {messages.length === 0 && (
           <div className="rounded-lg border border-dashed border-border-strong bg-recessed p-4 text-sm text-muted-foreground">
-            <Bot className="mb-2 size-5 text-primary" />
-            Ask about this {objectType}. Answers cite the evidence; changes come back as proposals you accept or reject.
+            <ArgusMark className="mb-2 size-5 text-primary" />
+            Ask Argus about this {objectType}. Answers cite the evidence; changes come back as proposals you accept or reject.
           </div>
         )}
         {messages.map((m) => (
           <div key={m.id} className="flex gap-2">
-            <UserAvatar id={m.role === "assistant" ? "agent:assistant" : m.authorId} size="xs" className="mt-0.5" />
+            <UserAvatar id={m.role === "assistant" ? "agent:argus" : m.authorId} size="xs" className="mt-0.5" />
             <div className="min-w-0 flex-1 space-y-2">
               <div className={m.role === "user" ? "rounded-lg bg-muted px-3 py-2 text-sm" : "border-l-2 border-border-strong pl-3"}>
                 {m.role === "assistant" ? <Markdown className="prose-chat" onCite={onCite}>{m.content}</Markdown> : m.content}

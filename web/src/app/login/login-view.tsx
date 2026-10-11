@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
+import { ArgonMark } from "@/components/brand/marks";
 import type { Role } from "@/contracts";
 import { useApi } from "@/lib/api/hooks";
 import { setUserId } from "@/lib/session";
@@ -39,8 +40,8 @@ export function LoginView() {
     <div className="flex min-h-dvh items-center justify-center bg-background px-5 py-12 sm:p-10">
       <div className="w-full max-w-4xl space-y-10">
         <div className="space-y-5 text-center">
-          <div className="mx-auto flex size-11 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">RS</div>
-          <h1 className="text-[40px] leading-[1.12] font-semibold sm:text-heading-lg lg:text-display">Requirement Studio</h1>
+          <ArgonMark className="mx-auto block size-12" />
+          <h1 className="text-[40px] leading-[1.12] font-semibold sm:text-heading-lg lg:text-display">Argon</h1>
           <p className="mx-auto max-w-2xl text-base text-muted-foreground sm:text-body-lg">
             Derive, justify and prioritize customer requirements for the next vehicle generation. Signals become cases, cases become requirements, and every step stays traceable.
           </p>

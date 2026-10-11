@@ -99,7 +99,7 @@ function Body({ id }: { id: string }) {
           <TabsTrigger value="spec">Spec</TabsTrigger>
           <TabsTrigger value="versions">Versions ({b.versions.length})</TabsTrigger>
           <TabsTrigger value="argument">Argument sheet</TabsTrigger>
-          <TabsTrigger value="chat">Harden with AI</TabsTrigger>
+          <TabsTrigger value="chat">Ask Argus</TabsTrigger>
         </TabsList>
         <TabsContent value="spec" className="pt-3">
           <Spec key={r.id + r.updatedAt} r={r} canEdit={canEdit} onCite={onCite} />

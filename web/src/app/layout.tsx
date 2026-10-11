@@ -7,7 +7,7 @@ const sans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], weight: [
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Requirement Studio",
+  title: "Argon",
   description: "Signals → Cases → Requirements for the next vehicle generation (hackathon demo, synthetic data).",
 };
 
