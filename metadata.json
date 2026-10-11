@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.10.2",
+  "checkpoint_id": "01M4M7CVT8QNJ42GWVQ59BGD4D",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "CLAUDE.md",
+    "backend/.env.example",
+    "backend/app/config.py",
+    "backend/app/db.py",
+    "backend/app/demo.py",
+    "backend/app/llm/client.py",
+    "backend/supabase/migrations/0013_function_search_path.sql",
+    "changes.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 480,
+    "cache_creation_tokens": 471472,
+    "cache_read_tokens": 84774474,
+    "output_tokens": 194908,
+    "api_call_count": 240
+  }
+}
