@@ -149,7 +149,8 @@ class OpenAILLM:
         usage = response.usage
         tokens_in = usage.prompt_tokens if usage else 0
         tokens_out = usage.completion_tokens if usage else 0
-        cost = (tokens_in * self._settings.openai_price_in + tokens_out * self._settings.openai_price_out) / 1e6
+        price_in, price_out = self._settings.llm_price(response.model or model)
+        cost = (tokens_in * price_in + tokens_out * price_out) / 1e6
         result = LLMResult(data, response.model, prompt.prompt_version, tokens_in, tokens_out, cost)
         _track(result)
         return result

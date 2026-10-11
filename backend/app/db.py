@@ -37,6 +37,11 @@ def database_url() -> str:
 
 def _configure(conn: psycopg.Connection) -> None:
     conn.row_factory = dict_row
+    timeout = get_settings().db_statement_timeout
+    if timeout:
+        conn.execute("select set_config('statement_timeout', %s, false)", (timeout,))
+        if not conn.autocommit:
+            conn.commit()
     try:
         register_vector(conn)
     except psycopg.ProgrammingError:

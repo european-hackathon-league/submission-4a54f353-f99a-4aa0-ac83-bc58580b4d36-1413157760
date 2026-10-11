@@ -66,6 +66,9 @@ def build(fresh: bool = False) -> dict:
     from app.signals import embed
 
     timings: dict[str, float] = {}
+    # Batch steps (seed, embeddings, RAG index) can exceed Supabase's 2 min default.
+    get_settings().db_statement_timeout = get_settings().db_statement_timeout or "0"
+    db.set_database_url(None)  # new pool with the setting
 
     def step(name, fn):
         t = time.time()

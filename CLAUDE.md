@@ -115,7 +115,7 @@ End filters on the case and requirement boards: market, car area / category, sta
 - Storage: Supabase Postgres + pgvector, relational with link tables (no graph DB). Raw records in storage, referenced by `raw_ref`.
 - Audit: append-only event table enforced in the DB (no update / delete); actor (AI agent or PM), timestamp, before/after, rationale; views and exports logged too. Deletions are tombstones.
 - Field names and market values follow `fetching-sources.md` section 7: markets `USA`, `China`, `Europe`, `Rest of World`, `unknown`; `vehicle_role` current / predecessor / competitor / unknown; `author_hash` for distinct web customers.
-- LLM: OpenAI models. gpt-5-mini for the high-volume tasks (row classification, signal extraction, case pages, RAG sidebar), gpt-5 for case tags (brand fit, release fit) and requirement texts (`OPENAI_STRONG_TASKS`); text-embedding-3-small. Every agent output stores model and prompt version.
+- LLM: OpenAI models. gpt-6-luna for everything high-volume (row classification, signal extraction, case pages, case tags, RAG sidebar), gpt-6.1-sol only for requirement texts (`OPENAI_STRONG_TASKS`); text-embedding-3-small. Every agent output stores model and prompt version.
 - RAG agent: hybrid keyword + vector search over case and requirement pages, signals with quotes, source records, decisions and audit events. Every factual claim cites a signal ID; no source means "no evidence found". Edits are proposals the PM accepts.
 - Pages: markdown body stored in the DB with versions; structured fields (score, status, market, cost) separate; stale saves rejected by version check.
 - UI (Notion-like pages, boards) is built by a teammate; the backend provides data, scores and the RAG agent.

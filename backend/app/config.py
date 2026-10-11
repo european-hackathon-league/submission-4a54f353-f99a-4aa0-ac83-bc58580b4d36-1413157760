@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     supabase_publishable_key: str = ""
     supabase_jwks_url: str = ""
     supabase_db_url: str = ""
+    # Per-session statement timeout (e.g. "0" for long batch scripts on Supabase, whose
+    # default for the postgres role is 2 min). Empty = the server default.
+    db_statement_timeout: str = ""
     # API auth: "supabase" (Bearer token), "dev" (X-User-Id header), "auto" = supabase
     # when SUPABASE_URL is set, else dev. See app/api/auth.py.
     auth_mode: str = "auto"
@@ -34,11 +37,19 @@ class Settings(BaseSettings):
 
     # OpenAI.
     openai_api_key: str = ""
-    openai_chat_model: str = "gpt-5-mini"
-    openai_strong_model: str = "gpt-5"
-    # Price per 1M tokens (input, output) in USD, used for cost logging only.
-    openai_price_in: float = 0.25
-    openai_price_out: float = 2.0
+    openai_chat_model: str = "gpt-6-luna"
+    openai_strong_model: str = "gpt-6.1-sol"
+    # Price per 1M tokens (input, output) in USD, for cost logging only (changes.md 8.12).
+    openai_prices: dict[str, tuple[float, float]] = {
+        "gpt-6-luna": (0.10, 0.50), "gpt-6.1-sol": (2.0, 10.0), "gpt-6-sol": (2.0, 10.0), "gpt-5-mini": (0.25, 2.0), "gpt-5": (1.25, 10.0),
+    }
+
+    def llm_price(self, model: str) -> tuple[float, float]:
+        """Prices of the model; dated snapshots (gpt-6-luna-2026-...) use their base name."""
+        for name in sorted(self.openai_prices, key=len, reverse=True):
+            if model.startswith(name):
+                return self.openai_prices[name]
+        return self.openai_prices[self.openai_chat_model] if self.openai_chat_model in self.openai_prices else (0.0, 0.0)
 
     # Embeddings: "openai" or "local" (offline fallback, see changes.md 1.2).
     embedding_provider: str = "openai"
@@ -71,7 +82,7 @@ class Settings(BaseSettings):
 
     # Model per prompt (changes.md 8.11): high-volume, closed-list work on the chat model,
     # few high-stakes texts on the strong model. Override with OPENAI_STRONG_TASKS.
-    openai_strong_tasks: str = "requirement_writer,case_tags"
+    openai_strong_tasks: str = "requirement_writer"
 
     def llm_model_for(self, task: str) -> str:
         strong = {t.strip() for t in self.openai_strong_tasks.split(",") if t.strip()}
