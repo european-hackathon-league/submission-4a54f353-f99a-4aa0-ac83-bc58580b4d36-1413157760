@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # Supabase. SUPABASE_DB_URL is the Postgres connection string (session pooler).
     supabase_url: str = ""
     supabase_service_role_key: str = ""
+    # New-style API keys (sb_secret_..., sb_publishable_...); the secret key replaces the
+    # service-role key for storage when that one is empty.
+    supabase_secret_key: str = ""
+    supabase_publishable_key: str = ""
+    supabase_jwks_url: str = ""
     supabase_db_url: str = ""
     # API auth: "supabase" (Bearer token), "dev" (X-User-Id header), "auto" = supabase
     # when SUPABASE_URL is set, else dev. See app/api/auth.py.
@@ -54,6 +59,13 @@ class Settings(BaseSettings):
     fetch_daily_request_budget: int = 2000
 
     def model_post_init(self, __context) -> None:
+        # Values still holding the .env.example placeholders count as not set.
+        for name in ("supabase_url", "supabase_db_url", "supabase_service_role_key", "supabase_secret_key",
+                     "supabase_jwks_url", "openai_api_key"):
+            if "<" in getattr(self, name):
+                setattr(self, name, "")
+        if not self.supabase_service_role_key:
+            self.supabase_service_role_key = self.supabase_secret_key
         if self.auth_mode in ("auto", ""):
             self.auth_mode = "supabase" if self.supabase_url else "dev"
 

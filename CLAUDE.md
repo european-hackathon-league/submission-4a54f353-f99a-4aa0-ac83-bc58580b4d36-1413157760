@@ -26,6 +26,7 @@ BMW values: trustworthy sources, transparent reasoning, thoughtful prioritizatio
 - `changes.md`: every decision changed during implementation, with reason and who decided.
 - `taxonomy/`: the fixed taxonomy (11 car areas, 219 topics, 11 aspect groups), its build script and the classifier eval. **Source of truth for the classification.** Only a human changes it.
 - `backend/`: the brain (FastAPI, migrations in `backend/supabase/migrations/`, tests in `backend/tests/`). Run tests with `cd backend && uv run pytest` (embedded local Postgres, no network).
+- `backend/reports/`: generated reports (clustering thresholds, fetch plan, end-to-end runs with audit chains).
 - `backend/API.md`: how the UI calls the API (auth, errors, main flows); the OpenAPI spec at `/docs` is the contract.
 - `layers.mmd`: BMW's process slide as a diagram, for reference only (not our architecture).
 - `All-context/README.md`: index of all material. Read first.
@@ -152,4 +153,4 @@ End filters on the case and requirement boards: market, car area / category, sta
 - Raw data in `All-context/02-data-provided-by-pm/raw/` is never modified; derived data goes elsewhere.
 
 ## Current phase
-Implementation plan approved (`plan.md`). Next: Phase 0, then phases 1 to 10. Every phase ends with a commit "Completed phase N: <title>" pushed to `main`.
+Phases 0 to 10 of `plan.md` are implemented (progress table there). Open: the first Supabase build and the first real backfill (both need the user's go), the OpenAI key (LLM classifier, embeddings, case writer, RAG answers, taxonomy eval), Reddit and YouTube keys, the team review of the phase 2 CSVs. Demo tooling: `python -m app.demo` (build, users, e2e, dump, restore). Every phase ends with a commit "Completed phase N: <title>" pushed to `main`.

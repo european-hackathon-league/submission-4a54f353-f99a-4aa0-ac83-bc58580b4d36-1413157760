@@ -51,9 +51,10 @@ def verify_token(token: str) -> str:
         if settings.supabase_jwt_secret:
             claims = jwt.decode(token, settings.supabase_jwt_secret, algorithms=["HS256"], audience="authenticated")
         else:
-            if not settings.supabase_url:
+            if not settings.supabase_url and not settings.supabase_jwks_url:
                 raise HTTPException(500, "SUPABASE_URL or SUPABASE_JWT_SECRET is needed to verify tokens")
-            key = _jwks_client(f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json")
+            key = _jwks_client(settings.supabase_jwks_url
+                               or f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json")
             signing_key = key.get_signing_key_from_jwt(token)
             claims = jwt.decode(token, signing_key.key, algorithms=["RS256", "ES256"], audience="authenticated")
     except jwt.PyJWTError as exc:

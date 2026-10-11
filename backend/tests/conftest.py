@@ -57,6 +57,20 @@ def conn(db_url):
         c.rollback()
 
 
+@pytest.fixture(autouse=True, scope="session")
+def offline_settings(tmp_path_factory):
+    """Tests never touch the configured Supabase project or OpenAI, whatever backend/.env says:
+    raw records go to a temporary folder, the API runs in dev auth mode."""
+    from app.config import get_settings
+
+    s = get_settings()
+    saved = (s.storage_backend, s.raw_local_dir, s.auth_mode, s.openai_api_key)
+    s.storage_backend, s.raw_local_dir = "local", tmp_path_factory.mktemp("raw-records")
+    s.auth_mode, s.openai_api_key = "dev", ""
+    yield
+    s.storage_backend, s.raw_local_dir, s.auth_mode, s.openai_api_key = saved
+
+
 @pytest.fixture(autouse=True)
 def offline_ai():
     """No test talks to OpenAI: local embeddings, no LLM unless a test sets FakeLLM."""
