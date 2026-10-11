@@ -2,15 +2,26 @@
 
 State on 2026-10-11, about 06:30. Read `CLAUDE.md` first, then `changes.md` section "UI alignment" (U.1 to U.24): it records every decision of this session with its reason. **Nothing of this session is committed.**
 
-## 1. Check first: the Supabase build
+## 1. Do first: finish populating Supabase
 
-A build was started on Supabase (`cd backend && LLM_WORKERS=12 uv run python -m app.demo build`, log in `%TEMP%\build-supabase.log`). When this file was written it was writing the case pages. It may have finished, failed or been stopped with the session.
+State at the end of the session (2026-10-11, about 09:00):
 
-- Look at the last rows of `agent_run` on Supabase (step, status, error). A row left on `running` with no session behind it is a dead run: set it to `failed`.
-- If it did not finish, run the same command again. It is safe: finished seed steps are skipped, signals that have an embedding are skipped, and every LLM answer is cached in `backend/.data/llm_cache/` (key = prompt version + model + thinking effort + inputs), so nothing is paid twice.
-- Known state before the case step: seed complete (10,128 verbatims, 13,771 signals, 174 quarantined, 407 in the taxonomy review queue, 10 configs), 13,404 signal embeddings. Migrations 0001 to 0016 are applied.
-- After it finishes, check: number of cases and how many opened per line, a few case pages for quality (short title, summary, three highlights, citations), `select pg_size_pretty(pg_database_size(current_database()))`. The free plan allows 500 MB; the estimate for this data is about 340 MB (never measured on Supabase).
-- Do not run `app.demo e2e` on Supabase: it confirms and approves a case in the real data.
+- Supabase has migrations 0001 to 0016, the seed (10,128 verbatims, 13,771 signals, 13,404 with an embedding) and **1,657 cases from a build that failed in its last step**. Those cases have a page but no figures, no tags, no open state, no scores. There is no search index and there are no users.
+- The build failed because the last step wrote all cases in one long transaction and Supabase closed the connection. That step now commits every 25 cases (`backend/app/cases/pipeline.py`, `WRITE_BATCH`).
+- The user then decided a stricter rule (`changes.md` is not updated for it yet): a group of signals becomes a case only with **20 distinct customers** whose feedback is at least as much complaint or wish as praise, or **10 distinct customers reporting a defect**, in one BMW line, or with competitor evidence. A group below the bar becomes **no case** (nothing written, tagged or stored); its signals wait without a case. Counted on Supabase this keeps 48 cases (17 / 13 / 22 for the 5 / 7 / 1 Series) holding 1,676 signals. The user rejected redefining a signal as a bundle of five reports.
+- Commit `9f370f0` holds this rule, the batching, the reset script and the LLM cache of the build. **None of it has been run or tested.**
+
+Steps, in this order. Ask the user before each one that touches Supabase or OpenAI.
+
+1. `cd backend && uv run pytest` (offline, about 4 minutes). One test in `tests/test_cases.py` was rewritten for the new rule and never run; other assertions in that file may need the same adjustment. Fix until green.
+2. `uv run python -m app.cases.reset` (dry run: prints what people have worked on and the number of cases; every count except `cases` must be 0).
+3. `uv run python -m app.cases.reset --yes`: removes every case on Supabase and sets the opening rule on every config. Signals are kept and only lose their case. It refuses when a person has worked on a case. Not reversible.
+4. `LLM_WORKERS=12 uv run python -m app.demo build`: skips the finished seed and the embedded signals, groups again under the new rule, then figures, tags, scores, search index, demo users. The case pages and tags of the groups that stay are in the LLM cache (`backend/.data/llm_cache`), so the only new OpenAI cost should be the embeddings of the search index (about 13,000 short texts). Expect minutes, not hours: 48 cases instead of 1,657.
+5. Check: `select count(*) from case_item` (about 48), `select vehicle, state, count(*) from case_vehicle group by 1, 2`, a few case pages, `select count(*) from case_score`, `select count(*) from rag_chunk`, `select count(*) from app_user` (8), `select pg_size_pretty(pg_database_size(current_database()))` (was 201 MB before the reset; the limit is 500 MB).
+
+If step 4 fails: read the last rows of `agent_run` (a row left on `running` with no process behind it is dead: set it to `failed`), then run the same command again. Finished steps are skipped and no LLM answer is paid twice. The search index step embeds inside one transaction; if that is the step that drops, run `uv run python -m app.rag.index` on its own.
+
+Do not run `app.demo e2e` on Supabase: it confirms and approves a case in the real data.
 
 ## 2. What this session changed
 

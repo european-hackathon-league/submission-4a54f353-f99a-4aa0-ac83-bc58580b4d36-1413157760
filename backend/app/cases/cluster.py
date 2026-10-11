@@ -47,6 +47,38 @@ def group_labels(vectors: np.ndarray, min_similarity: float, split_min: int = SP
     return cluster_labels(vectors, min_similarity)
 
 
+def viable(members: list[dict], thresholds: dict) -> bool:
+    """Is this group of signals worth a case? The same bar as the opening rule
+    (lifecycle.open_reason), read from the signals: for one BMW line, enough distinct
+    customers who complain or wish for something, or enough customers reporting a
+    defect; or evidence from a competitor (a possible competitor gap). A group below
+    the bar becomes no case: nothing is written, tagged or stored for it, and its
+    signals wait without a case until the group grows."""
+    from app.cases.lifecycle import OPEN_MIN_CUSTOMERS, OPEN_MIN_DEFECTS
+
+    min_customers = int(thresholds.get("open_min_customers", OPEN_MIN_CUSTOMERS))
+    min_defects = int(thresholds.get("open_min_defects", OPEN_MIN_DEFECTS))
+    if any(m["evidence_role"] == "competitor" and m["kind"] in ("like", "competitor_fact") for m in members):
+        return True
+    for vehicle in {m["vehicle"] for m in members if m["vehicle"]}:
+        own = [m for m in members if m["evidence_role"] == "bmw_customer" and m["vehicle"] in (vehicle, None)]
+        negative = sum(1 for m in own if m["kind"] in ("complaint", "wish"))
+        likes = sum(1 for m in own if m["kind"] == "like")
+        if len({m["customer_ref"] for m in own}) >= min_customers and negative >= likes:
+            return True
+        if len({m["customer_ref"] for m in own if m["severity"] == "defect"}) >= min_defects:
+            return True
+    return False
+
+
+def _thresholds(conn, thresholds: dict | None) -> dict:
+    if thresholds is not None:
+        return thresholds
+    from app.cases.pipeline import thresholds_for
+
+    return thresholds_for(conn)
+
+
 def _label(feature: str, aspect_group: str | None) -> str:
     return f"{feature} ({aspect_group})" if aspect_group else feature
 
@@ -122,9 +154,11 @@ def assign(conn, case_id: str, members: list[dict], *, run_id=None, rationale: s
                     " ".join((m.get("quote") or "").split())[:300], [m["id"] for m in rivals], run_id=run_id)
 
 
-def plan_initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN) -> list[tuple[str, list[dict]]]:
+def plan_initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN,
+                 thresholds: dict | None = None) -> list[tuple[str, list[dict]]]:
     """The groups ``initial`` will turn into cases, as (label, signals): read-only,
     so their pages can be written by the LLM before the write transaction opens."""
+    thresholds = _thresholds(conn, thresholds)
     by_group: dict = defaultdict(list)
     for r in _signals_for(conn):
         by_group[(r["feature_id"], r["feature"], r["aspect_group"])].append(r)
@@ -134,12 +168,16 @@ def plan_initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN) -> 
         groups: dict[int, list[dict]] = defaultdict(list)
         for m, label in zip(members, labels):
             groups[int(label)].append(m)
-        out += [(_label(feature_name, aspect), g) for g in groups.values()]
+        out += [(_label(feature_name, aspect), g) for g in groups.values() if viable(g, thresholds)]
     return out
 
 
-def initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN, run_id=None) -> dict:
-    """Group all unassigned signals by topic + aspect group; split only large groups."""
+def initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN, run_id=None,
+            thresholds: dict | None = None) -> dict:
+    """Group all unassigned signals by topic + aspect group; split only large groups.
+    Only groups above the bar (``viable``) become cases."""
+    thresholds = _thresholds(conn, thresholds)
+    below = waiting = 0
     rows = _signals_for(conn)
     by_group: dict = defaultdict(list)
     for r in rows:
@@ -157,20 +195,34 @@ def initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN, run_id=N
             split_groups += 1
             why += f", large group split by cosine >= {min_similarity:.2f}"
         for group in sorted(groups.values(), key=len, reverse=True):
+            if not viable(group, thresholds):
+                below += 1
+                waiting += len(group)
+                continue
             planned.append((feature_id, feature_name, aspect, group, why))
     # Case pages are written in parallel first (cached); creating the cases then reads the cache.
     writer.prefetch([(_label(name, aspect), group) for _, name, aspect, group, _ in planned])
     for feature_id, feature_name, aspect, group, why in planned:
         create_case(conn, feature_id, feature_name, group, aspect_group=aspect, run_id=run_id, rationale=why)
         created += 1
-    return {"signals": len(rows), "groups": len(by_group), "split_groups": split_groups, "cases": created}
+    return {"signals": len(rows), "groups": len(by_group), "split_groups": split_groups, "cases": created,
+            "groups_below_the_bar": below, "signals_without_a_case": waiting}
 
 
-def incremental(conn, min_similarity: float, *, run_id=None) -> dict:
-    """Attach new signals to existing cases (or open new observed cases)."""
+def incremental(conn, min_similarity: float, *, run_id=None, thresholds: dict | None = None) -> dict:
+    """Attach new signals to the case of their topic + aspect group. Signals whose
+    group has no case yet wait; once the waiting signals of a group pass the bar
+    (``viable``) they become a case together."""
+    thresholds = _thresholds(conn, thresholds)
     rows = _signals_for(conn)
     attached = created = 0
+    done: set = set()
+    pools: dict = defaultdict(list)
     for r in rows:
+        pools[(r["feature_id"], r["aspect_group"])].append(r)
+    for r in rows:
+        if r["id"] in done:
+            continue
         # Cases of the same topic + aspect group that still hold signals (a merged case holds none).
         cases = conn.execute(
             "select c.id, 1 - (c.embedding <=> %s) as sim from case_item c where c.feature_id = %s"
@@ -187,11 +239,16 @@ def incremental(conn, min_similarity: float, *, run_id=None) -> dict:
                    rationale=f"nearest case of the topic + aspect group, cosine {cases[0]['sim']:.2f}")
             attached += 1
         else:
-            create_case(conn, r["feature_id"], r["feature"], [r], aspect_group=r["aspect_group"], run_id=run_id,
-                        rationale="no case for this topic + aspect group" if not cases
-                        else "no case above the similarity threshold")
+            pool = [m for m in pools[(r["feature_id"], r["aspect_group"])] if m["id"] not in done]
+            if not viable(pool, thresholds):
+                continue  # below the bar: the signals wait without a case
+            create_case(conn, r["feature_id"], r["feature"], pool, aspect_group=r["aspect_group"], run_id=run_id,
+                        rationale="waiting signals of this topic + aspect group passed the bar" if not cases
+                        else "no case above the similarity threshold; waiting signals passed the bar")
+            done.update(m["id"] for m in pool)
             created += 1
-    return {"attached": attached, "created": created}
+    waiting = sum(1 for r in rows if r["id"] not in done) - attached
+    return {"attached": attached, "created": created, "signals_without_a_case": max(waiting, 0)}
 
 
 def refresh_centroid(conn, case_id: str, *, run_id=None) -> None:
