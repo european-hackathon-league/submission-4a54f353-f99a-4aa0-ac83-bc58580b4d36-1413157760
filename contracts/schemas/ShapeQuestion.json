@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "enum": [
+        "scope",
+        "benchmark",
+        "solution",
+        "release",
+        "offer"
+      ]
+    },
+    "question": {
+      "type": "string"
+    },
+    "why": {
+      "type": "string"
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "default": {
+      "type": "string"
+    },
+    "defaultWhy": {
+      "type": "string"
+    },
+    "trigger": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "enum": [
+            "brand",
+            "series_brief",
+            "case_stance",
+            "requirement_shape",
+            "feedback"
+          ]
+        },
+        "signalIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "briefField": {
+          "type": "string",
+          "enum": [
+            "thesis",
+            "targetCustomer",
+            "marketWeights",
+            "changeAmbition",
+            "protectList",
+            "dontFightOn",
+            "givens",
+            "costEnvelope"
+          ]
+        }
+      },
+      "required": [
+        "layer",
+        "signalIds"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "key",
+    "question",
+    "why",
+    "options",
+    "default",
+    "defaultWhy",
+    "trigger"
+  ],
+  "additionalProperties": false
+}

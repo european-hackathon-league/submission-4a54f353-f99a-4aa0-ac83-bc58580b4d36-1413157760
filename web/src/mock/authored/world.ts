@@ -10,11 +10,30 @@ import type {
   VehiclePlan,
 } from "@/contracts";
 import type { ChatSeed, VerbatimSelector, WebSignalSpec } from "./types";
+import type { AuthoredTag } from "../ai/provenance";
 
 /** Fixed "now" of the synthetic world: the morning after the hackathon kick-off. */
 export const NOW = "2026-10-11T08:00:00Z";
 
-type ReqSpec = Omit<Requirement, "synthetic" | "manualRank" | "createdAt" | "updatedAt" | "shortTitle"> & { createdAt: string; updatedAt?: string };
+type ReqSpec = Omit<
+  Requirement,
+  "synthetic" | "manualRank" | "createdAt" | "updatedAt" | "shortTitle" | "descriptionParts" | "provenance" | "version" | "shapeAnswers" | "briefId" | "drafter"
+> & { createdAt: string; updatedAt?: string };
+
+/**
+ * Provenance of the seeded requirements, written by hand per description sentence
+ * (they predate the composer). The seed attaches the case's strongest signal IDs to "evidence".
+ */
+export const requirementTags: Record<string, { sentences: AuthoredTag[]; scope: AuthoredTag; release: AuthoredTag; cost: AuthoredTag }> = {
+  "REQ-G60-0002": { sentences: ["evidence", "brief.givens"], scope: "brief.marketWeights", release: "brief.givens", cost: "pm" },
+  "REQ-G60-0004": { sentences: ["evidence", "brief.marketWeights"], scope: "brief.marketWeights", release: "pm", cost: "pm" },
+  "REQ-G60-0009": { sentences: ["evidence", "brief.marketWeights"], scope: "brief.marketWeights", release: "brief.givens", cost: "assumption" },
+  "REQ-G60-0019": { sentences: ["evidence", "brief.marketWeights", "assumption"], scope: "brief.marketWeights", release: "pm", cost: "assumption" },
+  "REQ-G60-CN-0002": { sentences: ["assumption", "pm"], scope: "pm", release: "brief.givens", cost: "assumption" },
+  "REQ-G60-CN-0003": { sentences: ["assumption", "brief.givens"], scope: "pm", release: "brief.givens", cost: "assumption" },
+  "REQ-G70-0001": { sentences: ["evidence", "brief.givens"], scope: "brief.marketWeights", release: "brief.givens", cost: "pm" },
+  "REQ-F70-0001": { sentences: ["evidence", "pm"], scope: "pm", release: "brief.givens", cost: "pm" },
+};
 
 export const requirementSpecs: ReqSpec[] = [
   {

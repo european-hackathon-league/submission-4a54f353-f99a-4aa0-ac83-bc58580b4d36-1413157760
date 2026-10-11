@@ -64,11 +64,11 @@ async function main() {
   await call("caseBundle", { params: { id: "CASE-G60-0001" } });
   await call("exportCaseMd", { params: { id: "CASE-G60-0001" } });
   await call("taxonomy");
-  await call("savePmContext", {
+  await call("saveCaseStance", {
     params: { id: "CASE-G60-0003" },
-    body: { marketFocus: "EU", costSensitivity: "medium", positioning: "premium", timing: "next_gen", note: "Nordic winter matters most" },
+    body: { overrides: {}, overrideReasons: {}, evidenceTakes: [], inside: [{ id: "IN-1", kind: "engineering_on_it", text: "Battery team is sampling next-gen cells" }], ambition: null },
   });
-  await call("savePmContext", { params: { id: "CASE-G60-0003" }, body: { marketFocus: null, costSensitivity: null, positioning: null, timing: null, note: "" }, as: "u-wei", expect: 403 });
+  await call("saveCaseStance", { params: { id: "CASE-G60-0003" }, body: { overrides: {}, overrideReasons: {}, evidenceTakes: [], inside: [], ambition: "fix" }, as: "u-sofia", expect: 403 });
   await call("questions");
   await call("requirements");
   await call("requirementBundle", { params: { id: "REQ-G60-0004" } });
@@ -134,8 +134,11 @@ async function main() {
   for (const p of note.proposals) await call("decideProposal", { params: { id: p.id }, body: { decision: "accept" } });
   // 4. Chat: ask, draft a requirement via proposal, research.
   await call("postMessage", { params: { type: "case", id: "CASE-G60-0005" }, body: { content: "Why is this ranked so high?" } });
-  const chat = (await call("postMessage", { params: { type: "case", id: "CASE-G60-0005" }, body: { content: "Draft a SMART requirement" } })) as { proposals: { id: string }[] };
-  await call("decideProposal", { params: { id: chat.proposals[0].id }, body: { decision: "accept" } });
+  // Drafting asks the shape questions first; a reply with an option label pre-fills the step-3 form.
+  const chat = (await call("postMessage", { params: { type: "case", id: "CASE-G60-0005" }, body: { content: "Draft a SMART requirement" } })) as { messages: { content: string }[] };
+  expectTrue(chat.messages[1].content.startsWith("Before I draft"), "the chat asks the shape questions before drafting");
+  const reply = (await call("postMessage", { params: { type: "case", id: "CASE-G60-0005" }, body: { content: "beat it, and prescribe the climate bar" } })) as { messages: { content: string }[] };
+  expectTrue(reply.messages[1].content.startsWith("Noted:"), "a chat answer is stored as a pending shape answer");
   await call("postMessage", { params: { type: "case", id: "CASE-G60-0003" }, body: { content: "Research what owners in Europe say" } });
   // 5. Wei escalates the China equipment conflict; Katrin resolves.
   await call("transitionCase", { params: { id: "CASE-G60-CN-0001" }, body: { action: "refer", escalate: true, rationale: "China vs RoW: China trim or global standard?" }, as: "u-wei" });
@@ -171,9 +174,83 @@ async function main() {
   await call("readNotifications", { body: {} });
   await call("audit", { query: { limit: "20" } });
 
+  await contextLayersStory();
+
   await call("reset", { body: {} });
   console.log(`\n${calls} calls, ${failures} failures`);
   process.exit(failures ? 1 : 0);
+}
+
+type Req = { id: string; title: string; marketScope: string; variantOf: string | null; version: number; metrics: { id: string; target: string }[]; descriptionParts: string[]; acceptanceCriteria: string[]; assumptions: string[]; provenance: { path: string; source: string }[] };
+
+/** Every part of a drafted requirement must carry provenance (the brain seam's contract). */
+function fullyTagged(r: Req) {
+  const paths = new Set(r.provenance.map((p) => p.path));
+  const need = [
+    "title",
+    "marketScope",
+    "releaseTarget",
+    "cost",
+    ...r.descriptionParts.map((_, i) => `description#${i}`),
+    ...r.metrics.map((m) => `metrics.${m.id}.target`),
+    ...r.acceptanceCriteria.map((_, i) => `acceptanceCriteria#${i}`),
+    ...r.assumptions.map((_, i) => `assumptions#${i}`),
+  ];
+  return need.filter((p) => !paths.has(p));
+}
+
+/** Layers: brief → stance → shape answers → draft with provenance → feedback → brief change → Wei's overlay and variant. */
+async function contextLayersStory() {
+  await call("reset", { body: {} });
+  const me = (await call("me")) as { brief: { sharedId: string } | null; needsOnboarding: boolean };
+  expectTrue(!!me.brief && !me.needsOnboarding, "Lena is onboarded with the shared G60 brief");
+  const wei = (await call("me", { as: "u-wei" })) as { needsOnboarding: boolean };
+  expectTrue(wei.needsOnboarding, "Wei needs onboarding (no regional overlay yet)");
+  await call("briefs", { query: { series: "G60" } });
+  await call("myBrief");
+
+  // Lena: stance, confirm, shape questions, draft with defaults vs. with answers.
+  await call("saveCaseStance", { params: { id: "CASE-G60-0003" }, body: { overrides: {}, overrideReasons: {}, evidenceTakes: [], inside: [{ id: "IN-1", kind: "engineering_on_it", text: "Battery team is sampling next-gen cells" }], ambition: null } });
+  await call("transitionCase", { params: { id: "CASE-G60-0003" }, body: { action: "confirm", rationale: "Range is the top BEV complaint" } });
+  const shape = (await call("shapeQuestions", { params: { id: "CASE-G60-0003" } })) as { questions: { key: string }[] };
+  expectTrue(shape.questions.length > 0 && shape.questions.length <= 3, `at most 3 adaptive questions (${shape.questions.map((q) => q.key).join(", ")})`);
+  await call("askShapeQuestions", { params: { id: "CASE-G60-0003" }, body: {} });
+  const [lena] = (await call("generateRequirements", { params: { id: "CASE-G60-0003" }, body: { answers: [] } })) as Req[];
+  expectTrue(fullyTagged(lena).length === 0, `every part of ${lena.id} has provenance (${fullyTagged(lena).join(", ") || "all tagged"})`);
+  expectTrue(lena.assumptions.some((a) => a.includes("next-gen cells")), "the stance's inside knowledge shows up as an assumption");
+  const [beat] = (await call("generateRequirements", { params: { id: "CASE-G60-0003" }, body: { answers: [{ key: "benchmark", value: "beat" }] } })) as Req[];
+  expectTrue(beat.metrics[0]?.target !== lena.metrics[0]?.target, `the shape answer changes the target (${lena.metrics[0]?.target} → ${beat.metrics[0]?.target})`);
+  await call("transitionRequirement", { params: { id: beat.id }, body: { action: "reject", rationale: "Keep only one draft" } });
+
+  // Feedback → proposal → new version.
+  const fb = (await call("addFeedback", { params: { id: lena.id }, body: { from: "engineering", text: "760 km only with next-gen cells; 720 km is the maximum for the current pack.", response: "compromise", rationale: "Customers compare with the A6 e-tron" } })) as { proposal: { id: string } };
+  await call("decideProposal", { params: { id: fb.proposal.id }, body: { decision: "accept" } });
+  const v2 = (await call("requirementBundle", { params: { id: lena.id } })) as { requirement: Req; versions: unknown[] };
+  expectTrue(v2.requirement.version === 2 && v2.versions.length === 2, `feedback creates version 2 (target ${v2.requirement.metrics[0]?.target})`);
+  expectTrue(v2.requirement.descriptionParts.some((p) => /km behind Audi A6 e-tron/.test(p)), "a compromise below the benchmark is not called 'matching' or 'beating'");
+
+  // Brief change → impact proposal (never a silent edit).
+  const impact = (await call("previewBriefImpact", { params: { id: "BRIEF-G60" }, body: { values: { costEnvelope: { sensitivity: "high", perCarBand: "≤ +1% material cost vs. today" } } } })) as { requirementId: string }[];
+  expectTrue(impact.some((i) => i.requirementId === lena.id), "a cost-envelope change affects the composed requirement");
+  const saved = (await call("saveBrief", { params: { id: "BRIEF-G60" }, body: { values: { costEnvelope: { sensitivity: "high", perCarBand: "≤ +1% material cost vs. today" } }, reasons: { costEnvelope: "Budget cut" } } })) as { impact: { proposalId: string | null }[] };
+  const after = (await call("requirementBundle", { params: { id: lena.id } })) as { requirement: Req; proposals: { kind: string; status: string }[] };
+  expectTrue(after.requirement.version === 2 && after.proposals.some((p) => p.kind === "new_version" && p.status === "pending") && saved.impact.some((i) => i.proposalId), "the brief change is a pending proposal, the requirement is unchanged");
+
+  // Wei: overlay from a strategy doc, then his China variant of the same case.
+  const overlay = (await call("createOverlay", { body: { series: "G60" }, as: "u-wei" })) as { id: string };
+  const doc =
+    "Thesis: In China the 5 Series Li must win buyers from NIO and Xiaomi.\nTarget customer: conquest buyers from local EV brands. Tier stays premium.\nAmbition: a revolution, 4 real innovations.\nGivens: range targets are set in CLTC. The mid-life update is still open for China content.\nCost: low sensitivity, local sourcing.";
+  const props = (await call("extractBrief", { params: { id: overlay.id }, body: { text: doc }, as: "u-wei" })) as { id: string }[];
+  expectTrue(props.length >= 4, `the strategy doc becomes ${props.length} field proposals`);
+  for (const p of props) await call("decideProposal", { params: { id: p.id }, body: { decision: "accept" }, as: "u-wei" });
+  await call("saveBrief", { params: { id: overlay.id }, body: { values: {}, reasons: {}, confirm: ["marketWeights"] }, as: "u-wei" });
+  const [weiReq] = (await call("generateRequirements", { params: { id: "CASE-G60-0003" }, body: { answers: [] }, as: "u-wei" })) as Req[];
+  expectTrue(weiReq.marketScope === "CN" && weiReq.variantOf === lena.id && weiReq.metrics[0]?.target !== v2.requirement.metrics[0]?.target, `Wei's brief gives a different requirement: ${weiReq.metrics[0]?.target} (CN variant of ${weiReq.variantOf})`);
+  const conflicts = (await call("briefConflicts", { as: "u-katrin" })) as { overlayId: string; field: string; status: string }[];
+  const open = conflicts.find((c) => c.status === "open");
+  expectTrue(!!open, `the overlay's differences are brief conflicts (${conflicts.length})`);
+  if (open) await call("resolveBriefConflict", { params: { id: open.overlayId, field: open.field }, body: { resolution: "regional_variant", rationale: "China plans in CLTC" }, as: "u-katrin" });
+  await call("resolveBriefConflict", { params: { id: overlay.id, field: "thesis" }, body: { resolution: "align", rationale: "x" }, as: "u-lena", expect: 403 });
 }
 
 main().catch((e) => {

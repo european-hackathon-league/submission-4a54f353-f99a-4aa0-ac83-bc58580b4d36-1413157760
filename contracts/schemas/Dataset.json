@@ -864,98 +864,300 @@
               "null"
             ]
           },
-          "pmContext": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "marketFocus": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "global",
-                          "US",
-                          "EU",
-                          "CN"
-                        ]
+          "stances": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "authorId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "overrides": {
+                  "type": "object",
+                  "properties": {
+                    "marketWeights": {
+                      "type": "object",
+                      "properties": {
+                        "EU": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "US": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "CN": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "RoW": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "costSensitivity": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
+                      "required": [
+                        "EU",
+                        "US",
+                        "CN",
+                        "RoW"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "targetCustomer": {
+                      "type": "object",
+                      "properties": {
+                        "who": {
+                          "type": "string",
+                          "enum": [
+                            "keep_owners",
+                            "conquest",
+                            "both"
+                          ]
+                        },
+                        "positioning": {
+                          "type": "string",
+                          "enum": [
+                            "base",
+                            "premium",
+                            "luxury"
+                          ]
+                        }
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "positioning": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "base",
-                          "premium",
-                          "luxury"
-                        ]
+                      "required": [
+                        "who",
+                        "positioning"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "costEnvelope": {
+                      "type": "object",
+                      "properties": {
+                        "sensitivity": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                          ]
+                        },
+                        "perCarBand": {
+                          "type": "string"
+                        }
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "timing": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "next_gen",
-                          "lci",
-                          "ota"
-                        ]
+                      "required": [
+                        "sensitivity",
+                        "perCarBand"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "givens": {
+                      "type": "object",
+                      "properties": {
+                        "platform": {
+                          "type": "string"
+                        },
+                        "sop": {
+                          "type": "string"
+                        },
+                        "frozen": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "openReleases": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "next_gen",
+                              "lci",
+                              "ota"
+                            ]
+                          }
+                        },
+                        "cycle": {
+                          "type": "string",
+                          "enum": [
+                            "WLTP",
+                            "EPA",
+                            "CLTC"
+                          ]
+                        }
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                      "required": [
+                        "platform",
+                        "sop",
+                        "frozen",
+                        "openReleases",
+                        "cycle"
+                      ],
+                      "additionalProperties": false
+                    }
                   },
-                  "note": {
-                    "type": "string"
-                  },
-                  "updatedAt": {
-                    "type": "string"
-                  },
-                  "updatedBy": {
+                  "additionalProperties": false
+                },
+                "overrideReasons": {
+                  "type": "object",
+                  "propertyNames": {
                     "type": "string",
-                    "minLength": 1
+                    "enum": [
+                      "thesis",
+                      "targetCustomer",
+                      "marketWeights",
+                      "changeAmbition",
+                      "protectList",
+                      "dontFightOn",
+                      "givens",
+                      "costEnvelope"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "string"
                   }
                 },
-                "required": [
-                  "marketFocus",
-                  "costSensitivity",
-                  "positioning",
-                  "timing",
-                  "note",
-                  "updatedAt",
-                  "updatedBy"
-                ],
-                "additionalProperties": false
+                "evidenceTakes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "effect": {
+                        "type": "string",
+                        "enum": [
+                          "discount",
+                          "focus"
+                        ]
+                      },
+                      "market": {
+                        "type": "string",
+                        "enum": [
+                          "EU",
+                          "US",
+                          "CN",
+                          "RoW",
+                          "unknown"
+                        ]
+                      },
+                      "powertrain": {
+                        "type": "string",
+                        "enum": [
+                          "ICE",
+                          "PHEV",
+                          "BEV",
+                          "unknown"
+                        ]
+                      },
+                      "keyword": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "text",
+                      "effect"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "inside": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "past_decision",
+                          "supplier_tech",
+                          "engineering_on_it",
+                          "other"
+                        ]
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "kind",
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "ambition": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "fix",
+                        "match",
+                        "beat"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pendingShape": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "enum": [
+                          "scope",
+                          "benchmark",
+                          "solution",
+                          "release",
+                          "offer"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
               },
-              {
-                "type": "null"
-              }
-            ]
+              "required": [
+                "authorId",
+                "overrides",
+                "overrideReasons",
+                "evidenceTakes",
+                "inside",
+                "ambition",
+                "pendingShape",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
           },
           "series": {
             "type": "string",
@@ -1451,7 +1653,7 @@
           "summary",
           "highlights",
           "topicId",
-          "pmContext",
+          "stances",
           "series",
           "relatedSeries",
           "scope",
@@ -1648,7 +1850,8 @@
             "type": "string",
             "enum": [
               "case",
-              "requirement"
+              "requirement",
+              "brief"
             ]
           },
           "objectId": {
@@ -1660,7 +1863,11 @@
             "enum": [
               "chat",
               "meeting_note",
-              "monitor"
+              "monitor",
+              "strategy_doc",
+              "feedback",
+              "brief_change",
+              "learning"
             ]
           },
           "kind": {
@@ -1670,7 +1877,9 @@
               "body",
               "question_answer",
               "new_question",
-              "new_requirement"
+              "new_requirement",
+              "brief_field",
+              "new_version"
             ]
           },
           "summary": {
@@ -1768,6 +1977,125 @@
           },
           "description": {
             "type": "string"
+          },
+          "descriptionParts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provenance": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "evidence",
+                    "pm_context",
+                    "assumption"
+                  ]
+                },
+                "layer": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "brand",
+                        "series_brief",
+                        "case_stance",
+                        "requirement_shape",
+                        "feedback"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ref": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "signalIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "source",
+                "layer",
+                "ref",
+                "signalIds",
+                "label"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "shapeAnswers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "scope",
+                    "benchmark",
+                    "solution",
+                    "release",
+                    "offer"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                },
+                "byDefault": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "key",
+                "value",
+                "byDefault"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "briefId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "drafter": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "marketScope": {
             "type": "string",
@@ -1974,6 +2302,12 @@
           "title",
           "shortTitle",
           "description",
+          "descriptionParts",
+          "provenance",
+          "version",
+          "shapeAnswers",
+          "briefId",
+          "drafter",
           "marketScope",
           "variantOf",
           "status",
@@ -2533,6 +2867,710 @@
         "additionalProperties": false
       }
     },
+    "briefs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "series": {
+            "type": "string",
+            "enum": [
+              "G60",
+              "F70",
+              "G70"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "shared",
+              "overlay"
+            ]
+          },
+          "region": {
+            "type": "string",
+            "enum": [
+              "global",
+              "RoW",
+              "CN"
+            ]
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "values": {
+            "type": "object",
+            "properties": {
+              "thesis": {
+                "type": "string"
+              },
+              "targetCustomer": {
+                "type": "object",
+                "properties": {
+                  "who": {
+                    "type": "string",
+                    "enum": [
+                      "keep_owners",
+                      "conquest",
+                      "both"
+                    ]
+                  },
+                  "positioning": {
+                    "type": "string",
+                    "enum": [
+                      "base",
+                      "premium",
+                      "luxury"
+                    ]
+                  }
+                },
+                "required": [
+                  "who",
+                  "positioning"
+                ],
+                "additionalProperties": false
+              },
+              "marketWeights": {
+                "type": "object",
+                "properties": {
+                  "EU": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "US": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "CN": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "RoW": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "EU",
+                  "US",
+                  "CN",
+                  "RoW"
+                ],
+                "additionalProperties": false
+              },
+              "changeAmbition": {
+                "type": "object",
+                "properties": {
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "evolution",
+                      "balanced",
+                      "revolution"
+                    ]
+                  },
+                  "innovationSlots": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "level",
+                  "innovationSlots"
+                ],
+                "additionalProperties": false
+              },
+              "protectList": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dontFightOn": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "givens": {
+                "type": "object",
+                "properties": {
+                  "platform": {
+                    "type": "string"
+                  },
+                  "sop": {
+                    "type": "string"
+                  },
+                  "frozen": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "openReleases": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "next_gen",
+                        "lci",
+                        "ota"
+                      ]
+                    }
+                  },
+                  "cycle": {
+                    "type": "string",
+                    "enum": [
+                      "WLTP",
+                      "EPA",
+                      "CLTC"
+                    ]
+                  }
+                },
+                "required": [
+                  "platform",
+                  "sop",
+                  "frozen",
+                  "openReleases",
+                  "cycle"
+                ],
+                "additionalProperties": false
+              },
+              "costEnvelope": {
+                "type": "object",
+                "properties": {
+                  "sensitivity": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  },
+                  "perCarBand": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sensitivity",
+                  "perCarBand"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "meta": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "enum": [
+                "thesis",
+                "targetCustomer",
+                "marketWeights",
+                "changeAmbition",
+                "protectList",
+                "dontFightOn",
+                "givens",
+                "costEnvelope"
+              ]
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "data",
+                    "brand",
+                    "doc",
+                    "pm"
+                  ]
+                },
+                "confirmed": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "resolution": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "regional_variant",
+                        "aligned"
+                      ]
+                    },
+                    "by": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "at": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "by",
+                    "at",
+                    "note"
+                  ],
+                  "additionalProperties": false
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "updatedBy": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "source",
+                "confirmed",
+                "updatedAt",
+                "updatedBy"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "synthetic": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "series",
+          "kind",
+          "region",
+          "parentId",
+          "ownerId",
+          "values",
+          "meta",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "synthetic"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "requirementVersions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requirementId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "snapshot": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "shortTitle": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "descriptionParts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "marketScope": {
+                "type": "string",
+                "enum": [
+                  "global",
+                  "RoW",
+                  "CN"
+                ]
+              },
+              "releaseTarget": {
+                "type": "string",
+                "enum": [
+                  "next_gen",
+                  "lci",
+                  "ota"
+                ]
+              },
+              "metrics": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "question": {
+                      "type": "string"
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "string",
+                      "enum": [
+                        "evidence",
+                        "assumption"
+                      ]
+                    },
+                    "benchmark": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "question",
+                    "target",
+                    "basis"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "acceptanceCriteria": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "evidenceLevel": {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "medium",
+                  "low",
+                  "assumption"
+                ]
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "size": {
+                    "type": "string",
+                    "enum": [
+                      "S",
+                      "M",
+                      "L"
+                    ]
+                  },
+                  "eurBand": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "option_price",
+                      "ai_estimate",
+                      "pm",
+                      "finance"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "size",
+                  "eurBand",
+                  "source",
+                  "note"
+                ],
+                "additionalProperties": false
+              },
+              "provenance": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "evidence",
+                        "pm_context",
+                        "assumption"
+                      ]
+                    },
+                    "layer": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "brand",
+                            "series_brief",
+                            "case_stance",
+                            "requirement_shape",
+                            "feedback"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "ref": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "signalIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "source",
+                    "layer",
+                    "ref",
+                    "signalIds",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "shapeAnswers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "enum": [
+                        "scope",
+                        "benchmark",
+                        "solution",
+                        "release",
+                        "offer"
+                      ]
+                    },
+                    "value": {
+                      "type": "string"
+                    },
+                    "byDefault": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "value",
+                    "byDefault"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "title",
+              "shortTitle",
+              "description",
+              "descriptionParts",
+              "marketScope",
+              "releaseTarget",
+              "metrics",
+              "acceptanceCriteria",
+              "assumptions",
+              "evidenceLevel",
+              "cost",
+              "provenance",
+              "shapeAnswers"
+            ],
+            "additionalProperties": false
+          },
+          "cause": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "feedback",
+              "brief_change",
+              "edit"
+            ]
+          },
+          "feedbackId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requirementId",
+          "version",
+          "snapshot",
+          "cause",
+          "rationale",
+          "createdAt",
+          "createdBy"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "feedback": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requirementId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "from": {
+            "type": "string",
+            "enum": [
+              "engineering",
+              "finance",
+              "design",
+              "quality",
+              "market_pm",
+              "purchasing",
+              "other"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "response": {
+            "type": "string",
+            "enum": [
+              "accept",
+              "push_back",
+              "compromise"
+            ]
+          },
+          "pmRationale": {
+            "type": "string"
+          },
+          "signalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "proposalId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resultingVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "requirementId",
+          "from",
+          "text",
+          "response",
+          "pmRationale",
+          "signalIds",
+          "proposalId",
+          "resultingVersion",
+          "createdAt",
+          "createdBy"
+        ],
+        "additionalProperties": false
+      }
+    },
     "audit": {
       "type": "array",
       "items": {
@@ -2569,7 +3607,8 @@
               "question",
               "plan",
               "profile",
-              "workspace"
+              "workspace",
+              "brief"
             ]
           },
           "objectId": {
@@ -2617,6 +3656,9 @@
     "comments",
     "notifications",
     "alerts",
+    "briefs",
+    "requirementVersions",
+    "feedback",
     "audit"
   ],
   "additionalProperties": false

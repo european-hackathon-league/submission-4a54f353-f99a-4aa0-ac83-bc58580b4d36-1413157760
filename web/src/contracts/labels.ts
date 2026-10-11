@@ -1,26 +1,80 @@
 import type {
   Addressee,
   Agent,
+  Ambition,
+  BriefFieldKey,
   CarArea,
   CaseOutcome,
   CaseState,
   CaseType,
+  ChangeAmbition,
   ChangeDepth,
   CheckKind,
+  ContextLayer,
+  CostSensitivity,
+  EvidenceEffect,
   EvidenceLevel,
   FactorKey,
+  FeedbackResponse,
   InnovationHorizon,
+  InsideKind,
   Market,
   PlanAction,
+  Positioning,
+  ProvenanceSource,
   Region,
   ReleaseTarget,
   RequirementStatus,
   Series,
+  ShapeKey,
   SignalKind,
   SourceType,
+  TargetCustomer,
 } from "./enums";
 
 /** Display labels for contract enums. UI-only; the API exchanges the keys. */
+
+export const contextLayerLabel: Record<ContextLayer, string> = {
+  brand: "Brand",
+  series_brief: "Your brief",
+  case_stance: "Your stance",
+  requirement_shape: "Your answer",
+  feedback: "Feedback",
+};
+
+export const provenanceLabel: Record<ProvenanceSource, string> = { evidence: "Evidence", pm_context: "Your context", assumption: "Assumption" };
+
+export const briefFieldLabel: Record<BriefFieldKey, string> = {
+  thesis: "Thesis for the successor",
+  targetCustomer: "Target customer",
+  marketWeights: "Market weights",
+  changeAmbition: "Evolution or revolution",
+  protectList: "Protect list",
+  dontFightOn: "Don't fight on",
+  givens: "Already decided",
+  costEnvelope: "Cost envelope",
+};
+
+export const briefFieldQuestion: Record<BriefFieldKey, string> = {
+  thesis: "In one sentence: what must the successor be?",
+  targetCustomer: "Keep today's owners, or win buyers from competitors? And at which tier?",
+  marketWeights: "How much does each market count? (pre-filled from 2030 sales)",
+  changeAmbition: "Evolution or revolution: how many real innovations does the successor get?",
+  protectList: "Which strengths must not change?",
+  dontFightOn: "Where do we deliberately not compete?",
+  givens: "What is already decided (platform, SOP, frozen parts), and which releases are still open?",
+  costEnvelope: "How sensitive is the cost envelope, and what is the rough budget per car?",
+};
+
+export const targetCustomerLabel: Record<TargetCustomer, string> = { keep_owners: "Keep today's owners", conquest: "Win buyers from competitors", both: "Both" };
+export const positioningLabel: Record<Positioning, string> = { base: "Base", premium: "Premium", luxury: "Luxury" };
+export const changeAmbitionLabel: Record<ChangeAmbition, string> = { evolution: "Evolution", balanced: "Balanced", revolution: "Revolution" };
+export const costSensitivityLabel: Record<CostSensitivity, string> = { low: "Low", medium: "Medium", high: "High" };
+export const ambitionLabel: Record<Ambition, string> = { fix: "Fix the problem", match: "Match the best competitor", beat: "Beat the best competitor" };
+export const shapeKeyLabel: Record<ShapeKey, string> = { scope: "Scope", benchmark: "Benchmark", solution: "Solution", release: "Release", offer: "Offer" };
+export const evidenceEffectLabel: Record<EvidenceEffect, string> = { discount: "Discount", focus: "Focus on" };
+export const insideKindLabel: Record<InsideKind, string> = { past_decision: "Past decision", supplier_tech: "Supplier tech", engineering_on_it: "Engineering already on it", other: "Other" };
+export const feedbackResponseLabel: Record<FeedbackResponse, string> = { accept: "Accept", push_back: "Push back", compromise: "Compromise" };
 
 export const seriesLabel: Record<Series, string> = {
   G60: "5 Series (G60)",

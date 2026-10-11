@@ -14296,7 +14296,7 @@
     "Competition: VW Group: physical shortcuts returning"
    ],
    "topicId": "operating_concept_operating_system",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "F70",
@@ -14489,7 +14489,7 @@
     "Competition: Some competitors remember the last state (to verify)"
    ],
    "topicId": "automatic_engine_start_stop_function_msa",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "G70"
@@ -14625,7 +14625,7 @@
     "Competition: Mercedes CLA ~790 km WLTP / 320 kW"
    ],
    "topicId": "electric_range",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "G70"
@@ -14798,7 +14798,7 @@
     "Not a differentiator; expected to just work."
    ],
    "topicId": "non_contact_trunk_lid_opening",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [],
    "scope": "global",
@@ -14923,7 +14923,38 @@
     "Competition: Mercedes E-Class: praised climate performance (verbatims)"
    ],
    "topicId": "air_conditioning_control_panel",
-   "pmContext": null,
+   "stances": [
+    {
+     "authorId": "u-lena",
+     "overrides": {
+      "costEnvelope": {
+       "sensitivity": "low",
+       "perCarBand": "Up to €25 per car for the climate bar"
+      }
+     },
+     "overrideReasons": {
+      "costEnvelope": "Climate is a top-3 complaint in the US; Controlling already accepted €18–25 per car."
+     },
+     "evidenceTakes": [
+      {
+       "id": "ET-1",
+       "text": "Focus on BEV owners: pre-conditioning expectations are highest for the i5",
+       "effect": "focus",
+       "powertrain": "BEV"
+      }
+     ],
+     "inside": [
+      {
+       "id": "IN-1",
+       "kind": "engineering_on_it",
+       "text": "Climate team is validating a new compressor generation for the successor."
+      }
+     ],
+     "ambition": "match",
+     "pendingShape": [],
+     "updatedAt": "2026-10-10T15:20:00Z"
+    }
+   ],
    "series": "G60",
    "relatedSeries": [
     "G70",
@@ -15052,7 +15083,7 @@
     "Competition: Segment norm: no spare on BEVs"
    ],
    "topicId": "luggage_compartment",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "G70"
@@ -15176,7 +15207,7 @@
     "Competition: Mercedes E-Class: massage seats"
    ],
    "topicId": "seat_massage",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "G70"
@@ -15296,7 +15327,7 @@
     "Competition: Tesla Model S: frunk"
    ],
    "topicId": "frunk",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "G70"
@@ -15425,7 +15456,7 @@
     "Competition: Cooled charging trays common (to verify)"
    ],
    "topicId": "mobile_device_wireless_charging",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [],
    "scope": "global",
@@ -15558,7 +15589,7 @@
     "US owners; also a repeated 7 Series wish (14)."
    ],
    "topicId": "panorama_glass_roof",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "G70"
@@ -15668,7 +15699,7 @@
     "EU (largest G60 market) and China."
    ],
    "topicId": "luggage_compartment",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "F70",
@@ -15821,7 +15852,7 @@
     "EU customers (study), protect-list topic for all markets."
    ],
    "topicId": "handling_riding",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "G70",
@@ -15985,7 +16016,7 @@
     "Competition: Li Auto L7: rich standard equipment"
    ],
    "topicId": "body_equipment_overall_technology",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [],
    "scope": "CN",
@@ -16128,7 +16159,7 @@
     "Competition: Li Auto L7: fridge standard"
    ],
    "topicId": "interior_comfort",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "G70"
@@ -16238,7 +16269,7 @@
     "Competition: Xiaomi SU7 Max 800 km CLTC"
    ],
    "topicId": "electric_range",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [],
    "scope": "CN",
@@ -16350,7 +16381,7 @@
     "Competition: Huawei HarmonyOS cockpit"
    ],
    "topicId": "apps_in_car",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [],
    "scope": "CN",
@@ -16448,7 +16479,7 @@
     "Competition: VW Group: buttons return"
    ],
    "topicId": "operating_concept_operating_system",
-   "pmContext": null,
+   "stances": [],
    "series": "F70",
    "relatedSeries": [
     "G60",
@@ -16593,7 +16624,7 @@
     "UK (61% of F70 feedback) and Japan (32%)."
    ],
    "topicId": "body_equipment_overall_technology",
-   "pmContext": null,
+   "stances": [],
    "series": "F70",
    "relatedSeries": [],
    "scope": "RoW",
@@ -16703,7 +16734,7 @@
     "UK and Japan."
    ],
    "topicId": "touch_screen_operation",
-   "pmContext": null,
+   "stances": [],
    "series": "F70",
    "relatedSeries": [
     "G60",
@@ -16816,7 +16847,7 @@
     "Chinese compact EVs with frunks."
    ],
    "topicId": "vehicle_access_and_exit",
-   "pmContext": null,
+   "stances": [],
    "series": "F70",
    "relatedSeries": [],
    "scope": "RoW",
@@ -16922,7 +16953,7 @@
     "UK enthusiasts (M135)."
    ],
    "topicId": "drive_driving_dynamics_and_chassis_overall_technology",
-   "pmContext": null,
+   "stances": [],
    "series": "F70",
    "relatedSeries": [],
    "scope": "RoW",
@@ -17023,7 +17054,7 @@
     "Competition: Camera mirrors in luxury segment"
    ],
    "topicId": "side_view",
-   "pmContext": null,
+   "stances": [],
    "series": "G70",
    "relatedSeries": [],
    "scope": "global",
@@ -17136,7 +17167,7 @@
     "Competition: Mercedes S-Class"
    ],
    "topicId": "vehicle_climatization",
-   "pmContext": null,
+   "stances": [],
    "series": "G70",
    "relatedSeries": [
     "G60"
@@ -17240,7 +17271,7 @@
     "Competition: LWB variants common in China"
    ],
    "topicId": "space_spatial_impression",
-   "pmContext": null,
+   "stances": [],
    "series": "G70",
    "relatedSeries": [],
    "scope": "global",
@@ -17358,7 +17389,7 @@
     "China."
    ],
    "topicId": "center_console_front",
-   "pmContext": null,
+   "stances": [],
    "series": "G70",
    "relatedSeries": [
     "G60"
@@ -17458,7 +17489,7 @@
     "Competition: Mercedes MBUX Virtual Assistant"
    ],
    "topicId": "intelligent_personal_assistant",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [
     "F70",
@@ -17580,7 +17611,7 @@
     "Competition: Mercedes Magic Sky Control"
    ],
    "topicId": "sun_protection",
-   "pmContext": null,
+   "stances": [],
    "series": "G70",
    "relatedSeries": [
     "G60"
@@ -17686,7 +17717,7 @@
     "Competition: BYD, Hyundai, Kia: V2L"
    ],
    "topicId": "bidirectional_charging",
-   "pmContext": null,
+   "stances": [],
    "series": "G60",
    "relatedSeries": [],
    "scope": "global",
@@ -18040,6 +18071,104 @@
    "title": "Driver can keep auto start-stop off permanently",
    "shortTitle": "Start-stop stays off",
    "description": "The driver can switch engine start-stop (MSA) off with a stored setting that persists across ignition cycles until the driver changes it. Applies to all ICE and PHEV derivatives in all markets; delivered as an over-the-air update.",
+   "descriptionParts": [
+    "The driver can switch engine start-stop (MSA) off with a stored setting that persists across ignition cycles until the driver changes it.",
+    "Applies to all ICE and PHEV derivatives in all markets; delivered as an over-the-air update."
+   ],
+   "provenance": [
+    {
+     "path": "description#0",
+     "source": "evidence",
+     "layer": null,
+     "ref": null,
+     "signalIds": [
+      "G60-0068",
+      "G60-0081",
+      "G60-0623"
+     ],
+     "label": "Evidence · 3 customer records"
+    },
+    {
+     "path": "description#1",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "metrics.m1.target",
+     "source": "evidence",
+     "layer": null,
+     "ref": null,
+     "signalIds": [
+      "G60-0068",
+      "G60-0081",
+      "G60-0623"
+     ],
+     "label": "Evidence · customer records"
+    },
+    {
+     "path": "metrics.m2.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · target not measured yet"
+    },
+    {
+     "path": "acceptanceCriteria#0",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "acceptanceCriteria#1",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "assumptions#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "marketScope",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.marketWeights",
+     "signalIds": [],
+     "label": "Your brief · market weights"
+    },
+    {
+     "path": "releaseTarget",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "cost",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    }
+   ],
+   "version": 1,
+   "shapeAnswers": [],
+   "briefId": "BRIEF-G60",
+   "drafter": "authored",
    "marketScope": "global",
    "variantOf": null,
    "status": "planned",
@@ -18088,6 +18217,100 @@
    "title": "Hands-free tailgate opens on the first kick in at least 95% of attempts",
    "shortTitle": "Tailgate opens first kick",
    "description": "With the comfort-access key in range, a single foot movement under the rear bumper opens the tailgate on the first attempt in at least 95% of attempts, including with a wet or dirty bumper. Applies to all G60 derivatives with automatic tailgate, all markets, from the mid-life update.",
+   "descriptionParts": [
+    "With the comfort-access key in range, a single foot movement under the rear bumper opens the tailgate on the first attempt in at least 95% of attempts, including with a wet or dirty bumper.",
+    "Applies to all G60 derivatives with automatic tailgate, all markets, from the mid-life update."
+   ],
+   "provenance": [
+    {
+     "path": "description#0",
+     "source": "evidence",
+     "layer": null,
+     "ref": null,
+     "signalIds": [
+      "G60-0180",
+      "G60-0488",
+      "G60-0815"
+     ],
+     "label": "Evidence · 3 customer records"
+    },
+    {
+     "path": "description#1",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.marketWeights",
+     "signalIds": [],
+     "label": "Your brief · market weights"
+    },
+    {
+     "path": "metrics.m1.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · Field data today ~72% (Quality, synthetic)"
+    },
+    {
+     "path": "metrics.m2.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · target not measured yet"
+    },
+    {
+     "path": "acceptanceCriteria#0",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "acceptanceCriteria#1",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "assumptions#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "marketScope",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.marketWeights",
+     "signalIds": [],
+     "label": "Your brief · market weights"
+    },
+    {
+     "path": "releaseTarget",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "cost",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    }
+   ],
+   "version": 1,
+   "shapeAnswers": [],
+   "briefId": "BRIEF-G60",
+   "drafter": "authored",
    "marketScope": "global",
    "variantOf": null,
    "status": "pm_approved",
@@ -18138,6 +18361,100 @@
    "title": "Wireless charging keeps the phone charging and below 40 °C on any trip",
    "shortTitle": "Phone charging under 40 °C",
    "description": "The wireless charging tray charges a current flagship phone at ≥ 15 W and keeps it below 40 °C during a 2-hour drive at 30 °C ambient. All derivatives, all markets, next generation.",
+   "descriptionParts": [
+    "The wireless charging tray charges a current flagship phone at ≥ 15 W and keeps it below 40 °C during a 2-hour drive at 30 °C ambient.",
+    "All derivatives, all markets, next generation."
+   ],
+   "provenance": [
+    {
+     "path": "description#0",
+     "source": "evidence",
+     "layer": null,
+     "ref": null,
+     "signalIds": [
+      "G60-0094",
+      "G60-0202",
+      "G60-0290"
+     ],
+     "label": "Evidence · 3 customer records"
+    },
+    {
+     "path": "description#1",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.marketWeights",
+     "signalIds": [],
+     "label": "Your brief · market weights"
+    },
+    {
+     "path": "metrics.m1.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · target not measured yet"
+    },
+    {
+     "path": "metrics.m2.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · Qi2 standard"
+    },
+    {
+     "path": "acceptanceCriteria#0",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "acceptanceCriteria#1",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "assumptions#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "marketScope",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.marketWeights",
+     "signalIds": [],
+     "label": "Your brief · market weights"
+    },
+    {
+     "path": "releaseTarget",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "cost",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · rough cost"
+    }
+   ],
+   "version": 1,
+   "shapeAnswers": [],
+   "briefId": "BRIEF-G60",
+   "drafter": "authored",
    "marketScope": "global",
    "variantOf": null,
    "status": "signed_off",
@@ -18189,6 +18506,100 @@
    "title": "Wireless CarPlay and Android Auto stay connected for the whole trip",
    "shortTitle": "CarPlay stays connected",
    "description": "Wireless projection reconnects within 10 s after start and drops at most once per 10 driving hours. All derivatives, all markets.",
+   "descriptionParts": [
+    "Wireless projection reconnects within 10 s after start and drops at most once per 10 driving hours.",
+    "All derivatives, all markets."
+   ],
+   "provenance": [
+    {
+     "path": "description#0",
+     "source": "evidence",
+     "layer": null,
+     "ref": null,
+     "signalIds": [
+      "G60-0094",
+      "G60-0202",
+      "G60-0290"
+     ],
+     "label": "Evidence · 3 customer records"
+    },
+    {
+     "path": "description#1",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.marketWeights",
+     "signalIds": [],
+     "label": "Your brief · market weights"
+    },
+    {
+     "path": "metrics.m1.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · target not measured yet"
+    },
+    {
+     "path": "metrics.m2.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · target not measured yet"
+    },
+    {
+     "path": "acceptanceCriteria#0",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "acceptanceCriteria#1",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "assumptions#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "marketScope",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.marketWeights",
+     "signalIds": [],
+     "label": "Your brief · market weights"
+    },
+    {
+     "path": "releaseTarget",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "cost",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · rough cost"
+    }
+   ],
+   "version": 1,
+   "shapeAnswers": [],
+   "briefId": "BRIEF-G60",
+   "drafter": "authored",
    "marketScope": "global",
    "variantOf": null,
    "status": "in_discussion",
@@ -18238,6 +18649,96 @@
    "title": "Rear-console cooler for 2 × 0.5 l bottles, ≤ 8 °C within 30 min (5 Series Li, China)",
    "shortTitle": "Rear cooler 8 °C",
    "description": "Optional rear-console cooler on the 5 Series long-wheelbase for China holds two 0.5 l bottles and cools them to 8 °C or below within 30 minutes. Shared module with the 7 Series (see CASE-G70-0004).",
+   "descriptionParts": [
+    "Optional rear-console cooler on the 5 Series long-wheelbase for China holds two 0.5 l bottles and cools them to 8 °C or below within 30 minutes.",
+    "Shared module with the 7 Series (see CASE-G70-0004)."
+   ],
+   "provenance": [
+    {
+     "path": "description#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · not backed by evidence yet"
+    },
+    {
+     "path": "description#1",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "metrics.m1.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · Li Auto L7: fridge standard"
+    },
+    {
+     "path": "metrics.m2.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · target not measured yet"
+    },
+    {
+     "path": "acceptanceCriteria#0",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "assumptions#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "assumptions#1",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "marketScope",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "releaseTarget",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "cost",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · rough cost"
+    }
+   ],
+   "version": 1,
+   "shapeAnswers": [],
+   "briefId": "BRIEF-G60",
+   "drafter": "authored",
    "marketScope": "CN",
    "variantOf": null,
    "status": "in_discussion",
@@ -18288,6 +18789,80 @@
    "title": "i5 Li successor reaches at least 750 km CLTC in the long-range variant",
    "shortTitle": "750 km CLTC",
    "description": "The long-range BEV variant of the 5 Series Li successor reaches at least 750 km CLTC. Cycles are never mixed: WLTP and EPA targets are set separately by the RoW PM.",
+   "descriptionParts": [
+    "The long-range BEV variant of the 5 Series Li successor reaches at least 750 km CLTC.",
+    "Cycles are never mixed: WLTP and EPA targets are set separately by the RoW PM."
+   ],
+   "provenance": [
+    {
+     "path": "description#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · not backed by evidence yet"
+    },
+    {
+     "path": "description#1",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "metrics.m1.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · Xiaomi SU7 Max 800 km CLTC (B) · NIO ET7 next gen 850 km (E, announced)"
+    },
+    {
+     "path": "acceptanceCriteria#0",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "assumptions#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "marketScope",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "releaseTarget",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "cost",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · rough cost"
+    }
+   ],
+   "version": 1,
+   "shapeAnswers": [],
+   "briefId": "BRIEF-G60",
+   "drafter": "authored",
    "marketScope": "CN",
    "variantOf": null,
    "status": "draft",
@@ -18331,6 +18906,92 @@
    "title": "Camera-based rear-view mirror usable with blinds or theatre screen down",
    "shortTitle": "Camera mirror",
    "description": "An optional digital rear-view mirror shows the rear camera image whenever the rear view is blocked by privacy blinds or the theatre screen. All markets, mid-life update.",
+   "descriptionParts": [
+    "An optional digital rear-view mirror shows the rear camera image whenever the rear view is blocked by privacy blinds or the theatre screen.",
+    "All markets, mid-life update."
+   ],
+   "provenance": [
+    {
+     "path": "description#0",
+     "source": "evidence",
+     "layer": null,
+     "ref": null,
+     "signalIds": [
+      "G70-0639",
+      "G70-0826",
+      "G70-1956"
+     ],
+     "label": "Evidence · 3 customer records"
+    },
+    {
+     "path": "description#1",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "metrics.m1.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · target not measured yet"
+    },
+    {
+     "path": "acceptanceCriteria#0",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "acceptanceCriteria#1",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "assumptions#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "marketScope",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.marketWeights",
+     "signalIds": [],
+     "label": "Your brief · market weights"
+    },
+    {
+     "path": "releaseTarget",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "cost",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    }
+   ],
+   "version": 1,
+   "shapeAnswers": [],
+   "briefId": "BRIEF-G70",
+   "drafter": "authored",
    "marketScope": "global",
    "variantOf": null,
    "status": "planned",
@@ -18374,6 +19035,84 @@
    "title": "Printed owner's manual available free on request at handover (UK, Japan)",
    "shortTitle": "Printed manual on request",
    "description": "Customers can order a printed quick-reference owner's manual at handover at no cost. UK and Japan first, from the mid-life update.",
+   "descriptionParts": [
+    "Customers can order a printed quick-reference owner's manual at handover at no cost.",
+    "UK and Japan first, from the mid-life update."
+   ],
+   "provenance": [
+    {
+     "path": "description#0",
+     "source": "evidence",
+     "layer": null,
+     "ref": null,
+     "signalIds": [
+      "F70-0002",
+      "F70-0081",
+      "F70-0111"
+     ],
+     "label": "Evidence · 3 customer records"
+    },
+    {
+     "path": "description#1",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "metrics.m1.target",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · target not measured yet"
+    },
+    {
+     "path": "acceptanceCriteria#0",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "assumptions#0",
+     "source": "assumption",
+     "layer": null,
+     "ref": null,
+     "signalIds": [],
+     "label": "Assumption · stated by the PM"
+    },
+    {
+     "path": "marketScope",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    },
+    {
+     "path": "releaseTarget",
+     "source": "pm_context",
+     "layer": "series_brief",
+     "ref": "brief.givens",
+     "signalIds": [],
+     "label": "Your brief · already decided"
+    },
+    {
+     "path": "cost",
+     "source": "pm_context",
+     "layer": "requirement_shape",
+     "ref": "pm.written",
+     "signalIds": [],
+     "label": "Written by the PM"
+    }
+   ],
+   "version": 1,
+   "shapeAnswers": [],
+   "briefId": "BRIEF-F70",
+   "drafter": "authored",
    "marketScope": "RoW",
    "variantOf": null,
    "status": "pm_approved",
@@ -19113,6 +19852,1337 @@
    "createdAt": "2026-10-01T10:00:00Z"
   }
  ],
+ "briefs": [
+  {
+   "id": "BRIEF-G60",
+   "series": "G60",
+   "kind": "shared",
+   "region": "global",
+   "parentId": null,
+   "ownerId": "u-lena",
+   "values": {
+    "thesis": "The most complete business saloon: keep the driving dynamics, fix the everyday annoyances, close the range gap to the A6 e-tron.",
+    "targetCustomer": {
+     "who": "keep_owners",
+     "positioning": "premium"
+    },
+    "marketWeights": {
+     "EU": 0.4,
+     "US": 0.25,
+     "CN": 0.25,
+     "RoW": 0.1
+    },
+    "changeAmbition": {
+     "level": "evolution",
+     "innovationSlots": 2
+    },
+    "protectList": [
+     "Rear-wheel-drive driving dynamics",
+     "Exterior design language",
+     "Ride quality"
+    ],
+    "dontFightOn": [
+     "Massage and lounge comfort (Mercedes owns it)",
+     "Screen count race of the Chinese EV brands"
+    ],
+    "givens": {
+     "platform": "CLAR successor with Neue Klasse electrics for the BEV",
+     "sop": "2030 (assumption)",
+     "frozen": [
+      "Platform and battery package for the mid-life update"
+     ],
+     "openReleases": [
+      "next_gen",
+      "ota"
+     ],
+     "cycle": "WLTP"
+    },
+    "costEnvelope": {
+     "sensitivity": "medium",
+     "perCarBand": "≤ +3% material cost vs. today"
+    }
+   },
+   "meta": {
+    "thesis": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-03T08:30:00Z",
+     "updatedBy": "u-lena"
+    },
+    "targetCustomer": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-03T08:30:00Z",
+     "updatedBy": "u-lena"
+    },
+    "marketWeights": {
+     "source": "data",
+     "confirmed": true,
+     "updatedAt": "2026-09-03T08:30:00Z",
+     "updatedBy": "u-lena"
+    },
+    "changeAmbition": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-03T08:30:00Z",
+     "updatedBy": "u-lena"
+    },
+    "protectList": {
+     "source": "data",
+     "confirmed": true,
+     "updatedAt": "2026-09-03T08:30:00Z",
+     "updatedBy": "u-lena"
+    },
+    "dontFightOn": {
+     "source": "brand",
+     "confirmed": true,
+     "updatedAt": "2026-09-03T08:30:00Z",
+     "updatedBy": "u-lena"
+    },
+    "givens": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-03T08:30:00Z",
+     "updatedBy": "u-lena"
+    },
+    "costEnvelope": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-03T08:30:00Z",
+     "updatedBy": "u-lena"
+    }
+   },
+   "version": 1,
+   "createdAt": "2026-09-03T08:30:00Z",
+   "updatedAt": "2026-09-03T08:30:00Z",
+   "synthetic": true
+  },
+  {
+   "id": "BRIEF-F70",
+   "series": "F70",
+   "kind": "shared",
+   "region": "global",
+   "parentId": null,
+   "ownerId": "u-sofia",
+   "values": {
+    "thesis": "Keep the sportiest compact and win back value-minded buyers we lose to MG4 and BYD Dolphin.",
+    "targetCustomer": {
+     "who": "both",
+     "positioning": "base"
+    },
+    "marketWeights": {
+     "EU": 0.74,
+     "US": 0,
+     "CN": 0,
+     "RoW": 0.26
+    },
+    "changeAmbition": {
+     "level": "evolution",
+     "innovationSlots": 1
+    },
+    "protectList": [
+     "Class-leading sportiness"
+    ],
+    "dontFightOn": [
+     "Lowest price in the segment"
+    ],
+    "givens": {
+     "platform": "FAAR successor",
+     "sop": "2031 (assumption)",
+     "frozen": [],
+     "openReleases": [
+      "next_gen",
+      "lci",
+      "ota"
+     ],
+     "cycle": "WLTP"
+    },
+    "costEnvelope": {
+     "sensitivity": "high",
+     "perCarBand": "≤ +1% material cost vs. today"
+    }
+   },
+   "meta": {
+    "thesis": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T09:00:00Z",
+     "updatedBy": "u-sofia"
+    },
+    "targetCustomer": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T09:00:00Z",
+     "updatedBy": "u-sofia"
+    },
+    "marketWeights": {
+     "source": "data",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T09:00:00Z",
+     "updatedBy": "u-sofia"
+    },
+    "changeAmbition": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T09:00:00Z",
+     "updatedBy": "u-sofia"
+    },
+    "protectList": {
+     "source": "data",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T09:00:00Z",
+     "updatedBy": "u-sofia"
+    },
+    "dontFightOn": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T09:00:00Z",
+     "updatedBy": "u-sofia"
+    },
+    "givens": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T09:00:00Z",
+     "updatedBy": "u-sofia"
+    },
+    "costEnvelope": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T09:00:00Z",
+     "updatedBy": "u-sofia"
+    }
+   },
+   "version": 1,
+   "createdAt": "2026-09-04T09:00:00Z",
+   "updatedAt": "2026-09-04T09:00:00Z",
+   "synthetic": true
+  },
+  {
+   "id": "BRIEF-G70",
+   "series": "G70",
+   "kind": "shared",
+   "region": "global",
+   "parentId": null,
+   "ownerId": "u-daniel",
+   "values": {
+    "thesis": "A mid-life update that makes the flagship feel effortless: rear comfort, quietness and tech without menus.",
+    "targetCustomer": {
+     "who": "keep_owners",
+     "positioning": "luxury"
+    },
+    "marketWeights": {
+     "EU": 0.33,
+     "US": 0.27,
+     "CN": 0.23,
+     "RoW": 0.17
+    },
+    "changeAmbition": {
+     "level": "evolution",
+     "innovationSlots": 1
+    },
+    "protectList": [
+     "BMW Panoramic Vision",
+     "Rear comfort and space"
+    ],
+    "dontFightOn": [
+     "Massage and lounge comfort (Mercedes owns it)"
+    ],
+    "givens": {
+     "platform": "Current G70 platform (frozen for the mid-life update)",
+     "sop": "2028 (assumption)",
+     "frozen": [
+      "Body structure",
+      "Powertrain"
+     ],
+     "openReleases": [
+      "lci",
+      "ota"
+     ],
+     "cycle": "WLTP"
+    },
+    "costEnvelope": {
+     "sensitivity": "low",
+     "perCarBand": "Flexible within the luxury budget"
+    }
+   },
+   "meta": {
+    "thesis": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T11:00:00Z",
+     "updatedBy": "u-daniel"
+    },
+    "targetCustomer": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T11:00:00Z",
+     "updatedBy": "u-daniel"
+    },
+    "marketWeights": {
+     "source": "data",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T11:00:00Z",
+     "updatedBy": "u-daniel"
+    },
+    "changeAmbition": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T11:00:00Z",
+     "updatedBy": "u-daniel"
+    },
+    "protectList": {
+     "source": "data",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T11:00:00Z",
+     "updatedBy": "u-daniel"
+    },
+    "dontFightOn": {
+     "source": "brand",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T11:00:00Z",
+     "updatedBy": "u-daniel"
+    },
+    "givens": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T11:00:00Z",
+     "updatedBy": "u-daniel"
+    },
+    "costEnvelope": {
+     "source": "pm",
+     "confirmed": true,
+     "updatedAt": "2026-09-04T11:00:00Z",
+     "updatedBy": "u-daniel"
+    }
+   },
+   "version": 1,
+   "createdAt": "2026-09-04T11:00:00Z",
+   "updatedAt": "2026-09-04T11:00:00Z",
+   "synthetic": true
+  }
+ ],
+ "requirementVersions": [
+  {
+   "requirementId": "REQ-G60-0002",
+   "version": 1,
+   "snapshot": {
+    "title": "Driver can keep auto start-stop off permanently",
+    "shortTitle": "Start-stop stays off",
+    "description": "The driver can switch engine start-stop (MSA) off with a stored setting that persists across ignition cycles until the driver changes it. Applies to all ICE and PHEV derivatives in all markets; delivered as an over-the-air update.",
+    "descriptionParts": [
+     "The driver can switch engine start-stop (MSA) off with a stored setting that persists across ignition cycles until the driver changes it.",
+     "Applies to all ICE and PHEV derivatives in all markets; delivered as an over-the-air update."
+    ],
+    "marketScope": "global",
+    "releaseTarget": "ota",
+    "metrics": [
+     {
+      "id": "m1",
+      "question": "Does the setting persist across restarts?",
+      "target": "Yes, until changed by the driver",
+      "basis": "evidence"
+     },
+     {
+      "id": "m2",
+      "question": "Share of MSA 'permanent off' wishes after the update",
+      "target": "−80% within 12 months",
+      "basis": "assumption"
+     }
+    ],
+    "acceptanceCriteria": [
+     "Setting survives 10 consecutive ignition cycles",
+     "Available in the driving-assistance quick menu and My Modes"
+    ],
+    "assumptions": [
+     "Homologation may restrict a permanent default in some markets (out of our scope, flagged to engineering)"
+    ],
+    "evidenceLevel": "high",
+    "cost": {
+     "size": "S",
+     "eurBand": "< €0.1M (software)",
+     "source": "pm",
+     "note": "Software change only."
+    },
+    "provenance": [
+     {
+      "path": "description#0",
+      "source": "evidence",
+      "layer": null,
+      "ref": null,
+      "signalIds": [
+       "G60-0068",
+       "G60-0081",
+       "G60-0623"
+      ],
+      "label": "Evidence · 3 customer records"
+     },
+     {
+      "path": "description#1",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "metrics.m1.target",
+      "source": "evidence",
+      "layer": null,
+      "ref": null,
+      "signalIds": [
+       "G60-0068",
+       "G60-0081",
+       "G60-0623"
+      ],
+      "label": "Evidence · customer records"
+     },
+     {
+      "path": "metrics.m2.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · target not measured yet"
+     },
+     {
+      "path": "acceptanceCriteria#0",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "acceptanceCriteria#1",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "assumptions#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "marketScope",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.marketWeights",
+      "signalIds": [],
+      "label": "Your brief · market weights"
+     },
+     {
+      "path": "releaseTarget",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "cost",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     }
+    ],
+    "shapeAnswers": []
+   },
+   "cause": "draft",
+   "rationale": "First version, written before provenance tagging (tags added by hand)",
+   "createdAt": "2026-09-21T10:00:00Z",
+   "createdBy": "u-lena"
+  },
+  {
+   "requirementId": "REQ-G60-0004",
+   "version": 1,
+   "snapshot": {
+    "title": "Hands-free tailgate opens on the first kick in at least 95% of attempts",
+    "shortTitle": "Tailgate opens first kick",
+    "description": "With the comfort-access key in range, a single foot movement under the rear bumper opens the tailgate on the first attempt in at least 95% of attempts, including with a wet or dirty bumper. Applies to all G60 derivatives with automatic tailgate, all markets, from the mid-life update.",
+    "descriptionParts": [
+     "With the comfort-access key in range, a single foot movement under the rear bumper opens the tailgate on the first attempt in at least 95% of attempts, including with a wet or dirty bumper.",
+     "Applies to all G60 derivatives with automatic tailgate, all markets, from the mid-life update."
+    ],
+    "marketScope": "global",
+    "releaseTarget": "lci",
+    "metrics": [
+     {
+      "id": "m1",
+      "question": "First-try success rate",
+      "target": "≥ 95%",
+      "unit": "%",
+      "basis": "assumption",
+      "benchmark": "Field data today ~72% (Quality, synthetic)"
+     },
+     {
+      "id": "m2",
+      "question": "'Not user-friendly' verbatims on the feature",
+      "target": "−70%",
+      "basis": "assumption"
+     }
+    ],
+    "acceptanceCriteria": [
+     "Validated in rain and winter conditions",
+     "No false openings in car wash"
+    ],
+    "assumptions": [
+     "Sensor change fits the LCI bumper update"
+    ],
+    "evidenceLevel": "high",
+    "cost": {
+     "size": "M",
+     "eurBand": "€0.5–1.5M",
+     "source": "ai_estimate",
+     "note": "Sensor + software; estimate from similar LCI changes."
+    },
+    "provenance": [
+     {
+      "path": "description#0",
+      "source": "evidence",
+      "layer": null,
+      "ref": null,
+      "signalIds": [
+       "G60-0180",
+       "G60-0488",
+       "G60-0815"
+      ],
+      "label": "Evidence · 3 customer records"
+     },
+     {
+      "path": "description#1",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.marketWeights",
+      "signalIds": [],
+      "label": "Your brief · market weights"
+     },
+     {
+      "path": "metrics.m1.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · Field data today ~72% (Quality, synthetic)"
+     },
+     {
+      "path": "metrics.m2.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · target not measured yet"
+     },
+     {
+      "path": "acceptanceCriteria#0",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "acceptanceCriteria#1",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "assumptions#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "marketScope",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.marketWeights",
+      "signalIds": [],
+      "label": "Your brief · market weights"
+     },
+     {
+      "path": "releaseTarget",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "cost",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     }
+    ],
+    "shapeAnswers": []
+   },
+   "cause": "draft",
+   "rationale": "First version, written before provenance tagging (tags added by hand)",
+   "createdAt": "2026-09-12T11:00:00Z",
+   "createdBy": "u-lena"
+  },
+  {
+   "requirementId": "REQ-G60-0009",
+   "version": 1,
+   "snapshot": {
+    "title": "Wireless charging keeps the phone charging and below 40 °C on any trip",
+    "shortTitle": "Phone charging under 40 °C",
+    "description": "The wireless charging tray charges a current flagship phone at ≥ 15 W and keeps it below 40 °C during a 2-hour drive at 30 °C ambient. All derivatives, all markets, next generation.",
+    "descriptionParts": [
+     "The wireless charging tray charges a current flagship phone at ≥ 15 W and keeps it below 40 °C during a 2-hour drive at 30 °C ambient.",
+     "All derivatives, all markets, next generation."
+    ],
+    "marketScope": "global",
+    "releaseTarget": "next_gen",
+    "metrics": [
+     {
+      "id": "m1",
+      "question": "Phone temperature after 2 h at 30 °C",
+      "target": "< 40 °C",
+      "unit": "°C",
+      "basis": "assumption"
+     },
+     {
+      "id": "m2",
+      "question": "Charging power",
+      "target": "≥ 15 W",
+      "unit": "W",
+      "basis": "assumption",
+      "benchmark": "Qi2 standard"
+     }
+    ],
+    "acceptanceCriteria": [
+     "No charging stop in 2-hour test",
+     "Works with phone cases up to 3 mm"
+    ],
+    "assumptions": [
+     "Active cooling fits the centre console package"
+    ],
+    "evidenceLevel": "high",
+    "cost": {
+     "size": "M",
+     "eurBand": "€15–25 per car",
+     "source": "finance",
+     "note": "Finance answer 04.10. (synthetic)."
+    },
+    "provenance": [
+     {
+      "path": "description#0",
+      "source": "evidence",
+      "layer": null,
+      "ref": null,
+      "signalIds": [
+       "G60-0094",
+       "G60-0202",
+       "G60-0290"
+      ],
+      "label": "Evidence · 3 customer records"
+     },
+     {
+      "path": "description#1",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.marketWeights",
+      "signalIds": [],
+      "label": "Your brief · market weights"
+     },
+     {
+      "path": "metrics.m1.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · target not measured yet"
+     },
+     {
+      "path": "metrics.m2.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · Qi2 standard"
+     },
+     {
+      "path": "acceptanceCriteria#0",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "acceptanceCriteria#1",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "assumptions#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "marketScope",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.marketWeights",
+      "signalIds": [],
+      "label": "Your brief · market weights"
+     },
+     {
+      "path": "releaseTarget",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "cost",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · rough cost"
+     }
+    ],
+    "shapeAnswers": []
+   },
+   "cause": "draft",
+   "rationale": "First version, written before provenance tagging (tags added by hand)",
+   "createdAt": "2026-09-19T10:00:00Z",
+   "createdBy": "u-lena"
+  },
+  {
+   "requirementId": "REQ-G60-0019",
+   "version": 1,
+   "snapshot": {
+    "title": "Wireless CarPlay and Android Auto stay connected for the whole trip",
+    "shortTitle": "CarPlay stays connected",
+    "description": "Wireless projection reconnects within 10 s after start and drops at most once per 10 driving hours. All derivatives, all markets.",
+    "descriptionParts": [
+     "Wireless projection reconnects within 10 s after start and drops at most once per 10 driving hours.",
+     "All derivatives, all markets."
+    ],
+    "marketScope": "global",
+    "releaseTarget": "ota",
+    "metrics": [
+     {
+      "id": "m1",
+      "question": "Reconnect time after start",
+      "target": "≤ 10 s",
+      "unit": "s",
+      "basis": "assumption"
+     },
+     {
+      "id": "m2",
+      "question": "Disconnects per 10 driving hours",
+      "target": "≤ 1",
+      "basis": "assumption"
+     }
+    ],
+    "acceptanceCriteria": [
+     "Tested with the 5 most common phone models per market",
+     "Reconnection feels seamless and intuitive to the driver"
+    ],
+    "assumptions": [
+     "Root cause is software (to confirm with engineering)"
+    ],
+    "evidenceLevel": "high",
+    "cost": {
+     "size": "S",
+     "eurBand": "< €0.3M (software)",
+     "source": "ai_estimate",
+     "note": "If root cause is software."
+    },
+    "provenance": [
+     {
+      "path": "description#0",
+      "source": "evidence",
+      "layer": null,
+      "ref": null,
+      "signalIds": [
+       "G60-0094",
+       "G60-0202",
+       "G60-0290"
+      ],
+      "label": "Evidence · 3 customer records"
+     },
+     {
+      "path": "description#1",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.marketWeights",
+      "signalIds": [],
+      "label": "Your brief · market weights"
+     },
+     {
+      "path": "metrics.m1.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · target not measured yet"
+     },
+     {
+      "path": "metrics.m2.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · target not measured yet"
+     },
+     {
+      "path": "acceptanceCriteria#0",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "acceptanceCriteria#1",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "assumptions#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "marketScope",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.marketWeights",
+      "signalIds": [],
+      "label": "Your brief · market weights"
+     },
+     {
+      "path": "releaseTarget",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "cost",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · rough cost"
+     }
+    ],
+    "shapeAnswers": []
+   },
+   "cause": "draft",
+   "rationale": "First version, written before provenance tagging (tags added by hand)",
+   "createdAt": "2026-09-19T10:05:00Z",
+   "createdBy": "u-lena"
+  },
+  {
+   "requirementId": "REQ-G60-CN-0002",
+   "version": 1,
+   "snapshot": {
+    "title": "Rear-console cooler for 2 × 0.5 l bottles, ≤ 8 °C within 30 min (5 Series Li, China)",
+    "shortTitle": "Rear cooler 8 °C",
+    "description": "Optional rear-console cooler on the 5 Series long-wheelbase for China holds two 0.5 l bottles and cools them to 8 °C or below within 30 minutes. Shared module with the 7 Series (see CASE-G70-0004).",
+    "descriptionParts": [
+     "Optional rear-console cooler on the 5 Series long-wheelbase for China holds two 0.5 l bottles and cools them to 8 °C or below within 30 minutes.",
+     "Shared module with the 7 Series (see CASE-G70-0004)."
+    ],
+    "marketScope": "CN",
+    "releaseTarget": "next_gen",
+    "metrics": [
+     {
+      "id": "m1",
+      "question": "Capacity",
+      "target": "2 × 0.5 l bottles",
+      "basis": "assumption",
+      "benchmark": "Li Auto L7: fridge standard"
+     },
+     {
+      "id": "m2",
+      "question": "Cool-down time to ≤ 8 °C",
+      "target": "30 min",
+      "unit": "min",
+      "basis": "assumption"
+     }
+    ],
+    "acceptanceCriteria": [
+     "Fits the rear console without losing the centre armrest"
+    ],
+    "assumptions": [
+     "Evidence is web-only (no Chinese verbatims)",
+     "Shared module with G70 reduces cost"
+    ],
+    "evidenceLevel": "low",
+    "cost": {
+     "size": "M",
+     "eurBand": "€120–180 per car",
+     "source": "ai_estimate",
+     "note": "Option price potential to be checked with Finance."
+    },
+    "provenance": [
+     {
+      "path": "description#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · not backed by evidence yet"
+     },
+     {
+      "path": "description#1",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "metrics.m1.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · Li Auto L7: fridge standard"
+     },
+     {
+      "path": "metrics.m2.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · target not measured yet"
+     },
+     {
+      "path": "acceptanceCriteria#0",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "assumptions#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "assumptions#1",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "marketScope",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "releaseTarget",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "cost",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · rough cost"
+     }
+    ],
+    "shapeAnswers": []
+   },
+   "cause": "draft",
+   "rationale": "First version, written before provenance tagging (tags added by hand)",
+   "createdAt": "2026-09-22T03:00:00Z",
+   "createdBy": "u-wei"
+  },
+  {
+   "requirementId": "REQ-G60-CN-0003",
+   "version": 1,
+   "snapshot": {
+    "title": "i5 Li successor reaches at least 750 km CLTC in the long-range variant",
+    "shortTitle": "750 km CLTC",
+    "description": "The long-range BEV variant of the 5 Series Li successor reaches at least 750 km CLTC. Cycles are never mixed: WLTP and EPA targets are set separately by the RoW PM.",
+    "descriptionParts": [
+     "The long-range BEV variant of the 5 Series Li successor reaches at least 750 km CLTC.",
+     "Cycles are never mixed: WLTP and EPA targets are set separately by the RoW PM."
+    ],
+    "marketScope": "CN",
+    "releaseTarget": "next_gen",
+    "metrics": [
+     {
+      "id": "m1",
+      "question": "CLTC range, long-range variant",
+      "target": "750 km",
+      "unit": "km",
+      "basis": "assumption",
+      "benchmark": "Xiaomi SU7 Max 800 km CLTC (B) · NIO ET7 next gen 850 km (E, announced)"
+     }
+    ],
+    "acceptanceCriteria": [
+     "Homologated CLTC value"
+    ],
+    "assumptions": [
+     "Battery roadmap not yet shared by engineering"
+    ],
+    "evidenceLevel": "medium",
+    "cost": {
+     "size": "L",
+     "eurBand": "> €50M programme",
+     "source": "ai_estimate",
+     "note": "Platform decision; engineering owns feasibility."
+    },
+    "provenance": [
+     {
+      "path": "description#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · not backed by evidence yet"
+     },
+     {
+      "path": "description#1",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "metrics.m1.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · Xiaomi SU7 Max 800 km CLTC (B) · NIO ET7 next gen 850 km (E, announced)"
+     },
+     {
+      "path": "acceptanceCriteria#0",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "assumptions#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "marketScope",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "releaseTarget",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "cost",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · rough cost"
+     }
+    ],
+    "shapeAnswers": []
+   },
+   "cause": "draft",
+   "rationale": "First version, written before provenance tagging (tags added by hand)",
+   "createdAt": "2026-09-26T03:00:00Z",
+   "createdBy": "u-wei"
+  },
+  {
+   "requirementId": "REQ-G70-0001",
+   "version": 1,
+   "snapshot": {
+    "title": "Camera-based rear-view mirror usable with blinds or theatre screen down",
+    "shortTitle": "Camera mirror",
+    "description": "An optional digital rear-view mirror shows the rear camera image whenever the rear view is blocked by privacy blinds or the theatre screen. All markets, mid-life update.",
+    "descriptionParts": [
+     "An optional digital rear-view mirror shows the rear camera image whenever the rear view is blocked by privacy blinds or the theatre screen.",
+     "All markets, mid-life update."
+    ],
+    "marketScope": "global",
+    "releaseTarget": "lci",
+    "metrics": [
+     {
+      "id": "m1",
+      "question": "Switch time mirror → camera",
+      "target": "≤ 0.5 s",
+      "unit": "s",
+      "basis": "assumption"
+     }
+    ],
+    "acceptanceCriteria": [
+     "Readable in direct sunlight",
+     "Manual toggle"
+    ],
+    "assumptions": [
+     "E-mirror preparation in 9DB covers wiring"
+    ],
+    "evidenceLevel": "medium",
+    "cost": {
+     "size": "S",
+     "eurBand": "€200–300 per car (option)",
+     "source": "option_price",
+     "note": "Priced as option."
+    },
+    "provenance": [
+     {
+      "path": "description#0",
+      "source": "evidence",
+      "layer": null,
+      "ref": null,
+      "signalIds": [
+       "G70-0639",
+       "G70-0826",
+       "G70-1956"
+      ],
+      "label": "Evidence · 3 customer records"
+     },
+     {
+      "path": "description#1",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "metrics.m1.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · target not measured yet"
+     },
+     {
+      "path": "acceptanceCriteria#0",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "acceptanceCriteria#1",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "assumptions#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "marketScope",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.marketWeights",
+      "signalIds": [],
+      "label": "Your brief · market weights"
+     },
+     {
+      "path": "releaseTarget",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "cost",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     }
+    ],
+    "shapeAnswers": []
+   },
+   "cause": "draft",
+   "rationale": "First version, written before provenance tagging (tags added by hand)",
+   "createdAt": "2026-09-10T10:00:00Z",
+   "createdBy": "u-daniel"
+  },
+  {
+   "requirementId": "REQ-F70-0001",
+   "version": 1,
+   "snapshot": {
+    "title": "Printed owner's manual available free on request at handover (UK, Japan)",
+    "shortTitle": "Printed manual on request",
+    "description": "Customers can order a printed quick-reference owner's manual at handover at no cost. UK and Japan first, from the mid-life update.",
+    "descriptionParts": [
+     "Customers can order a printed quick-reference owner's manual at handover at no cost.",
+     "UK and Japan first, from the mid-life update."
+    ],
+    "marketScope": "RoW",
+    "releaseTarget": "lci",
+    "metrics": [
+     {
+      "id": "m1",
+      "question": "Owner's manual DTU + wishes",
+      "target": "−60%",
+      "basis": "assumption"
+     }
+    ],
+    "acceptanceCriteria": [
+     "Available in English and Japanese"
+    ],
+    "assumptions": [
+     "Print-on-demand partner exists"
+    ],
+    "evidenceLevel": "high",
+    "cost": {
+     "size": "S",
+     "eurBand": "€5–8 per printed copy",
+     "source": "ai_estimate",
+     "note": "Print on demand."
+    },
+    "provenance": [
+     {
+      "path": "description#0",
+      "source": "evidence",
+      "layer": null,
+      "ref": null,
+      "signalIds": [
+       "F70-0002",
+       "F70-0081",
+       "F70-0111"
+      ],
+      "label": "Evidence · 3 customer records"
+     },
+     {
+      "path": "description#1",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "metrics.m1.target",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · target not measured yet"
+     },
+     {
+      "path": "acceptanceCriteria#0",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "assumptions#0",
+      "source": "assumption",
+      "layer": null,
+      "ref": null,
+      "signalIds": [],
+      "label": "Assumption · stated by the PM"
+     },
+     {
+      "path": "marketScope",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     },
+     {
+      "path": "releaseTarget",
+      "source": "pm_context",
+      "layer": "series_brief",
+      "ref": "brief.givens",
+      "signalIds": [],
+      "label": "Your brief · already decided"
+     },
+     {
+      "path": "cost",
+      "source": "pm_context",
+      "layer": "requirement_shape",
+      "ref": "pm.written",
+      "signalIds": [],
+      "label": "Written by the PM"
+     }
+    ],
+    "shapeAnswers": []
+   },
+   "cause": "draft",
+   "rationale": "First version, written before provenance tagging (tags added by hand)",
+   "createdAt": "2026-09-14T10:00:00Z",
+   "createdBy": "u-sofia"
+  }
+ ],
+ "feedback": [],
  "audit": [
   {
    "seq": 1,
@@ -19536,6 +21606,20 @@
   },
   {
    "seq": 27,
+   "at": "2026-09-03T08:30:00Z",
+   "actorId": "u-lena",
+   "actorType": "human",
+   "action": "brief.created",
+   "objectType": "brief",
+   "objectId": "BRIEF-G60",
+   "after": {
+    "series": "G60",
+    "kind": "shared"
+   },
+   "rationale": "Onboarding: series brief confirmed"
+  },
+  {
+   "seq": 28,
    "at": "2026-09-04T08:57:36.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19551,7 +21635,35 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 28,
+   "seq": 29,
+   "at": "2026-09-04T09:00:00Z",
+   "actorId": "u-sofia",
+   "actorType": "human",
+   "action": "brief.created",
+   "objectType": "brief",
+   "objectId": "BRIEF-F70",
+   "after": {
+    "series": "F70",
+    "kind": "shared"
+   },
+   "rationale": "Onboarding: series brief confirmed"
+  },
+  {
+   "seq": 30,
+   "at": "2026-09-04T11:00:00Z",
+   "actorId": "u-daniel",
+   "actorType": "human",
+   "action": "brief.created",
+   "objectType": "brief",
+   "objectId": "BRIEF-G70",
+   "after": {
+    "series": "G70",
+    "kind": "shared"
+   },
+   "rationale": "Onboarding: series brief confirmed"
+  },
+  {
+   "seq": 31,
    "at": "2026-09-04T14:43:12.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -19567,7 +21679,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 29,
+   "seq": 32,
    "at": "2026-09-05T05:07:12.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19583,7 +21695,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 30,
+   "seq": 33,
    "at": "2026-09-05T09:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -19597,7 +21709,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 31,
+   "seq": 34,
    "at": "2026-09-05T09:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -19616,7 +21728,7 @@
    }
   },
   {
-   "seq": 32,
+   "seq": 35,
    "at": "2026-09-05T23:21:36.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19632,7 +21744,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 33,
+   "seq": 36,
    "at": "2026-09-06T01:16:48.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19648,7 +21760,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 34,
+   "seq": 37,
    "at": "2026-09-07T08:00:00.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -19664,7 +21776,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 35,
+   "seq": 38,
    "at": "2026-09-07T13:24:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -19680,7 +21792,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 36,
+   "seq": 39,
    "at": "2026-09-08T03:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -19694,7 +21806,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 37,
+   "seq": 40,
    "at": "2026-09-08T03:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -19713,7 +21825,7 @@
    }
   },
   {
-   "seq": 38,
+   "seq": 41,
    "at": "2026-09-08T13:45:36.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -19729,7 +21841,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 39,
+   "seq": 42,
    "at": "2026-09-09T08:00:00Z",
    "actorId": "agent:innovation_scout",
    "actorType": "ai",
@@ -19743,7 +21855,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 40,
+   "seq": 43,
    "at": "2026-09-09T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -19762,7 +21874,7 @@
    }
   },
   {
-   "seq": 41,
+   "seq": 44,
    "at": "2026-09-09T08:57:36.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19778,7 +21890,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 42,
+   "seq": 45,
    "at": "2026-09-09T09:55:12.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -19794,7 +21906,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 43,
+   "seq": 46,
    "at": "2026-09-10T08:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -19808,7 +21920,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 44,
+   "seq": 47,
    "at": "2026-09-10T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -19827,7 +21939,7 @@
    }
   },
   {
-   "seq": 45,
+   "seq": 48,
    "at": "2026-09-10T10:00:00Z",
    "actorId": "agent:requirement_writer",
    "actorType": "ai",
@@ -19840,7 +21952,7 @@
    "rationale": "Generated from confirmed CASE-G70-0001"
   },
   {
-   "seq": 46,
+   "seq": 49,
    "at": "2026-09-11T09:55:12.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19856,7 +21968,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 47,
+   "seq": 50,
    "at": "2026-09-12T02:14:24.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19872,7 +21984,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 48,
+   "seq": 51,
    "at": "2026-09-12T03:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -19886,7 +21998,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 49,
+   "seq": 52,
    "at": "2026-09-12T03:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -19905,7 +22017,7 @@
    }
   },
   {
-   "seq": 50,
+   "seq": 53,
    "at": "2026-09-12T11:00:00Z",
    "actorId": "agent:requirement_writer",
    "actorType": "ai",
@@ -19918,7 +22030,7 @@
    "rationale": "Generated from confirmed CASE-G60-0004"
   },
   {
-   "seq": 51,
+   "seq": 54,
    "at": "2026-09-12T13:36:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19934,7 +22046,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 52,
+   "seq": 55,
    "at": "2026-09-12T18:33:36.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -19950,7 +22062,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 53,
+   "seq": 56,
    "at": "2026-09-13T06:04:48.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -19966,7 +22078,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 54,
+   "seq": 57,
    "at": "2026-09-13T10:31:12.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -19982,7 +22094,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 55,
+   "seq": 58,
    "at": "2026-09-13T23:48:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -19998,7 +22110,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 56,
+   "seq": 59,
    "at": "2026-09-14T07:02:24.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20014,7 +22126,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 57,
+   "seq": 60,
    "at": "2026-09-14T08:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -20028,7 +22140,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 58,
+   "seq": 61,
    "at": "2026-09-14T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -20047,7 +22159,7 @@
    }
   },
   {
-   "seq": 59,
+   "seq": 62,
    "at": "2026-09-14T10:00:00Z",
    "actorId": "agent:requirement_writer",
    "actorType": "ai",
@@ -20060,7 +22172,7 @@
    "rationale": "Generated from confirmed CASE-F70-0001"
   },
   {
-   "seq": 60,
+   "seq": 63,
    "at": "2026-09-14T10:52:48.000Z",
    "actorId": "u-jonas",
    "actorType": "human",
@@ -20076,7 +22188,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 61,
+   "seq": 64,
    "at": "2026-09-14T19:31:12.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -20092,7 +22204,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 62,
+   "seq": 65,
    "at": "2026-09-14T19:36:00.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20108,7 +22220,7 @@
    "rationale": "Discussed with engineering"
   },
   {
-   "seq": 63,
+   "seq": 66,
    "at": "2026-09-15T08:00:00.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -20124,7 +22236,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 64,
+   "seq": 67,
    "at": "2026-09-15T11:50:24.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20140,7 +22252,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 65,
+   "seq": 68,
    "at": "2026-09-16T12:48:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20156,7 +22268,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 66,
+   "seq": 69,
    "at": "2026-09-16T21:26:24.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20172,7 +22284,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 67,
+   "seq": 70,
    "at": "2026-09-17T08:00:00Z",
    "actorId": "agent:innovation_scout",
    "actorType": "ai",
@@ -20186,7 +22298,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 68,
+   "seq": 71,
    "at": "2026-09-17T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -20205,7 +22317,7 @@
    }
   },
   {
-   "seq": 69,
+   "seq": 72,
    "at": "2026-09-18T07:30:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -20219,7 +22331,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 70,
+   "seq": 73,
    "at": "2026-09-18T07:44:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -20238,7 +22350,7 @@
    }
   },
   {
-   "seq": 71,
+   "seq": 74,
    "at": "2026-09-18T10:52:48.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20254,7 +22366,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 72,
+   "seq": 75,
    "at": "2026-09-18T18:02:24.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -20270,7 +22382,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 73,
+   "seq": 76,
    "at": "2026-09-18T23:21:36.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20286,7 +22398,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 74,
+   "seq": 77,
    "at": "2026-09-19T05:12:00.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20302,7 +22414,7 @@
    "rationale": "Targets agreed"
   },
   {
-   "seq": 75,
+   "seq": 78,
    "at": "2026-09-19T10:00:00Z",
    "actorId": "agent:requirement_writer",
    "actorType": "ai",
@@ -20315,7 +22427,7 @@
    "rationale": "Generated from confirmed CASE-G60-0009"
   },
   {
-   "seq": 76,
+   "seq": 79,
    "at": "2026-09-19T10:05:00Z",
    "actorId": "agent:requirement_writer",
    "actorType": "ai",
@@ -20328,7 +22440,7 @@
    "rationale": "Generated from confirmed CASE-G60-0009"
   },
   {
-   "seq": 77,
+   "seq": 80,
    "at": "2026-09-19T11:50:24.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20344,7 +22456,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 78,
+   "seq": 81,
    "at": "2026-09-19T13:45:36.000Z",
    "actorId": "u-jonas",
    "actorType": "human",
@@ -20360,7 +22472,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 79,
+   "seq": 82,
    "at": "2026-09-19T18:12:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20376,7 +22488,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 80,
+   "seq": 83,
    "at": "2026-09-19T21:56:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -20392,7 +22504,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 81,
+   "seq": 84,
    "at": "2026-09-20T08:00:00Z",
    "actorId": "u-jonas",
    "actorType": "human",
@@ -20406,7 +22518,7 @@
    "rationale": "Opened by hand"
   },
   {
-   "seq": 82,
+   "seq": 85,
    "at": "2026-09-20T10:00:00Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20419,7 +22531,7 @@
    "rationale": "Answer from manual"
   },
   {
-   "seq": 83,
+   "seq": 86,
    "at": "2026-09-20T10:12:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -20435,7 +22547,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 84,
+   "seq": 87,
    "at": "2026-09-21T01:16:48.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -20451,7 +22563,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 85,
+   "seq": 88,
    "at": "2026-09-21T03:00:00Z",
    "actorId": "agent:innovation_scout",
    "actorType": "ai",
@@ -20465,7 +22577,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 86,
+   "seq": 89,
    "at": "2026-09-21T03:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -20484,7 +22596,7 @@
    }
   },
   {
-   "seq": 87,
+   "seq": 90,
    "at": "2026-09-21T04:09:36.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20500,7 +22612,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 88,
+   "seq": 91,
    "at": "2026-09-21T10:00:00Z",
    "actorId": "agent:requirement_writer",
    "actorType": "ai",
@@ -20513,7 +22625,7 @@
    "rationale": "Generated from confirmed CASE-G60-0002"
   },
   {
-   "seq": 89,
+   "seq": 92,
    "at": "2026-09-21T12:20:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20529,7 +22641,7 @@
    "rationale": "Discussed with engineering"
   },
   {
-   "seq": 90,
+   "seq": 93,
    "at": "2026-09-21T12:48:00.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20545,7 +22657,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 91,
+   "seq": 94,
    "at": "2026-09-21T13:45:36.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20561,7 +22673,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 92,
+   "seq": 95,
    "at": "2026-09-21T23:54:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20577,7 +22689,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 93,
+   "seq": 96,
    "at": "2026-09-22T03:00:00Z",
    "actorId": "agent:requirement_writer",
    "actorType": "ai",
@@ -20590,7 +22702,7 @@
    "rationale": "Generated from confirmed CASE-G60-CN-0002"
   },
   {
-   "seq": 94,
+   "seq": 97,
    "at": "2026-09-22T17:36:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20606,7 +22718,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 95,
+   "seq": 98,
    "at": "2026-09-22T18:00:00.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -20622,7 +22734,7 @@
    "rationale": "Discussed with engineering"
   },
   {
-   "seq": 96,
+   "seq": 99,
    "at": "2026-09-23T03:00:00Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -20635,7 +22747,7 @@
    "rationale": "Same rear-console cooler is relevant for the 7 Series; let's build one module for both."
   },
   {
-   "seq": 97,
+   "seq": 100,
    "at": "2026-09-23T09:48:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20651,7 +22763,7 @@
    "rationale": "Discussed with engineering"
   },
   {
-   "seq": 98,
+   "seq": 101,
    "at": "2026-09-23T14:48:00.000Z",
    "actorId": "u-katrin",
    "actorType": "human",
@@ -20667,7 +22779,7 @@
    "rationale": "Fits the product line plan"
   },
   {
-   "seq": 99,
+   "seq": 102,
    "at": "2026-09-23T16:00:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20683,7 +22795,7 @@
    "rationale": "Discussed with engineering"
   },
   {
-   "seq": 100,
+   "seq": 103,
    "at": "2026-09-24T01:33:36.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -20699,7 +22811,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 101,
+   "seq": 104,
    "at": "2026-09-24T08:00:00Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20713,7 +22825,7 @@
    "rationale": "Opened by hand"
   },
   {
-   "seq": 102,
+   "seq": 105,
    "at": "2026-09-24T08:00:00Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20726,7 +22838,7 @@
    "rationale": "Shared module"
   },
   {
-   "seq": 103,
+   "seq": 106,
    "at": "2026-09-24T08:36:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -20742,7 +22854,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 104,
+   "seq": 107,
    "at": "2026-09-24T16:38:24.000Z",
    "actorId": "u-jonas",
    "actorType": "human",
@@ -20758,7 +22870,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 105,
+   "seq": 108,
    "at": "2026-09-25T00:19:12.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20774,7 +22886,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 106,
+   "seq": 109,
    "at": "2026-09-25T08:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -20788,7 +22900,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 107,
+   "seq": 110,
    "at": "2026-09-25T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -20807,7 +22919,7 @@
    }
   },
   {
-   "seq": 108,
+   "seq": 111,
    "at": "2026-09-25T09:36:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20823,7 +22935,7 @@
    "rationale": "Targets agreed"
   },
   {
-   "seq": 109,
+   "seq": 112,
    "at": "2026-09-25T10:00:00Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20849,7 +22961,7 @@
    "rationale": "Quality baseline is 72%; 90% would not remove the complaints"
   },
   {
-   "seq": 110,
+   "seq": 113,
    "at": "2026-09-25T16:18:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20865,7 +22977,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 111,
+   "seq": 114,
    "at": "2026-09-25T22:24:00.000Z",
    "actorId": "u-jonas",
    "actorType": "human",
@@ -20881,7 +22993,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 112,
+   "seq": 115,
    "at": "2026-09-26T03:00:00Z",
    "actorId": "agent:requirement_writer",
    "actorType": "ai",
@@ -20894,7 +23006,7 @@
    "rationale": "Generated from confirmed CASE-G60-CN-0003"
   },
   {
-   "seq": 113,
+   "seq": 116,
    "at": "2026-09-26T08:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -20908,7 +23020,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 114,
+   "seq": 117,
    "at": "2026-09-26T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -20927,7 +23039,7 @@
    }
   },
   {
-   "seq": 115,
+   "seq": 118,
    "at": "2026-09-27T09:24:00.000Z",
    "actorId": "u-katrin",
    "actorType": "human",
@@ -20943,7 +23055,7 @@
    "rationale": "Fits the product line plan"
   },
   {
-   "seq": 116,
+   "seq": 119,
    "at": "2026-09-27T14:12:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -20959,7 +23071,7 @@
    "rationale": "Open questions sent"
   },
   {
-   "seq": 117,
+   "seq": 120,
    "at": "2026-09-27T22:00:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -20975,7 +23087,7 @@
    "rationale": "Targets agreed"
   },
   {
-   "seq": 118,
+   "seq": 121,
    "at": "2026-09-28T00:24:00.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -20991,7 +23103,7 @@
    "rationale": "Added to vehicle plan"
   },
   {
-   "seq": 119,
+   "seq": 122,
    "at": "2026-09-28T10:02:30.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21007,7 +23119,7 @@
    "rationale": "Discussed with engineering"
   },
   {
-   "seq": 120,
+   "seq": 123,
    "at": "2026-09-28T15:00:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -21023,7 +23135,7 @@
    "rationale": "Discussed with engineering"
   },
   {
-   "seq": 121,
+   "seq": 124,
    "at": "2026-09-28T20:28:48.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -21039,7 +23151,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 122,
+   "seq": 125,
    "at": "2026-09-28T20:48:00.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -21055,7 +23167,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 123,
+   "seq": 126,
    "at": "2026-09-29T08:00:00Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21069,7 +23181,7 @@
    "rationale": "Opened by hand"
   },
   {
-   "seq": 124,
+   "seq": 127,
    "at": "2026-09-29T08:42:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21085,7 +23197,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 125,
+   "seq": 128,
    "at": "2026-09-29T09:12:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21101,7 +23213,7 @@
    "rationale": "Added to vehicle plan"
   },
   {
-   "seq": 126,
+   "seq": 129,
    "at": "2026-09-29T14:24:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21117,7 +23229,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 127,
+   "seq": 130,
    "at": "2026-09-30T08:00:00.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -21133,7 +23245,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 128,
+   "seq": 131,
    "at": "2026-09-30T12:48:00.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -21150,7 +23262,7 @@
    "rationale": "Decided"
   },
   {
-   "seq": 129,
+   "seq": 132,
    "at": "2026-09-30T13:40:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21166,7 +23278,7 @@
    "rationale": "Targets agreed"
   },
   {
-   "seq": 130,
+   "seq": 133,
    "at": "2026-09-30T19:48:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -21182,7 +23294,7 @@
    "rationale": "Answers in, ready to decide"
   },
   {
-   "seq": 131,
+   "seq": 134,
    "at": "2026-09-30T22:24:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21199,7 +23311,7 @@
    "rationale": "Fix in the mid-life update; reliability target agreed with Quality."
   },
   {
-   "seq": 132,
+   "seq": 135,
    "at": "2026-10-01T02:00:00.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -21215,7 +23327,7 @@
    "rationale": "Targets agreed"
   },
   {
-   "seq": 133,
+   "seq": 136,
    "at": "2026-10-01T08:00:00.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -21232,7 +23344,7 @@
    "rationale": "Decided"
   },
   {
-   "seq": 134,
+   "seq": 137,
    "at": "2026-10-01T10:00:00Z",
    "actorId": "agent:monitor",
    "actorType": "ai",
@@ -21245,7 +23357,7 @@
    }
   },
   {
-   "seq": 135,
+   "seq": 138,
    "at": "2026-10-01T14:48:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21255,7 +23367,7 @@
    "rationale": "Single review, reviewer audience; owner evidence and the Euro NCAP trend point the other way."
   },
   {
-   "seq": 136,
+   "seq": 139,
    "at": "2026-10-01T22:24:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21272,7 +23384,7 @@
    "rationale": "Decided"
   },
   {
-   "seq": 137,
+   "seq": 140,
    "at": "2026-10-02T04:00:00.000Z",
    "actorId": "u-katrin",
    "actorType": "human",
@@ -21288,7 +23400,7 @@
    "rationale": "Fits the product line plan"
   },
   {
-   "seq": 138,
+   "seq": 141,
    "at": "2026-10-02T12:48:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21305,7 +23417,7 @@
    "rationale": "Parked: weak evidence (8 wishes) and low brand fit. Reopens if wishes exceed 25 or a direct rival in the segment makes it standard."
   },
   {
-   "seq": 139,
+   "seq": 142,
    "at": "2026-10-02T12:48:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21321,7 +23433,7 @@
    "rationale": "Evidence looks relevant"
   },
   {
-   "seq": 140,
+   "seq": 143,
    "at": "2026-10-02T17:36:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21338,7 +23450,7 @@
    "rationale": "Needs a dedicated BEV architecture. Moved to the innovation pool for the generation after."
   },
   {
-   "seq": 141,
+   "seq": 144,
    "at": "2026-10-02T22:24:00.000Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21355,7 +23467,7 @@
    "rationale": "Quick win, software only. One requirement, global."
   },
   {
-   "seq": 142,
+   "seq": 145,
    "at": "2026-10-03T07:00:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -21372,7 +23484,7 @@
    "rationale": "China market variant. Also referred to the 7 Series PM (shared rear-console module)."
   },
   {
-   "seq": 143,
+   "seq": 146,
    "at": "2026-10-03T12:48:00.000Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -21389,7 +23501,7 @@
    "rationale": "Shared Baukasten module: referred to Jonas (HMI)."
   },
   {
-   "seq": 144,
+   "seq": 147,
    "at": "2026-10-04T08:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -21403,7 +23515,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 145,
+   "seq": 148,
    "at": "2026-10-04T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -21422,7 +23534,7 @@
    }
   },
   {
-   "seq": 146,
+   "seq": 149,
    "at": "2026-10-04T22:24:00.000Z",
    "actorId": "u-jonas",
    "actorType": "human",
@@ -21439,7 +23551,7 @@
    "rationale": "Cross-series software topic; horizon next generation."
   },
   {
-   "seq": 147,
+   "seq": 150,
    "at": "2026-10-05T08:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -21453,7 +23565,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 148,
+   "seq": 151,
    "at": "2026-10-05T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -21472,7 +23584,7 @@
    }
   },
   {
-   "seq": 149,
+   "seq": 152,
    "at": "2026-10-06T08:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -21486,7 +23598,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 150,
+   "seq": 153,
    "at": "2026-10-06T08:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -21505,7 +23617,7 @@
    }
   },
   {
-   "seq": 151,
+   "seq": 154,
    "at": "2026-10-06T12:00:00Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -21518,7 +23630,7 @@
    "rationale": "Answer from chat"
   },
   {
-   "seq": 152,
+   "seq": 155,
    "at": "2026-10-06T12:48:00.000Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -21535,7 +23647,7 @@
    "rationale": "Decided"
   },
   {
-   "seq": 153,
+   "seq": 156,
    "at": "2026-10-07T03:00:00Z",
    "actorId": "agent:clusterer",
    "actorType": "ai",
@@ -21549,7 +23661,7 @@
    "rationale": "Open threshold reached"
   },
   {
-   "seq": 154,
+   "seq": 157,
    "at": "2026-10-07T03:14:24.000Z",
    "actorId": "agent:scorer",
    "actorType": "ai",
@@ -21568,7 +23680,7 @@
    }
   },
   {
-   "seq": 155,
+   "seq": 158,
    "at": "2026-10-07T07:00:00.000Z",
    "actorId": "u-wei",
    "actorType": "human",
@@ -21585,7 +23697,7 @@
    "rationale": "Decided"
   },
   {
-   "seq": 156,
+   "seq": 159,
    "at": "2026-10-08T09:00:00Z",
    "actorId": "u-sofia",
    "actorType": "human",
@@ -21598,7 +23710,7 @@
    "rationale": "Touch operation is the biggest 1 Series pain. The module is shared, so it belongs in your Baukasten case."
   },
   {
-   "seq": 157,
+   "seq": 160,
    "at": "2026-10-08T10:00:00Z",
    "actorId": "u-lena",
    "actorType": "human",
@@ -21611,7 +23723,7 @@
    "rationale": "Answer from meeting_note"
   },
   {
-   "seq": 158,
+   "seq": 161,
    "at": "2026-10-08T10:01:00Z",
    "actorId": "agent:note_extractor",
    "actorType": "ai",
@@ -21621,7 +23733,7 @@
    "rationale": "Add the engineering answer (8 buttons, 6 with haptics) to 'Options considered'"
   },
   {
-   "seq": 159,
+   "seq": 162,
    "at": "2026-10-09T16:00:00Z",
    "actorId": "u-daniel",
    "actorType": "human",
@@ -21634,7 +23746,23 @@
    "rationale": "China wants more rear space, Europe finds it roomy. I need a decision: China LWB variant or one car?"
   },
   {
-   "seq": 160,
+   "seq": 163,
+   "at": "2026-10-10T15:20:00Z",
+   "actorId": "u-lena",
+   "actorType": "human",
+   "action": "case.stance_saved",
+   "objectType": "case",
+   "objectId": "CASE-G60-0005",
+   "after": {
+    "ambition": "match",
+    "overrides": [
+     "costEnvelope"
+    ]
+   },
+   "rationale": "Climate is a top-3 complaint in the US; Controlling already accepted €18–25 per car."
+  },
+  {
+   "seq": 164,
    "at": "2026-10-10T21:04:00Z",
    "actorId": "agent:monitor",
    "actorType": "ai",
@@ -21647,7 +23775,7 @@
    }
   },
   {
-   "seq": 161,
+   "seq": 165,
    "at": "2026-10-10T22:30:00Z",
    "actorId": "agent:monitor",
    "actorType": "ai",

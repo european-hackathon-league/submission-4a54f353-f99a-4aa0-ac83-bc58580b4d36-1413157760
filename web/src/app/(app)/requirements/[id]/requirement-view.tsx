@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, ArrowRight, Bot, Car, CornerUpLeft, PanelRight, Upload } from "lucide-react";
+import { AlertTriangle, ArrowRight, Bot, Car, CornerUpLeft, MessageSquareReply, PanelRight, Upload } from "lucide-react";
 import {
   regionLabel,
   type RequirementAction,
@@ -24,6 +24,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ArgumentSheet, requirementButtons, Spec, TraceChain } from "@/components/requirements/requirement-parts";
 import { QualityCheck } from "@/components/requirements/quality-check";
+import { FeedbackDialog } from "@/components/requirements/feedback-dialog";
+import { VariantsCompare } from "@/components/requirements/variants-compare";
+import { VersionsPanel } from "@/components/requirements/versions-panel";
 
 export function RequirementView() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +38,7 @@ export function RequirementView() {
   const [action, setAction] = useState<RequirementAction | null>(null);
   const [side, setSide] = useState<"details" | "chat">("details");
   const [tab, setTab] = useState("spec");
+  const [feedback, setFeedback] = useState(false);
 
   if (!bundle.data || !me.data) return <PageSkeleton />;
   const b = bundle.data;
@@ -84,6 +88,11 @@ export function RequirementView() {
                   {label}
                 </Button>
               ))}
+              {canEdit && !["rejected", "exported"].includes(r.status) && (
+                <Button size="sm" variant="outline" onClick={() => setFeedback(true)}>
+                  <MessageSquareReply className="size-3.5" /> Engineering feedback
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -114,18 +123,23 @@ export function RequirementView() {
             .map((p) => (
               <ProposalCard key={p.id} p={p} canDecide={canEdit} />
             ))}
+          <VariantsCompare r={r} others={b.variants} onOpen={(x) => router.push(`/requirements/${x}`)} onCite={onCite} />
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="px-6 py-4">
           <TabsList>
             <TabsTrigger value="spec">Specification</TabsTrigger>
+            <TabsTrigger value="versions">Versions ({b.versions.length})</TabsTrigger>
             <TabsTrigger value="argument">Argument sheet</TabsTrigger>
             <TabsTrigger value="evidence">Evidence ({b.signals.length})</TabsTrigger>
             <TabsTrigger value="questions">Questions ({b.questions.filter((q) => q.status === "open").length})</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
           <TabsContent value="spec" className="pt-3">
-            <Spec r={r} canEdit={canEdit} />
+            <Spec key={r.id + r.updatedAt} r={r} canEdit={canEdit} onCite={onCite} />
+          </TabsContent>
+          <TabsContent value="versions" className="pt-3">
+            <VersionsPanel versions={b.versions} feedback={b.feedback} />
           </TabsContent>
           <TabsContent value="argument" className="pt-3">
             <ArgumentSheet b={b} />
@@ -225,6 +239,7 @@ export function RequirementView() {
         </div>
       </aside>
       <RequirementActionDialog r={r} check={b.check} action={action} onOpenChange={(o) => !o && setAction(null)} />
+      <FeedbackDialog r={r} open={feedback} onOpenChange={setFeedback} />
     </div>
   );
 }

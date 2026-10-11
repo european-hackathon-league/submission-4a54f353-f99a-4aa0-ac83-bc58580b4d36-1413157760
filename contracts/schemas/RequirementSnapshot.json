@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "shortTitle": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "descriptionParts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "marketScope": {
+      "type": "string",
+      "enum": [
+        "global",
+        "RoW",
+        "CN"
+      ]
+    },
+    "releaseTarget": {
+      "type": "string",
+      "enum": [
+        "next_gen",
+        "lci",
+        "ota"
+      ]
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "question": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "evidence",
+              "assumption"
+            ]
+          },
+          "benchmark": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "target",
+          "basis"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidenceLevel": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "assumption"
+      ]
+    },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "string",
+          "enum": [
+            "S",
+            "M",
+            "L"
+          ]
+        },
+        "eurBand": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "option_price",
+            "ai_estimate",
+            "pm",
+            "finance"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "size",
+        "eurBand",
+        "source",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "evidence",
+              "pm_context",
+              "assumption"
+            ]
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "brand",
+                  "series_brief",
+                  "case_stance",
+                  "requirement_shape",
+                  "feedback"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "source",
+          "layer",
+          "ref",
+          "signalIds",
+          "label"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "shapeAnswers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "scope",
+              "benchmark",
+              "solution",
+              "release",
+              "offer"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "byDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "byDefault"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "title",
+    "shortTitle",
+    "description",
+    "descriptionParts",
+    "marketScope",
+    "releaseTarget",
+    "metrics",
+    "acceptanceCriteria",
+    "assumptions",
+    "evidenceLevel",
+    "cost",
+    "provenance",
+    "shapeAnswers"
+  ],
+  "additionalProperties": false
+}

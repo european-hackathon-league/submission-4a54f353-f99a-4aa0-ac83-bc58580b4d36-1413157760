@@ -1,7 +1,8 @@
-import type { Case, Citation, Dataset, Proposal, Requirement, Signal } from "@/contracts";
+import type { Case, Citation, Dataset, Proposal, Requirement, ShapeQuestion, Signal } from "@/contracts";
 import { addresseeLabel, factorLabel, marketLabel, sourceTypeLabel } from "@/contracts";
 import { caseScore } from "../scoring";
-import { draftRequirements } from "./drafts";
+import { getDrafter } from "./drafter";
+import { briefFor, buildInput, stanceOf } from "./drafting";
 import { webSpecToSignal } from "../convert";
 
 /**
@@ -109,21 +110,11 @@ export function scriptedReply(
 
   // --- Draft requirement(s) ---
   if (objectType === "case" && /(draft|write|generate|propose).*(requirement|req)|smart/.test(msg)) {
-    const drafts = draftRequirements(c, d);
-    drafts.forEach((draft) =>
-      out.proposals.push({
-        objectType: "case",
-        objectId,
-        source: "chat",
-        kind: "new_requirement",
-        summary: `New requirement draft: ${draft.title}`,
-        changes: [{ field: "requirement", before: null, after: draft }],
-        citations: top.map((s) => s.id),
-        decidedBy: undefined,
-        decidedAt: undefined,
-      }),
-    );
-    out.text = `Here is a SMART draft based on ${signals.length} signals ${top.map(citeRef).join(" ")}. Targets marked *assumption* still need engineering. Accept the proposal below to create it as a **Draft** requirement linked to this case.`;
+    // Drafting needs the PM's shape answers first (layer 3): ask them here, the form in step 3 mirrors them.
+    const author = d.users.find((u) => u.id === userId)!;
+    const questions = getDrafter().shapeQuestions(buildInput(d, c, author));
+    top.forEach(citeRef);
+    out.text = shapeQuestionsMessage(questions, signals.length);
     return out;
   }
 
@@ -256,32 +247,37 @@ export function scriptedReply(
   return out;
 }
 
+/** The shape questions as one chat message (the form in step 3 asks the same ones). */
+export function shapeQuestionsMessage(questions: ShapeQuestion[], signalCount: number): string {
+  if (!questions.length) return `Nothing to decide before drafting: your brief and stance answer it all. Press **Create requirements** in step 3 (${signalCount} signals as evidence).`;
+  return [
+    `Before I draft, ${questions.length === 1 ? "one question" : `${questions.length} questions`} only you can answer (default in brackets):`,
+    "",
+    ...questions.map((q, i) => `${i + 1}. **${q.question}** [${q.options.find((o) => o.value === q.default)?.label ?? q.default}]\n   _${q.why}_ Options: ${q.options.map((o) => o.label).join(" · ")}.`),
+    "",
+    "_Reply with an option (e.g. \"beat\" or \"next generation\") and I'll pre-fill the form in step 3, or answer there directly._",
+  ].join("\n");
+}
+
 /**
- * After the PM saves step 2 ("Your knowledge"), the assistant asks 1-2 questions that
- * the data cannot answer, so the requirement draft starts from the PM's judgement.
+ * After the PM saves the case stance (layer 2), the assistant asks 1-2 questions that
+ * neither the data nor the brief answer, so the draft starts from the PM's judgement.
  */
-export function followUpQuestions(_d: Dataset, c: Case): string {
-  const ctx = c.pmContext;
+export function followUpQuestions(d: Dataset, c: Case, userId: string): string {
+  const { resolved } = briefFor(d, c, userId);
+  const stance = stanceOf(c, userId);
   const qs: string[] = [];
-  const markets = c.figures.perMarket.filter((m) => m.market !== "unknown");
-  const dataMarket = [...markets].sort((a, b) => b.customers - a.customers)[0];
+  const counts = new Map(c.figures.perMarket.map((m) => [m.market, m.customers]));
   if (c.marketConflict) {
     qs.push(`${c.marketConflict.note} Should the requirement be **split per market** (${c.marketConflict.markets.map((m) => marketLabel[m]).join(" / ")}) or stay global?`);
-  } else if (ctx?.marketFocus && ctx.marketFocus !== "global" && dataMarket && dataMarket.market !== ctx.marketFocus) {
-    qs.push(`You focus on **${marketLabel[ctx.marketFocus]}**, but most of the evidence comes from **${marketLabel[dataMarket.market]}** (${dataMarket.customers} customers). Do you expect the same problem in ${marketLabel[ctx.marketFocus]}, or should we look for local evidence first?`);
+  } else if (resolved) {
+    const silent = (["EU", "US", "CN", "RoW"] as const).filter((m) => resolved.values.marketWeights[m] >= 0.2 && !counts.get(m));
+    if (silent.length)
+      qs.push(`Your brief weights **${silent.map((m) => `${marketLabel[m]} ${Math.round(resolved.values.marketWeights[m] * 100)}%`).join(", ")}**, but this case has no customer records from there. Do you expect the same problem, or should we collect local evidence first?`);
   }
-  if (ctx?.timing && ctx.timing !== "next_gen" && c.changeDepth === "platform_powertrain") {
-    qs.push(`This looks like a **platform change**, which usually needs the next generation. Is a partial fix via ${ctx.timing === "ota" ? "OTA" : "the LCI"} acceptable, or should the requirement target the next generation only?`);
-  } else if (ctx?.costSensitivity === "high" && c.changeDepth !== "software_ota") {
-    qs.push(`You marked cost as **sensitive**. Would you accept this as a **paid option** (like ${c.figures.equipmentToday}) instead of standard equipment?`);
-  }
-  if (qs.length < 2) {
-    const offer = c.figures.competitorOffer[0];
-    const target = offer
-      ? `Competitors: ${offer}. Should our target **match, beat or deliberately differ** from that?`
-      : `What would a customer notice first if we solved this? I will turn it into a measurable target.`;
-    qs.push(ctx?.positioning === "luxury" ? `For a **luxury** positioning: ${target}` : target);
-  }
-  const intro = ctx ? "Thanks, I added your input to the case context. Two things the data can't tell me:" : "Two things the data can't tell me:";
+  if (!stance?.ambition && c.figures.competitorOffer.length) qs.push(`Competitors: ${c.figures.competitorOffer[0]}. Should our target **fix, match or beat** that?`);
+  if (!stance?.inside.length) qs.push("Is engineering or a supplier **already working on this**? Anything decided in the past I should know?");
+  if (!resolved) qs.push("Your series has **no brief yet**, so scope, release and ambition will be defaults. Want to set it up first (persona menu → My series brief)?");
+  const intro = stance ? "Thanks, your stance is in the case context. Two things the data and your brief can't tell me:" : "Two things the data can't tell me:";
   return [intro, "", ...qs.slice(0, 2).map((q, i) => `${i + 1}. ${q}`), "", "_Answer here and I will use it in the requirement draft._"].join("\n");
 }

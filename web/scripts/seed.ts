@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { parse } from "csv-parse/sync";
 import {
   Dataset,
+  RequirementSnapshot,
   TaxonomyResponse,
   type AgentRun,
   type AuditEvent,
@@ -27,11 +28,15 @@ import {
   type Proposal,
   type Requirement,
   type RequirementStatus,
+  type RequirementVersion,
   type Series,
+  type SeriesBrief,
   type Signal,
   type SignalCluster,
 } from "../src/contracts";
 import { users, workspaces, weightProfiles, brandProfile } from "../src/mock/authored/people";
+import { briefSpecs, stanceSpecs } from "../src/mock/authored/briefs";
+import { authoredProvenance, sentences } from "../src/mock/ai/provenance";
 import { caseSpecs } from "../src/mock/authored/cases";
 import type { StudyRef, VerbatimSelector } from "../src/mock/authored/types";
 import {
@@ -46,6 +51,7 @@ import {
   questions,
   referrals,
   requirementSpecs,
+  requirementTags,
   unclusteredSelectors,
 } from "../src/mock/authored/world";
 import { webSpecToSignal } from "../src/mock/convert";
@@ -357,7 +363,7 @@ for (const spec of caseSpecs) {
     shortTitle: caseShortTitles[spec.id] ?? shortFromTitle(spec.featureName),
     highlights: highlights ?? deriveHighlights(spec.bodyMd, competitorOffer),
     topicId: mainTopic,
-    pmContext: spec.pmContext ?? null,
+    stances: stanceSpecs[spec.id] ?? spec.stances ?? [],
     relatedSeries: spec.relatedSeries ?? [],
     coOwnerIds: spec.coOwnerIds ?? [],
     watcherIds: spec.watcherIds ?? [],
@@ -389,14 +395,85 @@ for (const sel of unclusteredSelectors) {
 }
 
 // ---------- Requirements ----------
-const requirements: Requirement[] = requirementSpecs.map((r) => ({
-  ...r,
-  shortTitle: requirementShortTitles[r.id] ?? shortFromTitle(r.title),
-  updatedAt: r.updatedAt ?? r.createdAt,
-  manualRank: null,
-  synthetic: true,
-}));
+/** Strongest BMW customer records of a case: complaints and wishes first, the evidence a requirement cites. */
+function topSignals(caseId: string, n = 3): string[] {
+  const c = cases.find((x) => x.id === caseId);
+  const rank = { complaint: 0, wish: 1, like: 2 } as Record<string, number>;
+  return (c?.signalIds ?? [])
+    .map((id) => signals.get(id)!)
+    .filter((s) => s && s.agent === "bmw_data" && s.sourceType === "bmw_feedback")
+    .sort((a, b) => (rank[a.kind] ?? 3) - (rank[b.kind] ?? 3))
+    .slice(0, n)
+    .map((s) => s.id);
+}
+
+const briefIdOf = (series: Series) => `BRIEF-${series}`;
+const requirements: Requirement[] = requirementSpecs.map((r): Requirement => {
+  const tags = requirementTags[r.id];
+  if (!tags) throw new Error(`${r.id}: missing requirementTags (provenance)`);
+  const descriptionParts = sentences(r.description);
+  return {
+    ...r,
+    shortTitle: requirementShortTitles[r.id] ?? shortFromTitle(r.title),
+    descriptionParts,
+    provenance: authoredProvenance(r, descriptionParts, tags, topSignals(r.caseId)),
+    version: 1,
+    shapeAnswers: [],
+    briefId: briefIdOf(r.series),
+    drafter: "authored",
+    updatedAt: r.updatedAt ?? r.createdAt,
+    manualRank: null,
+    synthetic: true,
+  };
+});
 for (const r of requirements) cases.find((c) => c.id === r.caseId)?.requirementIds.push(r.id);
+
+const requirementVersions: RequirementVersion[] = requirements.map((r): RequirementVersion => ({
+  requirementId: r.id,
+  version: 1,
+  snapshot: RequirementSnapshot.parse(r),
+  cause: "draft",
+  rationale: "First version, written before provenance tagging (tags added by hand)",
+  createdAt: r.createdAt,
+  createdBy: r.ownerId,
+}));
+
+// ---------- Series briefs (layer 1) ----------
+const briefs: SeriesBrief[] = briefSpecs.map((spec): SeriesBrief => {
+  const plan = plans.find((p) => p.series === spec.series);
+  const weights = { EU: 0, US: 0, CN: 0, RoW: 0 };
+  for (const m of ["EU", "US", "CN", "RoW"] as const) weights[m] = Math.round(share2030(spec.series, m) * 100) / 100;
+  const at = spec.createdAt;
+  const meta = (source: "data" | "brand" | "pm") => ({ source, confirmed: true, updatedAt: at, updatedBy: spec.ownerId });
+  return {
+    id: spec.id,
+    series: spec.series,
+    kind: "shared",
+    region: "global",
+    parentId: null,
+    ownerId: spec.ownerId,
+    values: {
+      ...spec.values,
+      marketWeights: weights,
+      protectList: plan?.features.filter((f) => f.protected).map((f) => f.name) ?? [],
+      givens: { ...spec.values.givens, sop: plan?.sop ?? "to confirm" },
+    },
+    meta: {
+      thesis: meta("pm"),
+      targetCustomer: meta("pm"),
+      marketWeights: meta("data"),
+      changeAmbition: meta("pm"),
+      protectList: meta("data"),
+      dontFightOn: meta(spec.inheritedFromBrand.includes("dontFightOn") ? "brand" : "pm"),
+      givens: meta("pm"),
+      costEnvelope: meta("pm"),
+    },
+    version: 1,
+    createdAt: at,
+    updatedAt: at,
+    synthetic: true,
+  };
+});
 
 // ---------- Clusters (theme map) ----------
 const clusters: SignalCluster[] = [];
@@ -509,6 +586,15 @@ const human = (actorId: string): Pick<Draft, "actorId" | "actorType"> => ({ acto
 audit.push({ at: "2026-09-01T06:04:00Z", ...ai("agent:importer"), action: "data.imported", objectType: "signal", objectId: "RUN-bmw_data-import", rationale: "Seed: feedback, study, sales, option lists" });
 audit.push({ at: brandProfile.updatedAt, ...human("u-katrin"), action: "brand_profile.updated", objectType: "profile", objectId: "brand-profile", before: { version: 2 }, after: { version: 3 }, rationale: "Added 'honest sportiness' and the 'don't fight every attribute' rule" });
 
+for (const b of briefs) {
+  audit.push({ at: b.createdAt, ...human(b.ownerId), action: "brief.created", objectType: "brief", objectId: b.id, after: { series: b.series, kind: b.kind }, rationale: "Onboarding: series brief confirmed" });
+}
+for (const c of cases) {
+  for (const s of c.stances) {
+    audit.push({ at: s.updatedAt, ...human(s.authorId), action: "case.stance_saved", objectType: "case", objectId: c.id, after: { ambition: s.ambition, overrides: Object.keys(s.overrides) }, rationale: Object.values(s.overrideReasons)[0] ?? "Stance saved" });
+  }
+}
+
 const statePath: CaseState[] = ["new", "investigating", "awaiting_answers", "ready"];
 for (const c of cases) {
   const isAgent = c.createdBy.startsWith("agent:");
@@ -596,6 +682,9 @@ const dataset = {
   comments,
   notifications,
   alerts,
+  briefs,
+  requirementVersions,
+  feedback: [],
   audit: sortedAudit,
 };
 

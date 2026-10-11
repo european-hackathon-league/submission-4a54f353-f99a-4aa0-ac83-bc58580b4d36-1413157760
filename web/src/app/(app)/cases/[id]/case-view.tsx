@@ -33,7 +33,7 @@ import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { download, fromNow } from "@/lib/format";
 import { caseSankey, isCustomer, isFact, sayLabel, topicLabels, type SankeyNode } from "@/lib/sankey";
 import { cn } from "@/lib/utils";
-import { CaseStateBadge, EvidenceBars, MarketChip, OutcomeBadge, ReqStatusDot } from "@/components/common/badges";
+import { CaseStateBadge, EvidenceBars, MarketChip, OutcomeBadge, Pill, ReqStatusDot } from "@/components/common/badges";
 import { Markdown } from "@/components/common/markdown";
 import { PageSkeleton } from "@/components/common/page";
 import { UserAvatar, useUsers } from "@/components/common/people";
@@ -41,7 +41,8 @@ import { ObjectActivity } from "@/components/common/activity";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { CaseActionDialog, type UiCaseAction } from "@/components/cases/case-action-dialog";
 import { CaseDetails } from "@/components/cases/case-details";
-import { KnowledgeForm } from "@/components/cases/knowledge-form";
+import { StanceForm } from "@/components/cases/stance-form";
+import { ShapeForm } from "@/components/cases/shape-form";
 import { QuestionsPanel } from "@/components/cases/questions-panel";
 import { useScores } from "@/components/cases/use-scores";
 import { ChatPanel } from "@/components/chat/chat-panel";
@@ -87,6 +88,9 @@ export function CaseView() {
   const { case: c, signals, questions, requirements, referrals, alerts, proposals, linkedCases } = bundle.data;
   const user = me.data.user;
   const canEdit = user.id === c.ownerId || c.coOwnerIds.includes(user.id) || user.role === "head";
+  // PMs of the same series work the case under their own brief (stance + their own regional requirement).
+  const canDraft = canEdit || (user.role === "vehicle_pm" && user.series.includes(c.series));
+  const myStance = c.stances.find((s) => s.authorId === user.id);
   const watching = c.watcherIds.includes(user.id);
   const openAlerts = alerts.filter((a) => a.status === "open");
   const pending = proposals.filter((p) => p.status === "pending").length;
@@ -190,7 +194,7 @@ export function CaseView() {
         {/* Three steps */}
         <nav className="mt-5 flex flex-wrap items-center gap-1 border-b" aria-label="Case steps">
           <StepTab n={1} active={step === "evidence"} onClick={() => go("evidence")} label="Evidence" meta={`${signals.length}`} done />
-          <StepTab n={2} active={step === "knowledge"} onClick={() => go("knowledge")} label="Your knowledge" meta={openQuestions ? `${openQuestions} open` : undefined} done={!!c.pmContext} badge={pending} />
+          <StepTab n={2} active={step === "knowledge"} onClick={() => go("knowledge")} label="Your stance" meta={openQuestions ? `${openQuestions} open` : undefined} done={!!myStance} badge={pending} />
           <StepTab n={3} active={step === "requirements"} onClick={() => go("requirements")} label="Requirements" meta={requirements.length ? `${requirements.length}` : undefined} done={requirements.length > 0} />
         </nav>
 
@@ -201,12 +205,12 @@ export function CaseView() {
                 <SankeyChart graph={graph} heroValue={customers} selectedId={selected} onSelect={onNode} />
               </div>
               <Highlights c={c} canEdit={canEdit} onCite={onCite} />
-              <NextButton onClick={() => go("knowledge")}>Next: add your knowledge</NextButton>
+              <NextButton onClick={() => go("knowledge")}>Next: your stance</NextButton>
             </div>
           )}
           {step === "knowledge" && (
             <div className="space-y-6">
-              <KnowledgeForm c={c} canEdit={canEdit} onSaved={() => setChat(true)} />
+              <StanceForm key={myStance?.updatedAt ?? "new"} c={c} brief={me.data.brief} userId={user.id} canEdit={canDraft} onSaved={() => setChat(true)} />
               <section>
                 <h2 className="mb-2 text-sm font-semibold">Open questions</h2>
                 <QuestionsPanel caseId={c.id} questions={questions} proposals={proposals} canEdit={canEdit} />
@@ -214,7 +218,9 @@ export function CaseView() {
               <NextButton onClick={() => go("requirements")}>Next: requirements</NextButton>
             </div>
           )}
-          {step === "requirements" && <RequirementsStep c={c} requirements={requirements} canEdit={canEdit} onOpen={setReqId} onConfirm={() => setAction("confirm")} onChat={() => setChat(true)} />}
+          {step === "requirements" && (
+            <RequirementsStep c={c} requirements={requirements} canEdit={canEdit} canDraft={canDraft} userId={user.id} onOpen={setReqId} onConfirm={() => setAction("confirm")} onChat={() => setChat(true)} />
+          )}
         </div>
       </div>
 
@@ -502,6 +508,8 @@ function RequirementsStep({
   c,
   requirements,
   canEdit,
+  canDraft,
+  userId,
   onOpen,
   onConfirm,
   onChat,
@@ -509,23 +517,27 @@ function RequirementsStep({
   c: Case;
   requirements: Requirement[];
   canEdit: boolean;
+  canDraft: boolean;
+  userId: string;
   onOpen: (id: string) => void;
   onConfirm: () => void;
   onChat: () => void;
 }) {
-  const generate = useApiMutation("generateRequirements", { success: (r) => `${r.length} requirement draft${r.length === 1 ? "" : "s"} created` });
   const confirmed = c.outcome === "confirmed";
+  const [shapingState, setShaping] = useState<boolean | null>(null);
+  const shaping = shapingState ?? (confirmed && canDraft && canEdit && requirements.length === 0);
+  const mine = requirements.filter((r) => r.ownerId === userId && r.status !== "rejected");
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         {!confirmed && canEdit && c.state !== "decided" && c.state !== "observed" && (
           <Button onClick={onConfirm}>
-            <Sparkles className="size-4" /> Confirm case and create requirements
+            <Sparkles className="size-4" /> Confirm case
           </Button>
         )}
-        {confirmed && canEdit && (
-          <Button onClick={() => generate.mutate({ params: { id: c.id }, body: {} })} disabled={generate.isPending}>
-            <Sparkles className="size-4" /> Create requirements
+        {confirmed && canDraft && !shaping && (
+          <Button onClick={() => setShaping(true)} variant={mine.length ? "outline" : "default"}>
+            <Sparkles className="size-4" /> {mine.length ? "Draft another" : requirements.length && !canEdit ? "Draft my regional variant" : "Create requirements"}
           </Button>
         )}
         {requirements.length > 0 && (
@@ -534,14 +546,28 @@ function RequirementsStep({
           </Button>
         )}
         {!confirmed && !canEdit && <p className="text-sm text-muted-foreground">No requirements yet.</p>}
+        {!confirmed && canEdit && <p className="text-sm text-muted-foreground">Confirm the case, then answer up to three questions; the draft uses your brief and stance.</p>}
       </div>
+      {shaping && (
+        <ShapeForm
+          caseId={c.id}
+          onCancel={() => setShaping(false)}
+          onCreated={(ids) => {
+            setShaping(false);
+            if (ids[0]) onOpen(ids[0]);
+          }}
+        />
+      )}
       {requirements.length > 0 && (
         <div className="divide-y rounded-xl border bg-card shadow-xs">
           {requirements.map((r) => (
             <button key={r.id} onClick={() => onOpen(r.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/50">
+              <UserAvatar id={r.ownerId} size="xs" />
               <span className="min-w-0 flex-1 truncate text-sm font-medium" title={r.title}>
                 {r.shortTitle}
               </span>
+              {r.marketScope !== "global" && <Pill>{r.marketScope}</Pill>}
+              {r.version > 1 && <Pill>v{r.version}</Pill>}
               <span className="text-xs text-muted-foreground">
                 {releaseShort[r.releaseTarget]} · {r.cost.size}
               </span>

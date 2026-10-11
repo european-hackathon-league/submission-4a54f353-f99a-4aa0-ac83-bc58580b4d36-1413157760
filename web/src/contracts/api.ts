@@ -3,6 +3,7 @@ import {
   Agent,
   Addressee,
   AspectGroup,
+  BriefFieldKey,
   CarArea,
   CaseAction,
   CaseState,
@@ -10,6 +11,7 @@ import {
   ChangeDepth,
   EvidenceLevel,
   FactorKey,
+  FeedbackResponse,
   InnovationHorizon,
   Market,
   Region,
@@ -17,6 +19,7 @@ import {
   RequirementAction,
   RequirementStatus,
   Series,
+  ShapeKey,
   SignalKind,
   SignalStatus,
 } from "./enums";
@@ -25,23 +28,31 @@ import {
   AgentRun,
   AuditEvent,
   BrandProfile,
+  BriefConflict,
+  BriefValues,
   Case,
+  CaseStance,
   ChatMessage,
   ChatSegment,
   Comment,
+  FeedbackEntry,
+  FieldChange,
   InnovationMeta,
   MeetingNote,
   Metric,
   Notification,
   OpenQuestion,
   PlannedFeature,
-  PmContext,
   Proposal,
   QuarantineItem,
   Referral,
   Requirement,
   RequirementCheck,
+  RequirementVersion,
+  ResolvedBrief,
   ScoredCase,
+  SeriesBrief,
+  ShapeQuestion,
   Signal,
   SignalCluster,
   User,
@@ -83,8 +94,55 @@ const Rationale = z.string().min(1, "A short reason is required");
 const Ok = z.object({ ok: z.literal(true) });
 
 // ---------- Shared payloads ----------
-export const MeResponse = z.object({ user: User, workspace: Workspace, weightProfile: WeightProfile });
+export const MeResponse = z.object({
+  user: User,
+  workspace: Workspace,
+  weightProfile: WeightProfile,
+  /** The vehicle PM's resolved series brief (layer 1); null for the head and cross-series PMs. */
+  brief: ResolvedBrief.nullable(),
+  /** True when a vehicle PM has not confirmed a brief yet: the UI opens onboarding. */
+  needsOnboarding: z.boolean(),
+});
 export type MeResponse = z.infer<typeof MeResponse>;
+
+export const BriefBundle = z.object({
+  resolved: ResolvedBrief.nullable(),
+  shared: SeriesBrief.nullable(),
+  overlay: SeriesBrief.nullable(),
+  /** Pending AI proposals on the brief (strategy-doc extraction, learning). */
+  proposals: z.array(Proposal),
+});
+export type BriefBundle = z.infer<typeof BriefBundle>;
+
+/** A requirement a brief change would affect, with the proposed new version. */
+export const BriefImpact = z.object({
+  requirementId: z.string(),
+  title: z.string(),
+  fields: z.array(BriefFieldKey),
+  summary: z.string(),
+  changes: z.array(FieldChange),
+  proposalId: z.string().nullable(),
+});
+export type BriefImpact = z.infer<typeof BriefImpact>;
+
+export const SaveBriefBody = z.object({
+  values: BriefValues.partial(),
+  /** Why a field differs (required for overlay fields) or why it changed. */
+  reasons: z.partialRecord(BriefFieldKey, z.string()),
+  /** Fields the PM confirms as they are (pre-filled from data). */
+  confirm: z.array(BriefFieldKey).optional(),
+  /** Overlay only: fields that go back to the shared value. */
+  clear: z.array(BriefFieldKey).optional(),
+});
+
+export const ShapeQuestionsResponse = z.object({
+  questions: z.array(ShapeQuestion),
+  brief: ResolvedBrief.nullable(),
+  stance: CaseStance.nullable(),
+  /** Set when the caller drafts a regional variant of an existing requirement on this case. */
+  variantOf: z.string().nullable(),
+});
+export type ShapeQuestionsResponse = z.infer<typeof ShapeQuestionsResponse>;
 
 export const CaseBundle = z.object({
   case: Case,
@@ -109,6 +167,10 @@ export const RequirementBundle = z.object({
   proposals: z.array(Proposal),
   plannedFeature: PlannedFeature.nullable(),
   check: RequirementCheck.nullable(),
+  versions: z.array(RequirementVersion),
+  feedback: z.array(FeedbackEntry),
+  /** The brief the requirement was composed with (shared or overlay). */
+  brief: SeriesBrief.nullable(),
 });
 export type RequirementBundle = z.infer<typeof RequirementBundle>;
 
@@ -172,8 +234,20 @@ export const EditableCaseFields = Case.pick({
 
 export const PatchCaseBody = z.object({ patch: EditableCaseFields, rationale: z.string().optional() });
 
-export const PmContextBody = PmContext.omit({ updatedAt: true, updatedBy: true });
+export const CaseStanceBody = CaseStance.omit({ authorId: true, updatedAt: true, pendingShape: true });
 
+export const GenerateBody = z.object({
+  /** Answers to the shape questions; missing keys use the question's default. */
+  answers: z.array(z.object({ key: ShapeKey, value: z.string() })).optional(),
+});
+
+export const FeedbackBody = z.object({
+  from: Addressee,
+  text: z.string().min(3),
+  response: FeedbackResponse,
+  rationale: Rationale,
+  signalIds: z.array(z.string()).optional(),
+});
 export const CaseTransitionBody = z.object({
   action: CaseAction,
   rationale: Rationale,
@@ -272,6 +346,9 @@ export const DeckSlide = z.object({
   competitor: z.array(z.string()),
   decisions: z.array(z.object({ at: z.string(), actor: z.string(), action: z.string(), rationale: z.string().optional() })),
   openIssues: z.object({ red: z.number().int(), amber: z.number().int() }),
+  /** How many parts come from evidence, the PM's context and assumptions. */
+  provenance: z.object({ evidence: z.number().int(), pm_context: z.number().int(), assumption: z.number().int() }),
+  version: z.number().int(),
   caseId: z.string(),
   caseTitle: z.string(),
   ownerName: z.string(),
@@ -357,6 +434,51 @@ export const endpoints = {
   }),
   search: ep({ method: "GET", path: "/search", tag: "identity", summary: "Global search", query: z.object({ q: z.string() }), response: z.array(SearchResult) }),
 
+  // Series briefs (layer 1)
+  briefs: ep({ method: "GET", path: "/briefs", tag: "briefs", summary: "Shared briefs and regional overlays", query: z.object({ series: Series.optional() }), response: z.array(SeriesBrief) }),
+  myBrief: ep({ method: "GET", path: "/briefs/mine", tag: "briefs", summary: "My resolved brief with its shared brief, overlay and pending proposals", response: BriefBundle }),
+  createOverlay: ep({
+    method: "POST",
+    path: "/briefs",
+    tag: "briefs",
+    summary: "Create my regional overlay on the shared brief of my series",
+    body: z.object({ series: Series }),
+    response: SeriesBrief,
+  }),
+  saveBrief: ep({
+    method: "PUT",
+    path: "/briefs/:id",
+    tag: "briefs",
+    summary: "Save brief answers (reasons per changed field); returns the requirements it affects as new-version proposals",
+    body: SaveBriefBody,
+    response: z.object({ brief: SeriesBrief, impact: z.array(BriefImpact) }),
+  }),
+  previewBriefImpact: ep({
+    method: "POST",
+    path: "/briefs/:id/impact",
+    tag: "briefs",
+    summary: "What would change in which requirements if these brief values were saved (nothing is stored)",
+    body: z.object({ values: BriefValues.partial() }),
+    response: z.array(BriefImpact),
+  }),
+  extractBrief: ep({
+    method: "POST",
+    path: "/briefs/:id/extract",
+    tag: "briefs",
+    summary: "Paste a strategy doc; the AI proposes brief field values to accept or reject one by one",
+    body: z.object({ text: z.string().min(20) }),
+    response: z.array(Proposal),
+  }),
+  briefConflicts: ep({ method: "GET", path: "/brief-conflicts", tag: "briefs", summary: "Overlay fields that differ from the shared brief (open ones first)", response: z.array(BriefConflict.extend({ series: Series, ownerId: z.string() })) }),
+  resolveBriefConflict: ep({
+    method: "POST",
+    path: "/briefs/:id/conflicts/:field",
+    tag: "briefs",
+    summary: "Head of product line: accept the difference as a regional variant, or align the overlay to the shared brief",
+    body: z.object({ resolution: z.enum(["regional_variant", "align"]), rationale: Rationale }),
+    response: SeriesBrief,
+  }),
+
   // Signals and agents
   signals: ep({ method: "GET", path: "/signals", tag: "signals", summary: "List signals (findings)", query: SignalQuery, response: z.array(Signal) }),
   clusters: ep({ method: "GET", path: "/clusters", tag: "signals", summary: "Signal clusters for the theme map", query: z.object({ series: Series.optional() }), response: z.array(SignalCluster) }),
@@ -379,15 +501,37 @@ export const endpoints = {
     body: MeetingNoteBody,
     response: z.object({ note: MeetingNote, proposals: z.array(Proposal) }),
   }),
-  savePmContext: ep({
+  saveCaseStance: ep({
     method: "PUT",
-    path: "/cases/:id/pm-context",
+    path: "/cases/:id/stance",
     tag: "cases",
-    summary: "Save what the PM knows (step 2); the AI answers with follow-up questions in the case chat",
-    body: PmContextBody,
+    summary: "Save my stance on this case (layer 2: brief overrides, take on the evidence, inside knowledge, ambition); the AI answers with follow-up questions",
+    body: CaseStanceBody,
     response: z.object({ case: Case, message: ChatMessage }),
   }),
-  generateRequirements: ep({ method: "POST", path: "/cases/:id/requirements/generate", tag: "cases", summary: "Draft requirement(s) from a confirmed case", body: z.object({}), response: z.array(Requirement) }),
+  shapeQuestions: ep({
+    method: "GET",
+    path: "/cases/:id/shape-questions",
+    tag: "cases",
+    summary: "Adaptive questions (max 3) before drafting requirements, each with a default and why it is asked",
+    response: ShapeQuestionsResponse,
+  }),
+  askShapeQuestions: ep({
+    method: "POST",
+    path: "/cases/:id/shape-questions/ask",
+    tag: "cases",
+    summary: "Post the shape questions once in the case chat; replies with an option label pre-fill the form",
+    body: z.object({}),
+    response: ChatMessage,
+  }),
+  generateRequirements: ep({
+    method: "POST",
+    path: "/cases/:id/requirements/generate",
+    tag: "cases",
+    summary: "Draft requirement(s) from a confirmed case with the caller's brief, stance and shape answers; every part carries provenance",
+    body: GenerateBody,
+    response: z.array(Requirement),
+  }),
   exportCaseMd: ep({ method: "GET", path: "/cases/:id/export.md", tag: "cases", summary: "Case as markdown with YAML front matter", response: z.object({ filename: z.string(), content: z.string() }) }),
   caseSegments: ep({
     method: "GET",
@@ -406,6 +550,14 @@ export const endpoints = {
   requirementBundle: ep({ method: "GET", path: "/requirements/:id", tag: "requirements", summary: "Requirement with its case and evidence", response: RequirementBundle }),
   patchRequirement: ep({ method: "PATCH", path: "/requirements/:id", tag: "requirements", summary: "Edit a requirement", body: PatchRequirementBody, response: Requirement }),
   transitionRequirement: ep({ method: "POST", path: "/requirements/:id/transition", tag: "requirements", summary: "Move a requirement", body: RequirementTransitionBody, response: Requirement }),
+  addFeedback: ep({
+    method: "POST",
+    path: "/requirements/:id/feedback",
+    tag: "requirements",
+    summary: "Record engineering/finance feedback and the PM's response (layer 4); returns a new-version proposal",
+    body: FeedbackBody,
+    response: z.object({ feedback: FeedbackEntry, proposal: Proposal }),
+  }),
   runRequirementCheck: ep({
     method: "POST",
     path: "/requirements/:id/check",

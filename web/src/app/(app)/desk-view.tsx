@@ -2,9 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { AlertTriangle, AtSign, Check, CheckCircle2, CircleDot, ClipboardCheck, CornerUpLeft, Forward, KanbanSquare, MessageSquareReply, Radar, Scale } from "lucide-react";
-import { CaseState as CaseStates, addresseeLabel, caseStateLabel, type Case, type Referral, type Requirement, type RequirementAction } from "@/contracts";
+import { toast } from "sonner";
+import { AlertTriangle, AtSign, Check, CheckCircle2, CircleDot, ClipboardCheck, CornerUpLeft, Forward, GitCompare, KanbanSquare, MessageSquareReply, Radar, Scale } from "lucide-react";
+import { CaseState as CaseStates, addresseeLabel, briefFieldLabel, caseStateLabel, seriesShort, type Case, type Referral, type Requirement, type RequirementAction, type ResponseOf } from "@/contracts";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
+import { showBriefValue } from "@/lib/brief";
 import { fmtDate, fromNow } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CaseStateDot, ReqStatusDot, caseStateTone } from "@/components/common/badges";
@@ -28,6 +30,7 @@ export function DeskView() {
   const { data: alerts = [] } = useApi("alerts");
   const { data: notifications = [] } = useApi("notifications");
   const { data: requirements = [] } = useApi("requirements");
+  const { data: briefConflicts = [] } = useApi("briefConflicts", {}, { enabled: me.data?.user.role === "head" });
   const scores = useScores();
   const { name } = useUsers();
   const [reqId, setReqId] = useState<string | null>(null);
@@ -72,6 +75,9 @@ export function DeskView() {
   const escalations = referrals.filter((r) => r.kind === "escalation" && r.status === "pending");
   const review = isHead
     ? [
+        ...Object.values(Object.groupBy(briefConflicts.filter((x) => x.status === "open"), (x) => x.overlayId)).map((xs) => (
+          <BriefConflictRow key={xs![0].overlayId} xs={xs!} owner={name(xs![0].ownerId)} />
+        )),
         ...signOff.map((r) => <SignOffRow key={r.id} r={r} onOpen={() => setReqId(r.id)} />),
         ...escalations.map((e) => <EscalationRow key={e.id} e={e} c={caseById.get(e.caseId)} />),
       ]
@@ -256,6 +262,79 @@ const resolutions = [
   ["one_market", "Prioritize one market"],
   ["keep_both", "Keep both open"],
 ] as const;
+
+type Conflict = ResponseOf<"briefConflicts">[number];
+
+type BriefResolution = "regional_variant" | "align";
+
+/** A regional brief that differs from the shared one: per field, accept it as a regional variant or align it. */
+function BriefConflictRow({ xs, owner }: { xs: Conflict[]; owner: string }) {
+  const [open, setOpen] = useState(false);
+  const [choice, setChoice] = useState<Partial<Record<Conflict["field"], BriefResolution>>>({});
+  const resolve = useApiMutation("resolveBriefConflict");
+  const x = xs[0];
+  const fields = xs.map((c) => briefFieldLabel[c.field]).join(", ");
+  return (
+    <li className="flex items-center gap-2 px-2 py-1.5">
+      <Link href="/brief" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-0.5 text-sm hover:underline" title={fields}>
+        <GitCompare className="size-4 shrink-0 text-fuchsia-500" />
+        <span className="truncate font-medium">{seriesShort[x.series]} brief</span>
+        <span className="truncate text-xs text-muted-foreground">
+          {owner} differs on {xs.length === 1 ? briefFieldLabel[x.field].toLowerCase() : `${xs.length} fields`}
+        </span>
+      </Link>
+      <Button size="xs" variant="outline" onClick={() => setOpen(true)}>
+        Decide
+      </Button>
+      <RationaleDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`${seriesShort[x.series]} brief: ${owner}'s regional differences`}
+        description="Accept a difference as a regional variant (the overlay keeps it) or align it to the shared brief. One rationale covers all of them."
+        confirmLabel={`Decide ${xs.length === 1 ? "it" : `all ${xs.length}`}`}
+        pending={resolve.isPending}
+        onSubmit={async (rationale) => {
+          for (const c of xs) await resolve.mutateAsync({ params: { id: c.overlayId, field: c.field }, body: { resolution: choice[c.field] ?? "regional_variant", rationale } });
+          toast.success(`${xs.length === 1 ? "Brief difference" : `${xs.length} brief differences`} resolved`);
+          setOpen(false);
+        }}
+      >
+        <ul className="max-h-80 space-y-3 overflow-y-auto">
+          {xs.map((c) => (
+            <li key={c.field} className="space-y-1 text-sm">
+              <p className="font-medium">{briefFieldLabel[c.field]}</p>
+              <p className="text-xs text-muted-foreground">Shared: {showBriefValue(c.field, c.sharedValue)}</p>
+              <p className="text-xs">
+                {owner}: {showBriefValue(c.field, c.overlayValue)}
+              </p>
+              {c.reason && <p className="text-xs italic text-muted-foreground">Why: {c.reason}</p>}
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {(
+                  [
+                    ["regional_variant", "Regional variant"],
+                    ["align", "Align to shared"],
+                  ] as const
+                ).map(([v, label]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setChoice((s) => ({ ...s, [c.field]: v }))}
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-xs",
+                      (choice[c.field] ?? "regional_variant") === v ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </RationaleDialog>
+    </li>
+  );
+}
 
 function EscalationRow({ e, c }: { e: Referral; c?: Case }) {
   const [open, setOpen] = useState(false);

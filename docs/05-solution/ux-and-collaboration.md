@@ -48,14 +48,34 @@ Each case has structured fields plus a page with fixed sections: problem, who is
 A case can be exported as `.md` with YAML front matter.
 
 ## 5. Screens
-After Thomas's feedback (10.10.2026, "less is more") the demo has six screens: **My desk** (agent flags · my cases · review · follow up) · **Inbox** · **Cases** (kanban, ranked toggle) · **Vehicle plan** (requirements as a list by car area, merged with today's equipment) · **Signals** (one Sankey: sources → car areas → cases) · **Innovation pool**. Settings and the audit trail sit in the persona menu.
+After Thomas's feedback (10.10.2026, "less is more") the demo has six screens: **My desk** (agent flags · my cases · review · follow up) · **Inbox** · **Cases** (kanban, ranked toggle) · **Vehicle plan** (requirements as a list by car area, merged with today's equipment) · **Signals** (one Sankey: sources → car areas → cases) · **Innovation pool**. Settings, the audit trail and **My series brief** sit in the persona menu.
 
-The **case page** leads with a Sankey of its evidence (sources → topic × type → case, every node opens its quotes) and three steps: ① Evidence → ② Your knowledge (one-click PM context + AI follow-up questions + open questions) → ③ Requirements (side panel, harden with the AI).
+The **case page** leads with a Sankey of its evidence (sources → topic × type → case, every node opens its quotes) and three steps: ① Evidence → ② Your stance (what you inherit from the brief, your take on the evidence, what you know that the data can't show, how far to go; plus open questions) → ③ Requirements (up to three shape questions, then the draft in a side panel with provenance, versions and engineering feedback).
+
+## 5a. PM context layers: requirements that read like the PM wrote them
+A draft is only as good as what the AI knows about the PM's intent. Five layers feed it, each asked once at the moment it matters, never as a long form:
+
+| Layer | Asked when | Questions | Where it lives |
+|---|---|---|---|
+| 0 Brand | Once, by the head | brand profile (existing) | Settings |
+| 1 Series brief | First login of a vehicle PM | at most 8: thesis, target customer, market weights, evolution vs. revolution, protect list, don't fight on, already decided, cost envelope. Pre-filled from data (sales shares, plan, brand profile); "paste your strategy doc" proposes values | `/brief`, shared per car + one regional overlay per market PM |
+| 2 Case stance | Step ② of a case | 3: your take on the evidence, inside knowledge, ambition. Inherited brief values show as chips and can be overridden with a reason | per PM per case |
+| 3 Shape questions | Step ③, before drafting | at most 3, only those the data and the brief can't decide (scope, benchmark, release, solution, offer). Each has a default and "why I'm asking"; mirrored in the case chat | per draft |
+| 4 Feedback | After the draft | engineering or finance said X; accept, compromise or push back, with a reason | per requirement version |
+
+Rules:
+- **Provenance on every part.** Every sentence, target, criterion, assumption, release, scope and cost carries its source: *evidence* (with signal IDs), *your context* (which layer and field) or *assumption*. Shown inline as chips; hover for the signals.
+- **Solution-neutral by default.** "How it is reached is open to engineering" unless the PM answers the solution question; then the prescription is tagged as a PM decision.
+- **Honest gaps.** Missing evidence is said out loud ("No customer records from China yet, although the brief weights it 25%").
+- **Never silent.** A brief change lists the affected requirements first; saving creates a *new version* proposal per requirement for its owner. Feedback creates a version proposal too. Versions stay on the same requirement ID.
+- **Learning is proposed, never applied.** E.g. three cost-L rejects propose "set cost sensitivity to high?".
+- **Regional overlay.** Wei (China) inherits Lena's shared brief and overrides only what differs, each with a reason. Differences show on both briefs and in Katrin's Review card; she accepts each as a regional variant or aligns it. On a shared case Wei co-drafts a China variant next to Lena's global requirement, and the requirement view compares the two.
 
 ## 6. AI in the loop (all proposals, never silent edits)
 - Answers with citations to signal IDs.
 - Proposes field and page edits as diffs.
-- Drafts open questions, SMART requirements and argument sheets.
+- Drafts open questions, SMART requirements (from the context layers above, with provenance) and argument sheets.
+- Proposes brief values from a pasted strategy doc and new requirement versions after feedback or a brief change.
 - Runs on-demand research that adds signals.
 - Extracts answers from pasted meeting notes.
 - The monitor raises alerts (competitor raises the bar, contradicts).

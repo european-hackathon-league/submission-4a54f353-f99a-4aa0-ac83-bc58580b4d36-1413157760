@@ -5,25 +5,31 @@ import {
   AlertStatus,
   AlertVerdict,
   Agent,
+  Ambition,
   AnswerSource,
   AspectGroup,
   Audience,
   Availability,
+  BriefFieldKey,
   CarArea,
   CaseOutcome,
   CaseState,
   CaseType,
+  ChangeAmbition,
   ChangeDepth,
   CheckKind,
   CheckSeverity,
+  ContextLayer,
   CostSensitivity,
   CostSize,
   CostSource,
+  EvidenceEffect,
   EvidenceLevel,
   FactorKey,
+  FeedbackResponse,
   InnovationHorizon,
+  InsideKind,
   Market,
-  MarketFocus,
   MetricBasis,
   NotificationKind,
   ObjectType,
@@ -34,6 +40,7 @@ import {
   ProposalKind,
   ProposalSource,
   ProposalStatus,
+  ProvenanceSource,
   QuestionStatus,
   ReferralStatus,
   Region,
@@ -42,9 +49,11 @@ import {
   Role,
   Series,
   Severity,
+  ShapeKey,
   SignalKind,
   SignalStatus,
   SourceType,
+  TargetCustomer,
   Trust,
 } from "./enums";
 
@@ -227,17 +236,111 @@ export const ContextItem = z.object({
 });
 export type ContextItem = z.infer<typeof ContextItem>;
 
-/** What the PM knows that the data doesn't show (case page, step 2). Feeds the requirement draft. */
-export const PmContext = z.object({
-  marketFocus: MarketFocus.nullable(),
-  costSensitivity: CostSensitivity.nullable(),
-  positioning: Positioning.nullable(),
-  timing: ReleaseTarget.nullable(),
-  note: z.string(),
+// ---------- PM context layers (brand → series brief → case stance → requirement shape → feedback) ----------
+/** Share of the successor's attention per sales market (pre-filled from 2030 sales, 0..1). */
+export const MarketWeights = z.object({ EU: z.number().min(0).max(1), US: z.number().min(0).max(1), CN: z.number().min(0).max(1), RoW: z.number().min(0).max(1) });
+export type MarketWeights = z.infer<typeof MarketWeights>;
+
+/** The eight onboarding answers of a series brief; one key per question. */
+export const BriefValues = z.object({
+  /** One sentence: what the successor must be. */
+  thesis: z.string(),
+  targetCustomer: z.object({ who: TargetCustomer, positioning: Positioning }),
+  marketWeights: MarketWeights,
+  changeAmbition: z.object({ level: ChangeAmbition, innovationSlots: z.number().int().min(0) }),
+  /** Strengths that must not change. */
+  protectList: z.array(z.string()),
+  /** Attributes where BMW deliberately does not compete. */
+  dontFightOn: z.array(z.string()),
+  /** Already decided: platform, SOP, frozen parts, the releases still open, the consumption cycle used for targets. */
+  givens: z.object({
+    platform: z.string(),
+    sop: z.string(),
+    frozen: z.array(z.string()),
+    openReleases: z.array(ReleaseTarget),
+    cycle: z.enum(["WLTP", "EPA", "CLTC"]),
+  }),
+  costEnvelope: z.object({ sensitivity: CostSensitivity, perCarBand: z.string() }),
+});
+export type BriefValues = z.infer<typeof BriefValues>;
+
+export const BriefFieldMeta = z.object({
+  /** data = pre-filled from BMW data, brand = inherited from the brand profile, doc = extracted from a strategy doc, pm = typed. */
+  source: z.enum(["data", "brand", "doc", "pm"]),
+  confirmed: z.boolean(),
+  /** Required on overlay fields: why the region differs from the shared brief. */
+  reason: z.string().optional(),
+  /** Head's decision on an overlay field that differs from the shared brief. */
+  resolution: z.object({ status: z.enum(["regional_variant", "aligned"]), by: Id, at: IsoDate, note: z.string() }).optional(),
   updatedAt: IsoDate,
   updatedBy: Id,
 });
-export type PmContext = z.infer<typeof PmContext>;
+export type BriefFieldMeta = z.infer<typeof BriefFieldMeta>;
+
+/** Layer 1: one shared brief per car project; a regional overlay holds only the fields that differ. */
+export const SeriesBrief = z.object({
+  id: Id,
+  series: Series,
+  kind: z.enum(["shared", "overlay"]),
+  region: Region,
+  parentId: Id.nullable(),
+  ownerId: Id,
+  values: BriefValues.partial(),
+  meta: z.partialRecord(BriefFieldKey, BriefFieldMeta),
+  version: z.number().int(),
+  createdAt: IsoDate,
+  updatedAt: IsoDate,
+  synthetic: z.boolean(),
+});
+export type SeriesBrief = z.infer<typeof SeriesBrief>;
+
+export const BriefConflict = z.object({
+  field: BriefFieldKey,
+  overlayId: Id,
+  sharedValue: z.unknown(),
+  overlayValue: z.unknown(),
+  reason: z.string(),
+  status: z.enum(["open", "regional_variant"]),
+});
+export type BriefConflict = z.infer<typeof BriefConflict>;
+
+/** The brief a PM works with: shared values with the overlay applied, and where each field came from. */
+export const ResolvedBrief = z.object({
+  series: Series,
+  region: Region,
+  sharedId: Id,
+  overlayId: Id.nullable(),
+  values: BriefValues,
+  origin: z.record(BriefFieldKey, z.enum(["data", "brand", "shared", "overlay"])),
+  confirmed: z.boolean(),
+  conflicts: z.array(BriefConflict),
+});
+export type ResolvedBrief = z.infer<typeof ResolvedBrief>;
+
+/** Layer 2: one PM's stance on one case. Overrides the brief only where this case is different. */
+export const CaseStance = z.object({
+  authorId: Id,
+  overrides: BriefValues.pick({ marketWeights: true, targetCustomer: true, costEnvelope: true, givens: true }).partial(),
+  overrideReasons: z.partialRecord(BriefFieldKey, z.string()),
+  /** The PM's reading of the evidence, e.g. "discount fleet drivers". */
+  evidenceTakes: z.array(
+    z.object({
+      id: Id,
+      text: z.string(),
+      effect: EvidenceEffect,
+      market: Market.optional(),
+      powertrain: Powertrain.optional(),
+      keyword: z.string().optional(),
+    }),
+  ),
+  /** What the data can't show: past decisions, supplier tech, engineering already on it. */
+  inside: z.array(z.object({ id: Id, kind: InsideKind, text: z.string() })),
+  ambition: Ambition.nullable(),
+  /** Answers to the requirement-shape questions given in the case chat; pre-fill the form (layer 3). */
+  pendingShape: z.array(z.object({ key: ShapeKey, value: z.string() })),
+  updatedAt: IsoDate,
+});
+export type CaseStance = z.infer<typeof CaseStance>;
 
 export const Case = z.object({
   id: Id,
@@ -249,7 +352,8 @@ export const Case = z.object({
   highlights: z.array(z.string()),
   /** Main taxonomy topic of the case. */
   topicId: z.string().nullable(),
-  pmContext: PmContext.nullable(),
+  /** One stance per PM who worked the case (layer 2). */
+  stances: z.array(CaseStance),
   series: Series,
   /** Other series the same problem shows up in (Baukasten / cross-series cases). */
   relatedSeries: z.array(Series),
@@ -339,7 +443,7 @@ export type FieldChange = z.infer<typeof FieldChange>;
 /** An AI suggestion the PM must accept or reject. The AI never edits directly. */
 export const Proposal = z.object({
   id: Id,
-  objectType: z.enum(["case", "requirement"]),
+  objectType: z.enum(["case", "requirement", "brief"]),
   objectId: Id,
   source: ProposalSource,
   kind: ProposalKind,
@@ -365,6 +469,38 @@ export const Metric = z.object({
 });
 export type Metric = z.infer<typeof Metric>;
 
+/** Layer 3: one adaptive question asked when requirements are created, only when the case raises it. */
+export const ShapeQuestion = z.object({
+  key: ShapeKey,
+  question: z.string(),
+  why: z.string(),
+  options: z.array(z.object({ value: z.string(), label: z.string() })),
+  default: z.string(),
+  defaultWhy: z.string(),
+  trigger: z.object({ layer: ContextLayer, signalIds: z.array(Id), briefField: BriefFieldKey.optional() }),
+});
+export type ShapeQuestion = z.infer<typeof ShapeQuestion>;
+
+export const ShapeAnswer = z.object({ key: ShapeKey, value: z.string(), byDefault: z.boolean() });
+export type ShapeAnswer = z.infer<typeof ShapeAnswer>;
+
+/**
+ * Where one part of a requirement comes from. Paths: "title", "description#2",
+ * "metrics.m1.target", "acceptanceCriteria#0", "assumptions#1", "marketScope", "releaseTarget", "cost".
+ */
+export const Provenance = z.object({
+  path: z.string(),
+  source: ProvenanceSource,
+  /** For pm_context: which layer the value came from. */
+  layer: ContextLayer.nullable(),
+  /** E.g. "brief.costEnvelope", "stance.ambition", "shape.benchmark", "feedback.FB-0001". */
+  ref: z.string().nullable(),
+  signalIds: z.array(Id),
+  /** Short text shown on the chip, e.g. "Your brief · cost envelope". */
+  label: z.string(),
+});
+export type Provenance = z.infer<typeof Provenance>;
+
 export const Requirement = z.object({
   id: Id,
   caseId: Id,
@@ -373,6 +509,17 @@ export const Requirement = z.object({
   /** 2-4 words for lists; the title stays the full SMART sentence. */
   shortTitle: z.string(),
   description: z.string(),
+  /** The description sentence by sentence, so each one can carry its own provenance ("description#i"). */
+  descriptionParts: z.array(z.string()),
+  /** Provenance of every part: sentences, targets, criteria, assumptions, scope, release, cost. */
+  provenance: z.array(Provenance),
+  /** Current version; history in RequirementVersion. */
+  version: z.number().int(),
+  shapeAnswers: z.array(ShapeAnswer),
+  /** Brief the draft was composed with (shared or overlay). */
+  briefId: Id.nullable(),
+  /** Which drafter produced the current version, e.g. "composer@1" (scripted) or a model id. */
+  drafter: z.string().nullable(),
   marketScope: Region,
   variantOf: Id.nullable(),
   status: RequirementStatus,
@@ -414,6 +561,53 @@ export const RequirementCheck = z.object({
   issues: z.array(CheckIssue),
 });
 export type RequirementCheck = z.infer<typeof RequirementCheck>;
+
+/** The parts of a requirement that change between versions. */
+export const RequirementSnapshot = Requirement.pick({
+  title: true,
+  shortTitle: true,
+  description: true,
+  descriptionParts: true,
+  marketScope: true,
+  releaseTarget: true,
+  metrics: true,
+  acceptanceCriteria: true,
+  assumptions: true,
+  evidenceLevel: true,
+  cost: true,
+  provenance: true,
+  shapeAnswers: true,
+});
+export type RequirementSnapshot = z.infer<typeof RequirementSnapshot>;
+
+/** Same requirement ID, numbered versions; each keeps the cause (feedback, brief change, edit). */
+export const RequirementVersion = z.object({
+  requirementId: Id,
+  version: z.number().int(),
+  snapshot: RequirementSnapshot,
+  cause: z.enum(["draft", "feedback", "brief_change", "edit"]),
+  feedbackId: Id.optional(),
+  rationale: z.string(),
+  createdAt: IsoDate,
+  createdBy: z.string(),
+});
+export type RequirementVersion = z.infer<typeof RequirementVersion>;
+
+/** Layer 4: engineering or finance feedback plus the PM's response; becomes context for the next version. */
+export const FeedbackEntry = z.object({
+  id: Id,
+  requirementId: Id,
+  from: Addressee,
+  text: z.string(),
+  response: FeedbackResponse,
+  pmRationale: z.string(),
+  signalIds: z.array(Id),
+  proposalId: Id.nullable(),
+  resultingVersion: z.number().int().nullable(),
+  createdAt: IsoDate,
+  createdBy: Id,
+});
+export type FeedbackEntry = z.infer<typeof FeedbackEntry>;
 
 // ---------- Routing ----------
 export const Referral = z.object({
@@ -571,6 +765,9 @@ export const Dataset = z.object({
   comments: z.array(Comment),
   notifications: z.array(Notification),
   alerts: z.array(Alert),
+  briefs: z.array(SeriesBrief),
+  requirementVersions: z.array(RequirementVersion),
+  feedback: z.array(FeedbackEntry),
   audit: z.array(AuditEvent),
 });
 export type Dataset = z.infer<typeof Dataset>;

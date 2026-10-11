@@ -176,8 +176,6 @@ export type ReleaseTarget = z.infer<typeof ReleaseTarget>;
 export const CostSize = z.enum(["S", "M", "L"]);
 export const CostSensitivity = z.enum(["low", "medium", "high"]);
 export type CostSensitivity = z.infer<typeof CostSensitivity>;
-export const MarketFocus = z.enum(["global", "US", "EU", "CN"]);
-export type MarketFocus = z.infer<typeof MarketFocus>;
 export const Positioning = z.enum(["base", "premium", "luxury"]);
 export type Positioning = z.infer<typeof Positioning>;
 export type CostSize = z.infer<typeof CostSize>;
@@ -195,6 +193,46 @@ export type CheckKind = z.infer<typeof CheckKind>;
 export const CheckSeverity = z.enum(["red", "amber"]);
 export type CheckSeverity = z.infer<typeof CheckSeverity>;
 
+// ---------- PM context layers ----------
+/** Where a part of a requirement or a context value comes from, top to bottom. */
+export const ContextLayer = z.enum(["brand", "series_brief", "case_stance", "requirement_shape", "feedback"]);
+export type ContextLayer = z.infer<typeof ContextLayer>;
+
+/** Provenance of one part of a requirement: customer evidence, the PM's context, or an assumption. */
+export const ProvenanceSource = z.enum(["evidence", "pm_context", "assumption"]);
+export type ProvenanceSource = z.infer<typeof ProvenanceSource>;
+
+/** Series brief: who the successor is for. */
+export const TargetCustomer = z.enum(["keep_owners", "conquest", "both"]);
+export type TargetCustomer = z.infer<typeof TargetCustomer>;
+
+/** Series brief: evolution vs. revolution. */
+export const ChangeAmbition = z.enum(["evolution", "balanced", "revolution"]);
+export type ChangeAmbition = z.infer<typeof ChangeAmbition>;
+
+/** Case stance / requirement shape: how far to go on this problem. */
+export const Ambition = z.enum(["fix", "match", "beat"]);
+export type Ambition = z.infer<typeof Ambition>;
+
+/** The adaptive questions asked when a requirement is created (at most 3 per case). */
+export const ShapeKey = z.enum(["scope", "benchmark", "solution", "release", "offer"]);
+export type ShapeKey = z.infer<typeof ShapeKey>;
+
+/** The eight onboarding questions of a series brief. */
+export const BriefFieldKey = z.enum(["thesis", "targetCustomer", "marketWeights", "changeAmbition", "protectList", "dontFightOn", "givens", "costEnvelope"]);
+export type BriefFieldKey = z.infer<typeof BriefFieldKey>;
+
+/** Case stance: how the PM wants a slice of the evidence read. */
+export const EvidenceEffect = z.enum(["discount", "focus"]);
+export type EvidenceEffect = z.infer<typeof EvidenceEffect>;
+
+export const InsideKind = z.enum(["past_decision", "supplier_tech", "engineering_on_it", "other"]);
+export type InsideKind = z.infer<typeof InsideKind>;
+
+/** The PM's response to engineering or finance feedback on a requirement. */
+export const FeedbackResponse = z.enum(["accept", "push_back", "compromise"]);
+export type FeedbackResponse = z.infer<typeof FeedbackResponse>;
+
 // ---------- Collaboration ----------
 export const Addressee = z.enum(["engineering", "finance", "design", "quality", "market_pm", "purchasing", "other"]);
 export type Addressee = z.infer<typeof Addressee>;
@@ -208,13 +246,13 @@ export type AnswerSource = z.infer<typeof AnswerSource>;
 export const ReferralStatus = z.enum(["pending", "accepted", "declined", "escalated", "resolved"]);
 export type ReferralStatus = z.infer<typeof ReferralStatus>;
 
-export const ObjectType = z.enum(["case", "requirement", "signal", "referral", "question", "plan", "profile", "workspace"]);
+export const ObjectType = z.enum(["case", "requirement", "signal", "referral", "question", "plan", "profile", "workspace", "brief"]);
 export type ObjectType = z.infer<typeof ObjectType>;
 
-export const ProposalKind = z.enum(["field", "body", "question_answer", "new_question", "new_requirement"]);
+export const ProposalKind = z.enum(["field", "body", "question_answer", "new_question", "new_requirement", "brief_field", "new_version"]);
 export type ProposalKind = z.infer<typeof ProposalKind>;
 
-export const ProposalSource = z.enum(["chat", "meeting_note", "monitor"]);
+export const ProposalSource = z.enum(["chat", "meeting_note", "monitor", "strategy_doc", "feedback", "brief_change", "learning"]);
 export type ProposalSource = z.infer<typeof ProposalSource>;
 
 export const ProposalStatus = z.enum(["pending", "accepted", "rejected"]);

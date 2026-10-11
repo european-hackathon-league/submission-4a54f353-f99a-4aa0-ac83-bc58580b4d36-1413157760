@@ -1,7 +1,7 @@
 # Integration guide: frontend (`web/`) ↔ backend (`backend/`)
 
 **For:** whoever (human or AI agent) connects the synthetic-data frontend to Ghassen's real backend.
-**State as of 11.10.2026 (revised):** frontend merged into `main` ([PR #5](https://github.com/ghassenzaara/BMW-Product-Management-Challenge/pull/5)); backend on `main` (phases 0 to 10 done, see `plan.md`); OpenAI key set; first Supabase build in progress (`HANDOFF.md`).
+**State as of 11.10.2026, 02:30:** frontend on branch `feature/frontend-demo` ([PR #5](https://github.com/ghassenzaara/BMW-Product-Management-Challenge/pull/5) into `main`); backend on `main` (phases 0 to 10 done, see `plan.md`).
 
 > **How to use this file.** Read sections 1 to 3 to understand the product and the two codebases, then section 7 (the gap) and section 8 (the plan). Sections 4 to 6 are reference material: every screen, endpoint and business rule of the frontend, so nothing gets lost while swapping the data source.
 
@@ -10,7 +10,7 @@
 ## 0. TL;DR
 
 - The **frontend** is a Next.js 16 app that talks to **its own REST contract** (`web/src/contracts/*.ts`, Zod, exported to `contracts/openapi.yaml`). Today that contract is served by a **mock backend inside Next.js** (`web/src/app/api/[...path]/route.ts` + `web/src/mock/`) on synthetic data plus 404 real BMW verbatims.
-- The **backend** is FastAPI + Postgres/pgvector (Supabase) with **its own, different REST API** (`backend/app/api/routers/*.py`, guide in `backend/API.md`), on the full real data (local offline build: 1,206 cases, 13,105 valid signals, 32,400 scores for 10 configs × 4 profiles, RAG index; the Supabase build with the LLM classifier will change these counts).
+- The **backend** is FastAPI + Postgres/pgvector (Supabase) with **its own, different REST API** (`backend/app/api/routers/*.py`, guide in `backend/API.md`), on the full real data (1,206 cases, ~13,000 signals, scores for 10 configs, RAG index).
 - The two APIs **do not match** (different paths, field names, vocabularies, IDs and concepts: per-vehicle case state, configs and weight profiles per vehicle × market, page-based requirements). About half of the UI features (open questions, meeting notes, referrals, innovation pool, vehicle plan, comments, alerts, head sign-off, quality check, segments, deck) **have no backend counterpart yet**.
 - **Recommended approach: an adapter layer (BFF) inside Next.js.** Keep the UI and its contract unchanged; replace the mock handlers endpoint by endpoint with handlers that call FastAPI and map the shapes. Features the backend lacks keep running on a small "sidecar" store keyed by real IDs. Switchable per endpoint, so the demo can always fall back to the mock. Details and step-by-step plan in section 8.
 
@@ -20,7 +20,7 @@
 
 BMW product managers (PMs) decide which customer requirements go into the next generation of a vehicle (G60 = 5 Series, F70 = 1 Series, G70 = 7 Series). The app turns heterogeneous evidence into traceable, prioritized requirements, with the PM deciding at every step.
 
-**Chain (CLAUDE.md):** `Signal → Case (problem) → PM confirms → Requirement (solution) → PM approves → engineering`. The frontend adds a vehicle plan and a Codebeamer export after approval; CLAUDE.md lists the Codebeamer / Jira format as a later feature.
+**Chain:** `Signal → Case → Requirement → Vehicle plan → Codebeamer`
 
 | Concept | Meaning | Frontend entity | Backend table |
 |---|---|---|---|
@@ -58,7 +58,7 @@ backend/                   Backend (on main): FastAPI app, Postgres migrations, 
   API.md                   backend API guide
 taxonomy/                  Fixed taxonomy shared by both (taxonomy.json, build.py, classifier schema)
 All-context/               Challenge material, BMW data, meeting notes (main's canonical docs folder)
-docs/                      Second, diverged copy of the docs, also on main since the PR #5 merge (web/scripts/seed.ts still reads docs/02-data/processed); All-context/ is canonical
+docs/                      Older copy of the docs on the frontend branch (web/scripts/seed.ts still reads docs/02-data/processed)
 database-design.md, data-model.mmd, plan.md, changes.md, CLAUDE.md   Backend design and decision log (on main)
 ```
 
@@ -294,21 +294,17 @@ Portable as-is: inputs are a requirement, its case figures, all requirements and
 
 ## 7. The backend on `main` (what exists)
 
-**Stack:** Python 3.12, FastAPI, psycopg, Supabase Postgres + pgvector (local embedded Postgres for dev), OpenAI (key set: `gpt-6-luna` for bulk tasks and the RAG agent, `gpt-6.1-sol` for requirement texts, `text-embedding-3-small`), `uv`.
+**Stack:** Python 3.12, FastAPI, psycopg, Supabase Postgres + pgvector (local embedded Postgres for dev), OpenAI (chat + embeddings; key still missing → offline fallbacks), `uv`.
 
 **Run:**
-`backend/.env` now points at Supabase. Two ways to run:
 ```bash
-# A) Against Supabase (the team's choice for the UI wiring). Set AUTH_MODE=dev in backend/.env:
-#    with AUTH_MODE empty and SUPABASE_URL set, auth is "supabase" and X-User-Id is ignored.
 cd backend
+cp .env.example .env          # Supabase URL/keys or leave empty for local; AUTH_MODE=dev for X-User-Id
+uv run python -m app.demo build --fresh   # local DB: migrate, seed, cases, scores, RAG, demo users (~10 min)
+uv run python -m app.demo users           # prints demo user ids
 uv run uvicorn app.main:app --reload      # http://localhost:8000/docs
-
-# B) Local embedded Postgres (safe for write tests); environment variables beat backend/.env:
-SUPABASE_DB_URL= SUPABASE_URL= STORAGE_BACKEND=local AUTH_MODE=dev uv run python -m app.demo build --fresh   # ~10 min
-SUPABASE_DB_URL= SUPABASE_URL= STORAGE_BACKEND=local AUTH_MODE=dev uv run uvicorn app.main:app --reload
 ```
-`build --fresh` is refused while `SUPABASE_DB_URL` is set. CORS already allows `http://localhost:3000`. On Supabase every confirm, approve or merge click is permanent in the append-only audit log: test write paths on one agreed case only, or on the local database.
+CORS already allows `http://localhost:3000`.
 
 **Auth:** `AUTH_MODE=dev` → header `X-User-Id: <app_user uuid>`; production → `Authorization: Bearer <Supabase JWT>`. Demo users (fixed ids):
 `00000000-0000-4000-8000-000000000001` Demo PM 5 Series (`pm`, `[G60]`), `…0002` PM 7 Series (`[G70]`), `…0003` PM 1 Series (`[F70]`), `…0004` engineer, `…0005` admin. Roles: `pm`, `engineer`, `admin`; a PM acts only on the lines in `app_user.vehicles` (empty = all).
@@ -322,7 +318,7 @@ SUPABASE_DB_URL= SUPABASE_URL= STORAGE_BACKEND=local AUTH_MODE=dev uv run uvicor
 - **Signals:** uuid ids, `record_id` → `source_record` (exact quote checkable), `evidence_role` (`bmw_customer | competitor | market`), `kind`, `severity`, topic (`feature`), `aspect_group`, `car_area[]`, `market` (`USA | China | Europe | Rest of World | unknown`), `powertrain`, `scope_tag`, `validation` (`valid | quarantined | deleted`).
 - **Audit:** `audit_event` append-only (`actor` like `pm:<uuid>`, `agent:rag`, `seed:…`), `decision` table for PM actions, `page_version` for page history, `log_access` for views and exports.
 
-**Endpoints (50 paths, 53 operations + `/health`):** see the table in `backend/API.md`. Highlights the UI does not use yet: case page versions and stale-save protection, merge/split, tag overrides (brand fit, segment, release fit), predecessor research, profile compare (robust top N), config source filter, quarantine release/delete, taxonomy review queue, audit chain report per requirement, overview map per line, signal detail with its source record.
+**Endpoints (about 50):** see the table in `backend/API.md`. Highlights the UI does not use yet: case page versions and stale-save protection, merge/split, tag overrides (brand fit, segment, release fit), predecessor research, profile compare (robust top N), config source filter, quarantine release/delete, taxonomy review queue, audit chain report per requirement, overview map per line, signal detail with its source record.
 
 ---
 
@@ -332,13 +328,13 @@ SUPABASE_DB_URL= SUPABASE_URL= STORAGE_BACKEND=local AUTH_MODE=dev uv run uvicor
 
 | Concept | Frontend | Backend |
 |---|---|---|
-| Market | `EU`, `US`, `CN`, `RoW`, `unknown` | `Europe`, `USA`, `China`, `Rest of World`, `unknown` (requirement id codes `EU`, `USA`, `CN`, `RoW`) |
-| Requirement scope | `marketScope`: `global` \| `RoW` \| `CN` (here `RoW` means every market except China, not the backend's `Rest of World`) | `market`: null (all) or one market when split |
+| Market | `EU`, `US`, `CN`, `RoW`, `unknown` | `Europe`, `USA`, `China`, `Rest of World`, `unknown` |
+| Requirement scope | `marketScope`: `global` \| `RoW` \| `CN` | `market`: null (all) or one market when split |
 | User role | `vehicle_pm`, `attribute_pm`, `head` | `pm` (lines in `vehicles`), `engineer`, `admin` |
 | User id | `u-lena` … | uuid (`00000000-0000-4000-8000-00000000000X`) |
 | Case id | `CASE-G60-0001` | `CASE-0012` (opaque string either way; UI only displays it) |
 | Case series | `series` + `relatedSeries` | `case_vehicle` rows (series = the current config's vehicle, related = the others) |
-| Case state | `observed, new, investigating, awaiting_answers, ready, decided` + outcome | per vehicle `observed, open, confirmed, rejected`; actions `open` (observed→open), `confirm` (open→confirmed), `reject` (observed/open→rejected), `reopen` (rejected/confirmed→open) (+ `case_lineage` for merges) |
+| Case state | `observed, new, investigating, awaiting_answers, ready, decided` + outcome | per vehicle `observed, open, confirmed, rejected` (+ `case_lineage` for merges) |
 | Requirement status | `draft, in_discussion, pm_approved, signed_off, planned, exported, rejected` | `draft, in_discussion, approved, rejected, deleted` |
 | Release | `next_gen`, `lci`, `ota` | `next_gen`, `current_car`, `ota` |
 | Evidence level | `high, medium, low, assumption` | `bmw_data, web, assumption` |
@@ -374,9 +370,8 @@ A good path: start with option 1 now, and move pieces into the backend (option 2
 ### 8.4 Step-by-step plan (option 1)
 
 **Step 0 — Branch and run both.**
-- PR #5 is merged; work on a new branch `feature/integration` off `main`.
-- Preconditions on Supabase (each writes to the real database, so it needs the user's go): the build is finished (`agent_run` last rows ok); demo users exist (`python -m app.demo users`); two extra `app_user` rows exist: a PM with all lines (`vehicles = '{}'`) for Jonas and Katrin, and a second G60 PM for Wei.
-- Run the backend (section 7, mode A, `AUTH_MODE=dev`) on :8000 and the web app on :3000.
+- Merge PR #5 (or merge `main` into `feature/frontend-demo` again: `main` gained phases 7 to 10 after the PR was opened). Work on a new branch `feature/integration`.
+- Run the backend locally (`AUTH_MODE=dev`, `python -m app.demo build --fresh`, uvicorn on :8000) and the web app (:3000).
 
 **Step 1 — Plumbing.**
 - `web/.env.local`: `DATA_SOURCE=backend`, `BACKEND_URL=http://localhost:8000`.
@@ -386,7 +381,7 @@ A good path: start with option 1 now, and move pieces into the backend (option 2
   - `handlers.ts`: `Partial<Handlers>` implemented against the backend.
   - `sidecar.ts`: in-memory store for UI-only objects (questions, meeting notes, PM context, referrals, innovation, plan features, comments, alerts, proposals of non-diff kinds, owner/workflow state, quality checks), keyed by backend IDs; reuse `mock/store.ts` helpers.
 - `route.ts`: pick `backendHandlers[name] ?? mockHandlers[name]` when `DATA_SOURCE=backend`; keep the mock as the default.
-- **Users and personas:** keep the persona UX. Map personas to backend users with a table in the adapter: Lena → `…0001` PM 5 Series; Daniel → `…0002`; Sofia → `…0003`; Jonas and Katrin → the new all-lines PM; Wei → the new second 5 Series PM. Not the admin for Katrin: the backend only lets `pm:` actors approve a requirement (`requirements/service.py`), so an admin gets 409. Head-only actions (sign-off, send back, resolve escalation) live in the sidecar. `users` returns the persona list with backend ids attached (the backend has no user list).
+- **Users and personas:** keep the persona UX. Map personas to backend users with a table in the adapter (e.g. Lena → `…0001` PM 5 Series; Daniel → `…0002`; Sofia → `…0003`; Katrin → `…0005` admin acting as head; Jonas → a PM with all lines; Wei → a second 5 Series PM, needs a new `app_user` row). `users` returns the persona list with backend ids attached.
 - **Config choice:** each persona needs a config (vehicle × market) and default weight profile from `GET /configs`. Proposal: Lena → `G60 / USA` (most G60 verbatims are US), Wei → `G60 / China`, Sofia → `F70 / Europe`, Daniel → `G70 / USA`; `updateWorkspace` switches config/profile. `me.workspace.weightProfileId` = that profile id.
 
 **Step 2 — Read path (what the screens show).**
@@ -416,8 +411,7 @@ Open questions, meeting notes (+ `ai/notes.ts`), PM context (+ follow-ups), refe
 
 **Step 5 — Verify.**
 - `npm run contract-test` with `API_BASE=http://localhost:3000/api` and `DATA_SOURCE=backend` (parametrize the IDs: pick the first open case and a confirmed one from the board instead of `CASE-G60-0001`).
-- Backend: `uv run pytest` (offline). `app.demo e2e` only against the local database (section 7, mode B): on Supabase it would confirm and approve a real case, and the command has no guard (`HANDOFF.md`: the PM confirms the first real case in the UI).
-- Against Supabase run the contract test read-only (skip the write steps of the storyline).
+- Backend: `uv run pytest` and `uv run python -m app.demo e2e "G60 / USA"`.
 - Click through the demo storyline with real data; check the audit trail shows backend events (actor `pm:<uuid>`).
 
 ### 8.5 Decisions the team must make
@@ -431,38 +425,6 @@ Open questions, meeting notes (+ `ai/notes.ts`), PM context (+ follow-ups), refe
 7. **Chat:** backend RAG agent for free-form questions (OpenAI key needed), keep the scripted flows (draft requirement, questions for engineering, segment mode) in the adapter?
 8. **Which ID the UI shows for signals:** uuid, or the readable `record_id` (`bmw_feedback-G60-0001`, matching the old `G60-0001` style)?
 
-### 8.6 Frontend concepts that contradict CLAUDE.md
-
-These are not only mapping work: CLAUDE.md decided against them, or never decided them. Each one adopted needs an entry in `changes.md` (reason, who decided).
-
-| Frontend | CLAUDE.md | Proposal |
-|---|---|---|
-| `Workspace.projectType` (`new_gen` / `lci`) | Rejected option: "project type setting" (replaced by the release-fit filter) | Hide it on real data |
-| `Case.changeDepth` (trim, part, platform, OTA) | Release fit per vehicle (`current_car`, `next_gen`, `ota`), judged by the LLM, PM can override | Map to release fit; do not keep both |
-| Evidence level `high/medium/low` and `Signal.trust` A to E | Evidence level `bmw_data/web/assumption`, display only; a separate confidence axis is rejected | Use the backend vocabulary; show source type instead of trust |
-| `brand_fit` as a weighted factor | Brand fit is a multiplier (fits 1.0, neutral 0.8, off-brand 0.5) | Follow the backend (decision 5) |
-| Case ids `CASE-G60-0001` | "Case IDs carry no vehicle" (`CASE-0012`) | Use backend ids |
-| Sub-states and outcomes refer, innovation pool, park | Lifecycle observed → open → confirmed / rejected per vehicle | Sidecar first (decision 6), log as a new concept |
-| Head of product line signs off; roles `vehicle_pm`, `attribute_pm`, `head` | Roles `pm`, `engineer`, `admin`; "PM approves; the approved top 10 go to engineering"; PM and engineers edit requirements | No engineer persona exists in the UI: add one, or accept that engineers are out of the demo; sign-off is a new concept (decision 3) |
-| Scripted "research" in chat adds synthetic web signals | Signals only come from the fetch agents through the validation gate | Off on real data (or call the predecessor-research endpoint) |
-| Live chat with Anthropic | OpenAI only | Free-form chat goes to the backend RAG agent |
-
-### 8.7 Backend details the adapter must handle
-
-- **Errors:** FastAPI returns `{detail: string}` (422 validation: `{detail: [{loc, msg, type}]}`); the UI expects `{error, issues?}`.
-- **Board:** `GET /cases` needs `profile_id` and returns the whole ranked list (no pagination); default states are `open` and `confirmed`, so the kanban's observed column needs `state=observed` explicitly (repeat the parameter).
-- **Requirements:** `metric_target` is one object `{metric, today, target, competitor_reference}`, the UI expects `Metric[]`; the list rows have no description, metrics or criteria (fetch each requirement). `approved` needs a `pm:` actor.
-- **Chat:** `cited_signals` are bare signal uuids; labels need the signal rows.
-- **Brand profile:** `POST /brand-profile {body_md, rationale}`; the UI's PUT has no rationale, so the adapter adds one.
-- **Notifications:** marked read one id at a time; "read all" loops over the unread ones. The browser may only read `notification` directly (Supabase Realtime); the bell can subscribe later, v1 polls the API.
-- **Export:** `GET /requirements/export?profile_id&format=json|csv&top_n=10` (default JSON, approved only).
-
-### 8.8 Decisions taken (2026-10-11)
-
-- Approach: adapter (BFF) inside Next.js (option 1).
-- Data source for the wiring: Supabase directly. Read paths first; write paths tested on one agreed case.
-- UI-only features: sidecar first, persisted as a JSON file keyed by backend ids (survives restarts, no migration on the live database); move questions, referrals, comments and sign-off statuses into backend tables after the demo.
-
 ---
 
 ## 9. Gotchas
@@ -475,8 +437,8 @@ These are not only mapping work: CLAUDE.md decided against them, or never decide
 - **Market labels:** `Rest of World` has spaces; URL-encode it in query strings.
 - **Citations:** the UI's markdown turns `[ID]` into clickable links that open the signal on the case page. Backend signal ids are uuids, and the case page must be able to find them (the signals of the case must be loaded with the same ids).
 - **Real data has no Chinese verbatims** for G60/G70 feedback (US-heavy). The UI says so honestly; keep that (segment chips show `China (0)`).
-- **LLM keys:** the backend key is set; the RAG agent answers with `gpt-6-luna` and the Supabase build classifies the 2,557 signals that had no usable BMW topic in the local build. The project uses OpenAI only (CLAUDE.md): free-form chat goes to the backend RAG agent; the frontend's `ANTHROPIC_API_KEY` path (`mock/ai/live.ts`) stays mock-only.
-- **`docs/` vs `All-context/`:** both are on `main` and have diverged (different folder names, differing files). CLAUDE.md uses `All-context/`; `web/scripts/seed.ts` reads `docs/02-data/processed`. Point the seed at `All-context/02-data-provided-by-pm/processed` and remove `docs/` (team decision).
+- **LLM keys:** backend needs `OPENAI_API_KEY` for the RAG agent's LLM mode and the classifier (2,557 signals still unclassified); without it the agent answers extractively with citations. The frontend's optional live features use `ANTHROPIC_API_KEY`.
+- **`docs/` vs `All-context/`:** the frontend branch still has `docs/` (seed script reads `docs/02-data/processed`); `main` uses `All-context/02-data-provided-by-pm/processed`. Point `web/scripts/seed.ts` at `All-context` when `docs/` is removed.
 - **Synthetic labels:** real backend objects are not synthetic; personas, sidecar content and demo decisions are. Keep the `synthetic` flag honest in the mapping.
 
 ---

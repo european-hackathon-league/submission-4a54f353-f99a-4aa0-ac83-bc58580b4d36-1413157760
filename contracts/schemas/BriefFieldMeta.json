@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": [
+        "data",
+        "brand",
+        "doc",
+        "pm"
+      ]
+    },
+    "confirmed": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "resolution": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "regional_variant",
+            "aligned"
+          ]
+        },
+        "by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "at": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "by",
+        "at",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "updatedBy": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "source",
+    "confirmed",
+    "updatedAt",
+    "updatedBy"
+  ],
+  "additionalProperties": false
+}
