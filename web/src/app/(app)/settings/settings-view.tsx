@@ -105,7 +105,7 @@ export function SettingsView() {
                   {p.id === ws.weightProfileId && <Pill t="blue">active</Pill>}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{p.description}</p>
-                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs lg:grid-cols-3 2xl:grid-cols-4">
                   {FactorKeys.options.map((f) => (
                     <span key={f} className="flex justify-between gap-2">
                       <span className="truncate text-muted-foreground">{factorLabel[f]}</span>

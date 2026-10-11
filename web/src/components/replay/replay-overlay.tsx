@@ -102,7 +102,7 @@ function Stage({ x, graphTopics, clock, scrub, setScrub, onClose }: { x: ReplayR
           <p className="text-xs text-muted-foreground">
             Trace replay · <span className="font-mono">{r.id}</span>
           </p>
-          <h2 className="truncate text-[15px] font-semibold" title={r.title}>
+          <h2 className="line-clamp-2 text-[15px] font-semibold" title={r.title}>
             {r.title}
           </h2>
         </div>
@@ -115,7 +115,7 @@ function Stage({ x, graphTopics, clock, scrub, setScrub, onClose }: { x: ReplayR
                 onClick={() => (clock.setPlaying(false), clock.goTo(i), setScrub(null))}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors duration-150 before:size-1.5 before:shrink-0 before:rounded-full before:content-['']",
-                  i === clock.beat ? "bg-foreground font-medium text-background before:bg-ember" : i < clock.beat ? "text-foreground before:bg-ember/60 hover:bg-muted" : "text-muted-foreground before:bg-border-strong hover:bg-muted hover:text-foreground",
+                  i === clock.beat ? "bg-foreground font-medium text-background before:bg-ember" : i < clock.beat ? "text-foreground before:bg-mist dark:before:bg-fog hover:bg-muted" : "text-muted-foreground before:bg-border-strong hover:bg-muted hover:text-foreground",
                 )}
               >
                 {b.label}
@@ -393,7 +393,7 @@ function Timeline({ events, played, motion }: { events: ReplayEvent[]; played: n
               {e.version ? ` · v${e.version}` : ""}
             </p>
             {e.rationale && <p className={cn("mt-1 line-clamp-2 text-xs", agent ? "text-muted-foreground" : "italic")}>{agent ? e.rationale : `“${e.rationale}”`}</p>}
-            {e.scoreSnapshot && <p className="mt-1 font-mono text-xs font-medium tabular-nums text-foreground">score {e.scoreSnapshot.score.toFixed(3)} · {e.scoreSnapshot.profileName} v{e.scoreSnapshot.profileVersion}</p>}
+            {e.scoreSnapshot && <p className="mt-1 text-xs font-medium tabular-nums text-foreground">score {e.scoreSnapshot.score.toFixed(3)} · {e.scoreSnapshot.profileName} v{e.scoreSnapshot.profileVersion}</p>}
           </li>
         );
       })}

@@ -69,7 +69,7 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
         <div className="mb-2 flex items-center gap-2">
           <h3 className="text-sm font-semibold">Inherited from your brief</h3>
           {v ? (
-            <Link href="/brief" className="text-xs font-medium text-foreground underline decoration-border-strong underline-offset-2 transition-colors duration-150 hover:decoration-foreground">
+            <Link href="/brief" className="text-xs font-medium text-foreground underline decoration-muted-foreground underline-offset-2 transition-colors duration-150 hover:decoration-foreground">
               Open brief
             </Link>
           ) : (

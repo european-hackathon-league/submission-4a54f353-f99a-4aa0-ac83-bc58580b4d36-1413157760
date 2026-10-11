@@ -25,14 +25,14 @@ const sourceIcon: Record<string, LucideIcon> = {
 const toneBorder: Record<Tone, string> = {
   customer: "border-l-foreground",
   study: "border-l-chart-2",
-  web: "border-l-muted-foreground",
+  web: "border-l-tone-sky-dot",
   competitor: "border-l-chart-5",
   fact: "border-l-ash dark:border-l-fog",
 };
 const toneFill: Record<Tone, string> = {
   customer: "fill-foreground",
   study: "fill-chart-2",
-  web: "fill-muted-foreground",
+  web: "fill-tone-sky-dot",
   competitor: "fill-chart-5",
   fact: "fill-ash dark:fill-fog",
 };
@@ -201,7 +201,7 @@ export function SankeyChart({
                   key={`${l.source}>${l.target}`}
                   d={band(l, s.x + s.w, t.x)}
                   className={cn(focus && on ? "fill-ember" : toneFill[l.tone], "transition-[opacity,fill] duration-150 motion-reduce:transition-none")}
-                  style={{ opacity: focus ? (on ? 0.45 : 0.07) : l.tone === "fact" ? 0.2 : 0.22 }}
+                  style={{ opacity: focus ? (on ? 0.45 : 0.07) : l.tone === "fact" ? 0.14 : 0.24 }}
                 />
               );
             })}

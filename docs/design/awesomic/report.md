@@ -118,16 +118,30 @@ Every target exists at 1440 / 390, light and dark, in `before/screens/` and `aft
 - Replay landmarks and the focusable timeline.
 - Dimmed, not-yet-played replay cards (intentional state).
 
-## QA scores
+## QA scores and fixes
 
-See [`qa-round1.md`](qa-round1.md) (before / after, 1–5 on type hierarchy, palette discipline, hairlines, radius consistency, spacing rhythm, calm vs. busy, honesty signals) and the regressions found and fixed.
+Scores (before / after, 1–5 on type hierarchy, palette discipline, hairlines, radius consistency, spacing rhythm, calm vs. busy, honesty signals) are in [`qa-round1.md`](qa-round1.md).
+
+Fixes from the QA round (commit "Restyle QA fixes"):
+- **390px overflow:**
+  - The desk and settings grids got `minmax(0,1fr)` columns and shrinkable children.
+  - The case header actions and every toggle group now wrap.
+  - The requirement tab bar and the measurable-targets table scroll sideways.
+  - The requirement side panel is capped at full width.
 
 ## Verification
 
 - `tsc --noEmit`, `eslint`, `next build`: pass, on the restyle branch and on the integration branch with `origin/main`.
 - `npm run contract-test` against a dev server: **129 calls, 0 failures**, the same as before the restyle.
 - `npm run map-test` (backend adapter mapping): 8/8 pass.
-- README demo script walked in a browser for Lena, Wei and Katrin (scripts A and C), including a real drag of the ripple factor slider. Results are in the PR description.
+- **README demo script:**
+  - **Walked in a browser** (script A, steps 1–4, on the restyled dev build): Refresh → five steps → toast → *View ripple*; verdict colours distinguishable; *Keep, with reason* recorded.
+  - **Factor slider**, driven with real input (`.cursor/ux-gate/slider-check.mjs`, keyboard and mouse drag): 0.85 → 0.90 gives "800 km CLTC ≈ 720 km WLTP" and the 5 Series turns *Behind*; *Team value* resets it. The browser tool's "read-only" report is a tool limitation: it can't operate native range inputs.
+  - **The remaining steps:**
+    - Wei's market variant and Katrin's notification are covered by the contract test.
+    - The replay's *Chain intact*, the ripple drawer, the notifications popover, the side panel and the feedback dialog are covered by the gate captures.
+- **Console:** 0 errors on `/login`, `/`, a case, the ripple and onboarding with several personas (`console-check.mjs`).
+- **390px:** no horizontal overflow on 12 main routes after the QA fixes (`overflow-check.mjs`). Before the restyle, every screen overflowed at 390px.
 - `git diff --stat` for the restyle commits: nothing under `web/src/contracts`, `web/src/mock`, `web/scripts`, `web/src/lib/api`. No build fixes were needed.
 
 ## Deliberately left unchanged

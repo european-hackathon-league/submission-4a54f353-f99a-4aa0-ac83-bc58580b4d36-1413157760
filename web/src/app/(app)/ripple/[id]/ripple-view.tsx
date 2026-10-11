@@ -37,7 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const verdictCell: Record<ImpactVerdict, string> = {
-  behind: "border-tone-red-bd border-l-tone-red-dot bg-tone-red-bg text-tone-red-fg hover:border-tone-red-dot",
+  behind: "border-tone-red-dot/70 border-l-tone-red-dot bg-tone-red-bg text-tone-red-fg hover:border-tone-red-dot",
   at_par: "border-tone-amber-bd border-l-tone-amber-dot bg-tone-amber-bg text-tone-amber-fg hover:border-tone-amber-dot",
   still_ahead: "border-tone-emerald-bd border-l-tone-emerald-dot bg-tone-emerald-bg text-tone-emerald-fg hover:border-tone-emerald-dot",
   not_comparable: "border-tone-slate-bd border-l-tone-slate-dot bg-tone-slate-bg text-tone-slate-fg hover:border-tone-slate-dot",
@@ -240,7 +240,7 @@ function PortfolioGrid({ ripple: r, live, user, showAll, setShowAll, onOpen }: {
                           {verdictLabel[worst]}
                           {items.some((i) => i.muted) && <span className="font-normal">· muted</span>}
                         </span>
-                        <span className="flex items-center gap-1 text-[11px]">
+                        <span className="flex items-center gap-1 text-[11px] font-medium">
                           {targets.length ? `${targets.length} target${targets.length > 1 ? "s" : ""}` : "no target"}
                           {targets.some((i) => i.alsoRows.includes(row)) && " · Baukasten"}
                           {moved.length > 0 && ` · ${moved.length} case re-ranked ↑`}

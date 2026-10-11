@@ -125,7 +125,7 @@ export function EvidenceBars({ level, showLabel = true }: { level: EvidenceLevel
         <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
           <span className="flex gap-0.5" aria-hidden>
             {[0, 1, 2].map((i) => (
-              <span key={i} className={cn("h-3 w-1.5 rounded-[2px]", i < n ? (n === 3 ? "bg-positive" : n === 2 ? "bg-tone-sky-dot" : "bg-warning") : "bg-muted-foreground/25")} />
+              <span key={i} className={cn("h-3 w-1.5 rounded-[2px]", i < n ? (n === 3 ? "bg-positive" : n === 2 ? "bg-tone-sky-fg" : "bg-warning") : "bg-border-strong")} />
             ))}
           </span>
           {showLabel ? label : <span className="sr-only">{label}</span>}
