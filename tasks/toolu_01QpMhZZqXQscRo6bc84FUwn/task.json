@@ -1,0 +1,15 @@
+{
+  "tool_use_id": "toolu_01QpMhZZqXQscRo6bc84FUwn",
+  "agent_id": "a06e9935400525b6d",
+  "subagent_type": "general-purpose",
+  "task_description": "Extract signals batch-016",
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 123769,
+    "cache_read_tokens": 715366,
+    "output_tokens": 334,
+    "api_call_count": 9
+  },
+  "started_at": "2026-10-11T10:05:14.1602702+02:00",
+  "completed_at": "2026-10-11T10:08:17.9353734+02:00"
+}
