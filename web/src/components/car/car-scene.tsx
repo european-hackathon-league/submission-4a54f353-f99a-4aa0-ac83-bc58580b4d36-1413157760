@@ -7,7 +7,10 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { CarModel, Region } from "@/lib/car/zones";
 
-export type SceneMode = "small" | "big";
+/** Start fetching a model, so it is in the browser when the 3D view opens. */
+export function preloadCar(file: string) {
+  useGLTF.preload(file, false, true);
+}
 
 interface Props {
   model: CarModel;
@@ -15,19 +18,13 @@ interface Props {
   focus: Region | null;
   /** Dark or light studio, to match the app's theme. */
   dark: boolean;
-  /** "small" is the slow turning preview; "big" is the explorable view. */
-  mode: SceneMode;
-  /** True while nobody can see the scene (scrolled away, tab hidden): no frame is drawn. */
+  /** True while nobody can see the scene (tab hidden): no frame is drawn. */
   paused: boolean;
   /** Pixels covered by overlays on each side; the view shifts so the car stays in the free space between them. */
   insetLeft?: number;
   insetRight?: number;
-  /** The first frame with the car is on screen. */
+  /** The shaders are compiled and the first frame is on screen. */
   onReady?: () => void;
-  /** The device cannot keep up even at the lowest quality; the caller should show a still picture instead. */
-  onSlow?: () => void;
-  /** Car and soft shadow only, for rendering the still pictures. */
-  bare?: boolean;
 }
 
 const BLAU = new THREE.Color("#0098d4");
@@ -37,11 +34,11 @@ const UP = new THREE.Vector3(0, 1, 0);
  * Frames per second while something moves. The scene runs on demand: it draws only when something
  * changes, and while the car turns a timer asks for these few frames, not 60 a second.
  */
-const FPS = { small: 20, big: 30 } as const;
+const FPS = 30;
 /** The highlight breathes slowly; it needs far fewer frames than a camera move. */
 const PULSE_FPS = 12;
 /** Radians per second. */
-const SPIN = { small: 0.26, big: 0.2 } as const;
+const SPIN = 0.2;
 
 /** Uniforms shared by every material of the car, so one update moves the highlight on all meshes. */
 function makeUniforms() {
@@ -62,7 +59,8 @@ type Uniforms = ReturnType<typeof makeUniforms>;
  * and the rest of the body can fade to a see-through shell.
  */
 function patchMaterial(material: THREE.MeshStandardMaterial, uniforms: Uniforms) {
-  material.side = THREE.DoubleSide;
+  // The body paint is a closed shell, drawn from the outside only: half the pixel work. Thin parts (plates, badges, glass) keep both sides.
+  material.side = material.name === "paint" ? THREE.FrontSide : THREE.DoubleSide;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
@@ -105,11 +103,10 @@ function regionToWorld(region: Region, f: Frame) {
   };
 }
 
-function cameraFor(region: Region | null, f: Frame, mode: SceneMode) {
+function cameraFor(region: Region | null, f: Frame) {
   if (!region) {
-    const target = new THREE.Vector3(0, f.height * (mode === "small" ? 0.4 : 0.45), 0);
-    const distance = f.length * (mode === "small" ? 1.2 : 1.55);
-    return { target, position: target.clone().add(new THREE.Vector3(0.62, 0.22, -0.72).normalize().multiplyScalar(distance)) };
+    const target = new THREE.Vector3(0, f.height * 0.45, 0);
+    return { target, position: target.clone().add(new THREE.Vector3(0.62, 0.22, -0.72).normalize().multiplyScalar(f.length * 1.55)) };
   }
   const { center } = regionToWorld(region, f);
   const az = THREE.MathUtils.degToRad(region.view.azimuth);
@@ -174,16 +171,14 @@ function buildRig(source: THREE.Object3D, model: CarModel) {
 const projected = new THREE.Vector3();
 const offset = new THREE.Vector3();
 
-function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, bare, onReady, onSlow, placeLabel }: Props & { placeLabel: (x: number, y: number) => void }) {
+function Car({ model, focus, dark, paused, insetLeft = 0, insetRight = 0, onReady, placeLabel }: Props & { placeLabel: (x: number, y: number) => void }) {
   const gltf = useGLTF(model.file, false, true);
   const controls = useRef<OrbitControlsImpl>(null);
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const canvas = useThree((s) => s.gl.domElement);
   const invalidate = useThree((s) => s.invalidate);
-  const setDpr = useThree((s) => s.setDpr);
   const [still] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const big = mode === "big";
 
   const rig = useMemo(() => buildRig(gltf.scene, model), [gltf, model]);
   const { root, frame } = rig;
@@ -192,7 +187,7 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
   const goal = useRef({ position: new THREE.Vector3(), target: new THREE.Vector3() });
   const look = useRef(new THREE.Vector3());
   // Run state that changes between frames without React needing to know.
-  const run = useRef({ flying: true, placed: false, touched: false, paused, timer: 0, last: 0, late: 0, level: 0, onSlow });
+  const run = useRef({ flying: true, placed: false, touched: false, paused, timer: 0 });
 
   const xray = !!focus?.interior;
   const tint = focus ? (focus.tint ?? 1) : 0;
@@ -201,14 +196,14 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
 
   useLayoutEffect(() => {
     live.current = rig;
-    run.current.onSlow = onSlow;
     for (const m of live.current.materials) {
       const clear = xray || m.userData.seeThrough === true;
       m.transparent = clear;
       m.depthWrite = !clear;
+      m.side = clear || m.name !== "paint" ? THREE.DoubleSide : THREE.FrontSide;
     }
     invalidate();
-  }, [rig, xray, onSlow, invalidate]);
+  }, [rig, xray, invalidate]);
 
   // Nothing is drawn while nobody can see the scene; one frame catches up when it is seen again.
   useEffect(() => {
@@ -219,7 +214,7 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
 
   useEffect(() => {
     const next = focusKey ? (JSON.parse(focusKey) as Region) : null;
-    const to = cameraFor(next, rig.frame, mode);
+    const to = cameraFor(next, rig.frame);
     goal.current = to;
     const r = run.current;
     if (!r.placed) {
@@ -237,7 +232,7 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
       live.current.uniforms.uZoneRadius.value.copy(world.radius);
     }
     invalidate();
-  }, [focusKey, mode, rig, camera, invalidate]);
+  }, [focusKey, rig, camera, invalidate]);
 
   useEffect(() => {
     onReady?.();
@@ -246,15 +241,14 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
 
   useEffect(() => {
     const view = camera as THREE.PerspectiveCamera;
-    const shift = big ? (insetRight - insetLeft) / 2 : 0;
+    const shift = (insetRight - insetLeft) / 2;
     if (shift) view.setViewOffset(size.width, size.height, shift, 0, size.width, size.height);
     else view.clearViewOffset();
     invalidate();
-  }, [camera, size, big, insetLeft, insetRight, invalidate]);
+  }, [camera, size, insetLeft, insetRight, invalidate]);
 
-  // The explorable view: the mouse wheel zooms the car.
+  // The mouse wheel zooms the car.
   useEffect(() => {
-    if (!big) return;
     const far = rig.frame.length * 1.8;
     const near = rig.frame.length * 0.45;
     const onWheel = (e: WheelEvent) => {
@@ -271,13 +265,10 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
     };
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", onWheel);
-  }, [big, canvas, camera, rig]);
+  }, [canvas, camera, rig]);
 
   useFrame((state, dt) => {
     const r = run.current;
-    const now = performance.now();
-    const gap = r.last ? now - r.last : 0;
-    r.last = now;
     const step = Math.min(dt, 0.1);
     const k = 1 - Math.exp(-step * 4);
     const u = live.current.uniforms;
@@ -296,14 +287,14 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
     // The idle car turns slowly, once the camera has arrived and nothing is selected or touched.
     const spinning = !r.flying && !focusKey && !still && !r.touched;
     if (spinning) {
-      offset.copy(camera.position).sub(look.current).applyAxisAngle(UP, -SPIN[mode] * step);
+      offset.copy(camera.position).sub(look.current).applyAxisAngle(UP, -SPIN * step);
       camera.position.copy(look.current).add(offset);
       moving = true;
     }
     if (controls.current) {
       controls.current.target.copy(look.current);
       controls.current.update();
-    } else camera.lookAt(look.current);
+    }
 
     if (focusKey) {
       // The name tag sits just above the highlighted region.
@@ -316,20 +307,8 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
     // Ask for the next frame only if something is still moving, and not sooner than the frame rate allows.
     window.clearTimeout(r.timer);
     if (r.paused) return;
-    const full = FPS[mode] / (r.level >= 1 ? 2 : 1);
-    const fps = moving ? full : focusKey ? PULSE_FPS : 0;
-    if (!fps) return;
-    // Watch whether the frames really arrive at that rate; if they keep coming late, lower the quality.
-    if (moving && gap) {
-      r.late = gap > (1000 / full) * 2.2 ? r.late + 1 : Math.max(0, r.late - 1);
-      if (r.late > 24 && !new URLSearchParams(location.search).has("car3d")) {
-        r.late = 0;
-        r.level++;
-        if (r.level === 1) setDpr(0.75);
-        else r.onSlow?.();
-      }
-    }
-    r.timer = window.setTimeout(() => invalidate(), 1000 / fps);
+    const fps = moving ? FPS : focusKey ? PULSE_FPS : 0;
+    if (fps) r.timer = window.setTimeout(() => invalidate(), 1000 / fps);
   });
 
   useEffect(() => () => window.clearTimeout(run.current.timer), []);
@@ -339,38 +318,56 @@ function Car({ model, focus, dark, mode, paused, insetLeft = 0, insetRight = 0, 
     <>
       <primitive object={root} />
       {focus && <RegionGlow region={focus} frame={frame} />}
-      {!bare && (
-        <>
-          <mesh position={[0, -0.04, 0]}>
-            <cylinderGeometry args={[disc, disc, 0.08, 96]} />
-            <meshStandardMaterial color={dark ? "#0f1215" : "#cfd5dc"} roughness={1} />
-          </mesh>
-          {big && (
-            <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[disc + 0.02, 0.022, 8, 128, Math.PI * 0.55]} />
-              <meshBasicMaterial color={BLAU} />
-            </mesh>
-          )}
-        </>
-      )}
+      <mesh position={[0, -0.04, 0]}>
+        <cylinderGeometry args={[disc, disc, 0.08, 96]} />
+        <meshStandardMaterial color={dark ? "#0f1215" : "#cfd5dc"} roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[disc + 0.02, 0.022, 8, 128, Math.PI * 0.55]} />
+        <meshBasicMaterial color={BLAU} />
+      </mesh>
       {/* Baked once: the car does not move relative to its own shadow, so one pass is enough. */}
       <ContactShadows position={[0, 0.004, 0]} scale={frame.length * 2} far={2} blur={2.4} opacity={dark ? 0.6 : 0.4} frames={1} resolution={512} />
-      {big && (
-        <OrbitControls
-          ref={controls}
-          enablePan={false}
-          enableZoom={false}
-          minDistance={frame.length * 0.45}
-          maxDistance={frame.length * 1.8}
-          maxPolarAngle={Math.PI / 2 - 0.03}
-          onStart={() => {
-            run.current.flying = false;
-            run.current.touched = true;
-          }}
-        />
-      )}
+      <OrbitControls
+        ref={controls}
+        enablePan={false}
+        enableZoom={false}
+        minDistance={frame.length * 0.45}
+        maxDistance={frame.length * 1.8}
+        maxPolarAngle={Math.PI / 2 - 0.03}
+        onStart={() => {
+          run.current.flying = false;
+          run.current.touched = true;
+        }}
+      />
     </>
   );
+}
+
+/**
+ * Compiles every shader of the car in the background (the browser does it on other threads where it can)
+ * before the first frame is drawn, so opening the view does not freeze the page.
+ */
+function WarmUp({ done }: { done: () => void }) {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    let live = true;
+    gl.compileAsync(scene, camera)
+      .catch(() => undefined)
+      .then(() => {
+        if (!live) return;
+        done();
+        // The loop starts once the page has re-rendered with the new setting.
+        window.setTimeout(invalidate, 60);
+      });
+    return () => {
+      live = false;
+    };
+  }, [gl, scene, camera, done, invalidate]);
+  return null;
 }
 
 /** A soft glowing volume at the region, visible through the see-through body when the model has no interior there. */
@@ -390,13 +387,19 @@ function RegionGlow({ region, frame }: { region: Region; frame: Frame }) {
 
 export default function CarScene(props: Props) {
   const [loaded, setLoaded] = useState<string | null>(null);
+  const [warm, setWarm] = useState<string | null>(null);
   const label = useRef<HTMLDivElement>(null);
   const key = props.model.file + props.model.length;
-  const big = props.mode === "big";
   const { onReady } = props;
   const ready = useMemo(
     () => () => {
       setLoaded(key);
+    },
+    [key],
+  );
+  const warmed = useMemo(
+    () => () => {
+      setWarm(key);
       onReady?.();
     },
     [key, onReady],
@@ -407,11 +410,11 @@ export default function CarScene(props: Props) {
   return (
     <div className="absolute inset-0">
       <Canvas
-        frameloop="demand"
+        // Nothing is drawn until the shaders are compiled; after that it draws only when something changes.
+        frameloop={warm === key ? "demand" : "never"}
         camera={{ position: [6, 3, -7], fov: 30, near: 0.1, far: 80 }}
-        // The small preview stays at one pixel per CSS pixel; only the explorable view gets the sharper screen.
-        dpr={big ? [1, 1.75] : 1}
-        gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+        dpr={[1, 1.75]}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       >
         <hemisphereLight args={["#dfe8f0", props.dark ? "#0b0d10" : "#8a929c", 1.0]} />
         <directionalLight position={[5, 8, 4]} intensity={1.8} />
@@ -425,10 +428,11 @@ export default function CarScene(props: Props) {
         </Environment>
         <Suspense fallback={null}>
           <Car key={key} {...props} onReady={ready} placeLabel={placeLabel} />
+          {loaded === key && <WarmUp done={warmed} />}
         </Suspense>
       </Canvas>
       {/* The name of the highlighted part: plain DOM over the canvas, moved by the scene whenever it draws. */}
-      {props.focus && loaded === key && big && (
+      {props.focus && warm === key && (
         <div ref={label} className="pointer-events-none absolute top-0 left-0" style={{ transform: "translate(-999px, -999px)" }}>
           <div className="flex -translate-x-1/2 -translate-y-full flex-col items-center">
             <span className="rounded-full border border-white/30 bg-[#0098d4] px-3 py-1 text-[13px] font-semibold whitespace-nowrap text-white shadow-lg">{props.focus.label}</span>
@@ -436,6 +440,9 @@ export default function CarScene(props: Props) {
             <span className="size-1.5 rounded-full bg-white" />
           </div>
         </div>
+      )}
+      {warm !== key && (
+        <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-md bg-black/50 px-3 py-1.5 text-xs text-white">Loading 3D model…</span>
       )}
     </div>
   );
