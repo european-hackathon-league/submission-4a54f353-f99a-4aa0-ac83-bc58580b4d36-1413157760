@@ -89,12 +89,15 @@ def _store(conn, result: FetchResult, actor: str, run_id) -> list[dict]:
     return new
 
 
-def run_agents(conn, records: list[dict], run_id) -> dict:
+INGEST_BATCH = 25
+
+
+def ingest_extracted(conn, extracted: list[tuple], run_id) -> dict:
+    """Store what the agents proposed for records they have already read."""
     from app.signals import service
 
     totals = {"valid": 0, "quarantined": 0, "dropped": 0, "not_relevant": 0}
-    for record in records:
-        proposals, model, prompt_version = agents.extract(record)
+    for record, proposals, model, prompt_version in extracted:
         kept = 0
         if proposals:
             out = service.ingest(conn, proposals, actor=agents.agent_for(record), run_id=run_id,
@@ -112,6 +115,10 @@ def run_agents(conn, records: list[dict], run_id) -> dict:
                             rationale="relevance filter: no statement about a tracked feature; text not kept")
             totals["not_relevant"] += 1
     return totals
+
+
+def run_agents(conn, records: list[dict], run_id) -> dict:
+    return ingest_extracted(conn, agents.extract_many(records), run_id)
 
 
 def fetch_source(conn_factory, client: PoliteClient, source: dict, subjects: list, backfill: bool,
@@ -144,8 +151,6 @@ def fetch_source(conn_factory, client: PoliteClient, source: dict, subjects: lis
                 summary["requests"] += r.requests
                 summary["notes"] += r.notes
             summary["records"] = len(new_records)
-            if with_agents and new_records:
-                summary["signals"] = run_agents(conn, new_records, run_id)
             changes = {"last_cursor": cursor}
             if backfill:
                 import datetime as dt
@@ -153,6 +158,16 @@ def fetch_source(conn_factory, client: PoliteClient, source: dict, subjects: lis
                 changes["backfill_done_at"] = dt.datetime.now(dt.timezone.utc)
             audit.update(conn, "source_registry", {"source_id": sid}, changes, actor="system", run_id=run_id,
                          rationale="fetch cursor after run")
+        if with_agents and new_records:
+            # The agents read outside the database transaction, in parallel; their signals are
+            # then stored in short transactions.
+            extracted = agents.extract_many(new_records)
+            totals: dict = {}
+            for i in range(0, len(extracted), INGEST_BATCH):
+                with conn_factory() as conn:
+                    for k, v in ingest_extracted(conn, extracted[i:i + INGEST_BATCH], run_id).items():
+                        totals[k] = totals.get(k, 0) + v
+            summary["signals"] = totals
     except NotConfigured as exc:
         status, error = "partial", str(exc)
         summary["notes"].append(error)

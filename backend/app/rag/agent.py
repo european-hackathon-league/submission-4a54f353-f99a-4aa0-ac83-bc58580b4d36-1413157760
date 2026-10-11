@@ -197,8 +197,8 @@ def _tool_specs() -> list[dict]:
     for name, (_, params, desc) in TOOLS.items():
         props = {k: ({"type": t} if t != "object" else {"type": "object", "additionalProperties": {"type": "number"}})
                  for k, t in params.items()}
-        specs.append({"type": "function", "function": {"name": name, "description": desc, "parameters": {
-            "type": "object", "properties": props, "required": [k for k in params if k not in ("case_only", "vehicle")]}}})
+        specs.append({"type": "function", "name": name, "description": desc, "strict": False, "parameters": {
+            "type": "object", "properties": props, "required": [k for k in params if k not in ("case_only", "vehicle")]}})
     return specs
 
 
@@ -245,26 +245,25 @@ def _llm_answer(conn, turn: Turn, question: str, history: list[dict]) -> tuple[s
     client = OpenAI(api_key=settings.openai_api_key, max_retries=3, timeout=180)
     prompt = prompts.load("rag_agent")
     system, _ = prompt.render(object_type=turn.object_type, object_id=turn.object_id, guard=prompts.INJECTION_GUARD)
-    messages = [{"role": "system", "content": system}] + history + [{"role": "user", "content": question}]
+    # Responses API: gpt-6-luna accepts function tools together with its default thinking only there.
+    pending: list[dict] = history + [{"role": "user", "content": question}]
+    previous = None
     for _ in range(MAX_STEPS):
-        response = client.chat.completions.create(model=settings.llm_model_for("rag_agent"), messages=messages,
-                                                  tools=_tool_specs())
-        msg = response.choices[0].message
-        if not msg.tool_calls:
-            return msg.content or "", prompt.prompt_version
-        messages.append({"role": "assistant", "content": msg.content, "tool_calls": [
-            {"id": tc.id, "type": "function", "function": {"name": tc.function.name,
-                                                           "arguments": tc.function.arguments}}
-            for tc in msg.tool_calls]})
-        for tc in msg.tool_calls:
-            fn = TOOLS.get(tc.function.name, (None,))[0]
+        response = client.responses.create(model=settings.llm_model_for("rag_agent"), instructions=system,
+                                           input=pending, tools=_tool_specs(), previous_response_id=previous)
+        calls = [item for item in response.output if item.type == "function_call"]
+        if not calls:
+            return response.output_text or "", prompt.prompt_version
+        previous, pending = response.id, []
+        for call in calls:
+            fn = TOOLS.get(call.name, (None,))[0]
             try:
-                args = json.loads(tc.function.arguments or "{}")
+                args = json.loads(call.arguments or "{}")
                 result = fn(conn, turn, **args) if fn else {"error": "unknown tool"}
             except Exception as exc:  # tool errors go back to the model, not to the PM
                 result = {"error": str(exc)[:300]}
-            messages.append({"role": "tool", "tool_call_id": tc.id,
-                             "content": prompts.wrap_source(json.dumps(result, default=str)[:12000])})
+            pending.append({"type": "function_call_output", "call_id": call.call_id,
+                            "output": prompts.wrap_source(json.dumps(result, default=str)[:12000])})
     return "I could not finish within the step limit. " + NO_EVIDENCE, prompt.prompt_version
 
 

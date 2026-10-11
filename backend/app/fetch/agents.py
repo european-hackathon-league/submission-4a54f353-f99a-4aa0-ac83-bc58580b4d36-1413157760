@@ -166,3 +166,16 @@ def extract(record: dict) -> tuple[list[dict], str | None, str]:
         except LLMUnavailable:
             pass
     return heuristic_extract(record), None, "heuristic@v1"
+
+
+def extract_many(records: list[dict]) -> list[tuple[dict, list[dict], str | None, str]]:
+    """(record, proposals, model, prompt_version) per record, in the order given. With an LLM the
+    records are read in parallel (``LLM_WORKERS``); never call this inside a database transaction."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from app.llm import cache
+
+    if not llm_available() or len(records) < 2:
+        return [(r, *extract(r)) for r in records]
+    with ThreadPoolExecutor(max_workers=cache.WORKERS) as pool:
+        return [(r, *out) for r, out in zip(records, pool.map(extract, records))]

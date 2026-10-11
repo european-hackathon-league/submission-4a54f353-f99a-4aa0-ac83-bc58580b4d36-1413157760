@@ -1,8 +1,8 @@
 """Case title and page body: the problem as customers see it, never the solution.
 
-With an OpenAI key the LLM writes them (prompt ``case_writer``) from a sample of
-the case's signals and must cite them as ``[signal:<id>]``; citations to signals
-outside the sample are removed. Without a key a template is used that only
+With an OpenAI key the LLM writes them (prompt ``case_writer``) from the counts of
+the whole case and a sample of its signals, and must cite the sample as
+``[signal:<id>]``; citations to signals outside the sample are removed. Without a key a template is used that only
 restates counts, labels and verbatim quotes.
 """
 
@@ -59,6 +59,22 @@ def _sample(signals: list[dict], n: int = 12) -> list[dict]:
     return picked
 
 
+def _counts(signals: list[dict]) -> dict:
+    """What the whole case holds: the writer takes every number from here, never from its sample."""
+    def tally(rows: list[dict]) -> dict:
+        kinds = Counter(s["kind"] for s in rows)
+        return {"customers": len({s["customer_ref"] for s in rows}), "complaints": kinds["complaint"],
+                "defects": sum(1 for s in rows if s["severity"] == "defect"), "wishes": kinds["wish"],
+                "likes": kinds["like"]}
+
+    bmw = [s for s in signals if s["evidence_role"] == "bmw_customer"]
+    by = lambda key: {str(v): tally([s for s in bmw if s[key] == v])  # noqa: E731
+                      for v in sorted({s[key] for s in bmw if s[key]})}
+    return {"signals": len(signals), "bmw_customers": tally(bmw), "by_market": by("market"),
+            "by_vehicle_line": by("vehicle"),
+            "competitor_signals": sum(1 for s in signals if s["evidence_role"] == "competitor")}
+
+
 def template(feature: str, signals: list[dict]) -> CaseText:
     kinds = Counter(s["kind"] for s in signals)
     severities = Counter(s["severity"] for s in signals)
@@ -108,7 +124,7 @@ def _short(text: str, words: int = 4) -> str:
 def _cache_key(feature: str, signals: list[dict]) -> str:
     return cache.key(prompts.load("case_writer").prompt_version, get_settings().llm_model_for("case_writer"),
                      get_settings().llm_reasoning_for("case_writer"),
-                     feature, len(signals), sorted(str(s["id"]) for s in _sample(signals)))
+                     feature, _counts(signals), sorted(str(s["id"]) for s in _sample(signals)))
 
 
 def _llm_text(feature: str, signals: list[dict]) -> dict:
@@ -117,7 +133,7 @@ def _llm_text(feature: str, signals: list[dict]) -> dict:
                 "vehicle": s.get("vehicle"), "quote": (s["quote"] or "")[:500]} for s in sample]
     result = get_llm().structured(
         prompts.load("case_writer"), CaseText, feature=feature, guard=prompts.INJECTION_GUARD,
-        n_signals=str(len(signals)), signals=prompts.wrap_source(json.dumps(payload, ensure_ascii=False)),
+        n_signals=str(len(signals)), counts=json.dumps(_counts(signals), ensure_ascii=False), signals=prompts.wrap_source(json.dumps(payload, ensure_ascii=False)),
     )
     allowed = {str(s["id"]) for s in sample}
     body = CITATION.sub(lambda m: m.group(0) if m.group(1) in allowed else "", result.data.body_md)
