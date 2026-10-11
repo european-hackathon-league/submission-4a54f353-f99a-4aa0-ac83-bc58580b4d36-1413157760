@@ -257,9 +257,11 @@ function NodeCard({
       transform: hidden ? "translateX(-12px)" : undefined,
       transition: revealMs ? `opacity ${Math.round(revealMs * 0.6)}ms ease-out, transform ${Math.round(revealMs * 0.6)}ms ease-out` : undefined,
       pointerEvents: hidden ? ("none" as const) : undefined,
+      // Without onSelect (e.g. inside the replay) the boxes only highlight on hover; they are not buttons to press.
+      cursor: onSelect ? undefined : "default",
     },
     "aria-hidden": hidden || undefined,
-    tabIndex: hidden ? -1 : undefined,
+    tabIndex: hidden || !onSelect ? -1 : undefined,
     onMouseEnter: () => onHover(n.id),
     onMouseLeave: () => onHover(null),
     onFocus: () => onHover(n.id),

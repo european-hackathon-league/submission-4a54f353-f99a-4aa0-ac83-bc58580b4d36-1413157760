@@ -15,17 +15,20 @@ import {
   marketLabel,
   regionLabel,
   releaseLabel,
+  type Market,
   type Requirement,
   type RequirementAction,
   type RequirementBundle,
   type User,
 } from "@/contracts";
 import { useApiMutation } from "@/lib/api/hooks";
+import { cn } from "@/lib/utils";
 import { EvidenceBadge, Pill, RegionChip, ReleaseChip } from "@/components/common/badges";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { ProvChip, ProvenanceLegend, ProvText, provenanceMap } from "@/components/requirements/provenance";
 import { ReplayButton } from "@/components/replay/replay-overlay";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,35 +78,81 @@ export function TraceChain({ b }: { b: RequirementBundle }) {
         </Link>
       ))}
     <div className="flex items-stretch gap-2 text-xs">
-      <Link href={`/cases/${b.case.id}`} className={step + " hover:border-border-strong hover:bg-recessed"}>
-        <span className="flex items-center gap-1 text-muted-foreground">
-          <MessageSquareQuote className="size-3" /> Signals
-        </span>
-        <span className="font-medium">
-          {bmw} BMW records · {web} web
-        </span>
-      </Link>
-      <ArrowRight className="size-4 self-center text-muted-foreground" />
-      <Link href={`/cases/${b.case.id}`} className={step + " hover:border-border-strong hover:bg-recessed"}>
-        <span className="text-muted-foreground">Case (problem)</span>
-        <span className="truncate font-medium">{b.case.id}</span>
-      </Link>
-      <ArrowRight className="size-4 self-center text-muted-foreground" />
-      <div className={step + " border-foreground"}>
+      <TraceStep
+        className={step}
+        label={
+          <>
+            <MessageSquareQuote className="size-3" /> Signals
+          </>
+        }
+        value={`${bmw} BMW records · ${web} web`}
+        title="Evidence behind this requirement"
+        href={`/cases/${b.case.id}`}
+        cta="Open the evidence on the case"
+      >
+        <p>
+          {b.signals.length} records: {bmw} from BMW data, {web} from the web{web > 0 ? " (synthetic in the demo)" : ""}.
+        </p>
+        <p className="text-muted-foreground">{marketCounts(b.signals.map((s) => s.market))}</p>
+      </TraceStep>
+      <ArrowRight className="size-4 shrink-0 self-center text-muted-foreground" />
+      <TraceStep className={step} label="Case (problem)" value={b.case.id} title={b.case.shortTitle} href={`/cases/${b.case.id}`} cta="Open the case">
+        <p>{b.case.title}</p>
+        {b.case.summary && <p className="line-clamp-4 text-muted-foreground">{b.case.summary}</p>}
+      </TraceStep>
+      <ArrowRight className="size-4 shrink-0 self-center text-muted-foreground" />
+      <div className={step + " border-foreground"} aria-current="page">
         <span className="text-muted-foreground">Requirement (solution)</span>
         <span className="truncate font-medium">{b.requirement.id}</span>
       </div>
-      <ArrowRight className="size-4 self-center text-muted-foreground" />
-      <Link href={`/plan/${b.requirement.series}`} className={step + " hover:border-border-strong hover:bg-recessed"}>
-        <span className="text-muted-foreground">Planned feature</span>
-        <span className="truncate font-medium">{b.plannedFeature?.name ?? "not yet"}</span>
-      </Link>
+      <ArrowRight className="size-4 shrink-0 self-center text-muted-foreground" />
+      <TraceStep
+        className={step}
+        label="Planned feature"
+        value={b.plannedFeature?.name ?? "not yet"}
+        title={b.plannedFeature ? b.plannedFeature.name : "Not in the vehicle plan yet"}
+        href={`/plan/${b.requirement.series}`}
+        cta="Open the vehicle plan"
+      >
+        {b.plannedFeature ? (
+          <p>
+            {releaseLabel[b.plannedFeature.release]} · today: {b.plannedFeature.todayDetail}
+          </p>
+        ) : (
+          <p className="text-muted-foreground">This requirement isn&apos;t linked to a feature in the vehicle plan yet.</p>
+        )}
+      </TraceStep>
       <div className="flex items-center">
         <ReplayButton requirementId={b.requirement.id} />
       </div>
     </div>
     </div>
   );
+}
+
+/** One step of the trace chain: opens a short preview in place; leaving the page is an explicit link inside it. */
+function TraceStep({ className, label, value, title, href, cta, children }: { className: string; label: React.ReactNode; value: string; title: string; href: string; cta: string; children: React.ReactNode }) {
+  return (
+    <Popover>
+      <PopoverTrigger className={cn(className, "text-left hover:border-border-strong hover:bg-recessed focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none data-[state=open]:border-border-strong data-[state=open]:bg-recessed")}>
+        <span className="flex items-center gap-1 text-muted-foreground">{label}</span>
+        <span className="truncate font-medium">{value}</span>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 gap-2 text-xs">
+        <p className="text-sm font-semibold">{title}</p>
+        {children}
+        <Link href={href} className="mt-1 inline-flex items-center gap-1 self-start font-medium text-foreground underline decoration-muted-foreground underline-offset-2 hover:decoration-foreground">
+          {cta} <ArrowRight className="size-3" />
+        </Link>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function marketCounts(markets: Market[]) {
+  const n = new Map<Market, number>();
+  markets.forEach((m) => n.set(m, (n.get(m) ?? 0) + 1));
+  return [...n].sort((a, b) => b[1] - a[1]).map(([m, k]) => `${marketLabel[m]} ${k}`).join(" · ");
 }
 
 export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean; onCite?: (ref: string) => void }) {

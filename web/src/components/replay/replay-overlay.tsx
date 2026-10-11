@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog as DialogPrimitive } from "radix-ui";
 import { AlertTriangle, Bot, CalendarCheck, Check, ChevronLeft, ChevronRight, Download, Pause, Play, PlayCircle, ShieldCheck, ShieldX, X } from "lucide-react";
 import { FactorKey as FactorKeys, factorLabel, marketLabel, releaseLabel, type ReplayEvent, type ReplayResponse, type ScoreSnapshot } from "@/contracts";
 import { useApi } from "@/lib/api/hooks";
@@ -15,16 +15,26 @@ import { SankeyChart } from "@/components/sankey/sankey-chart";
 import { Button } from "@/components/ui/button";
 import { BEATS, useReplayClock, type BeatId } from "./use-replay-clock";
 
-/** Opens the trace replay of a requirement in a full-screen overlay. */
+/**
+ * Opens the trace replay of a requirement in a full-screen dialog. A Radix dialog (not a bare portal) so that,
+ * opened from the requirement side sheet, clicks inside it count as a nested layer instead of "outside the sheet".
+ */
 export function ReplayButton({ requirementId, size = "sm" }: { requirementId: string; size?: "sm" | "xs" }) {
   const [open, setOpen] = useState(false);
   return (
-    <>
-      <Button size={size} variant="outline" onClick={() => setOpen(true)} title="Play the whole life of this requirement, from the first quote to the plan (about 15 s)">
-        <PlayCircle className="size-3.5" /> Replay
-      </Button>
-      {open && createPortal(<ReplayOverlay id={requirementId} onClose={() => setOpen(false)} />, document.body)}
-    </>
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+      <DialogPrimitive.Trigger asChild>
+        <Button size={size} variant="outline" title="Play the whole life of this requirement, from the first quote to the plan (about 15 s)">
+          <PlayCircle className="size-3.5" /> Replay
+        </Button>
+      </DialogPrimitive.Trigger>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content aria-describedby={undefined} className="fixed inset-0 z-[100] flex flex-col bg-background outline-none" onOpenAutoFocus={(e) => (e.preventDefault(), (e.currentTarget as HTMLElement).focus())}>
+          <DialogPrimitive.Title className="sr-only">Trace replay of {requirementId}</DialogPrimitive.Title>
+          {open && <ReplayOverlay id={requirementId} onClose={() => setOpen(false)} />}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
@@ -37,32 +47,27 @@ function ReplayOverlay({ id, onClose }: { id: string; onClose: () => void }) {
   const [scrub, setScrub] = useState<number | null>(null);
   const { toggle, step, setPlaying } = clock;
 
+  // Escape and the scroll lock come from the Radix dialog. Space and arrows drive the clock, except while a
+  // control has focus (the scrubber uses the arrows, buttons use Space).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      else if (e.key === " ") {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input, textarea, select, [role=slider]")) return;
+      if (e.key === " " && t?.closest("button, a")) return;
+      if (e.key === " ") {
         e.preventDefault();
         toggle();
       } else if (e.key === "ArrowRight") step(1);
       else if (e.key === "ArrowLeft") step(-1);
     };
     window.addEventListener("keydown", onKey);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = overflow;
-    };
-  }, [onClose, toggle, step]);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggle, step]);
 
-  return (
-    <div role="dialog" aria-modal="true" aria-label={`Trace replay of ${id}`} className="fixed inset-0 z-[100] flex flex-col bg-background">
-      {q.data ? (
-        <Stage x={q.data} graphTopics={topicLabels(taxonomy.data)} clock={clock} scrub={scrub} setScrub={(i) => (setPlaying(false), setScrub(i))} onClose={onClose} />
-      ) : (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">{q.error ? `Could not load the replay: ${q.error.message}` : "Loading the chain…"}</div>
-      )}
-    </div>
+  return q.data ? (
+    <Stage x={q.data} graphTopics={topicLabels(taxonomy.data)} clock={clock} scrub={scrub} setScrub={(i) => (setPlaying(false), setScrub(i))} onClose={onClose} />
+  ) : (
+    <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">{q.error ? `Could not load the replay: ${q.error.message}` : "Loading the chain…"}</div>
   );
 }
 
@@ -158,7 +163,7 @@ function Stage({ x, graphTopics, clock, scrub, setScrub, onClose }: { x: ReplayR
       </div>
 
       <footer className="border-t px-5 py-3">
-        <Timeline events={x.events} played={scrub !== null ? scrub + 1 : played} motion={motion} />
+        <Timeline events={x.events} played={scrub !== null ? scrub + 1 : played} picked={scrub} onPick={setScrub} motion={motion} />
         <Scrubber x={x} at={at} onChange={setScrub} />
       </footer>
     </>
@@ -362,7 +367,7 @@ function ChainBadge({ x, intact, name }: { x: ReplayResponse; intact: boolean; n
   );
 }
 
-function Timeline({ events, played, motion }: { events: ReplayEvent[]; played: number; motion: boolean }) {
+function Timeline({ events, played, picked, onPick, motion }: { events: ReplayEvent[]; played: number; picked: number | null; onPick: (i: number) => void; motion: boolean }) {
   const ref = useRef<HTMLOListElement>(null);
   useEffect(() => {
     const el = ref.current?.children[Math.max(0, played - 1)] as HTMLElement | undefined;
@@ -374,16 +379,21 @@ function Timeline({ events, played, motion }: { events: ReplayEvent[]; played: n
         const on = i < played;
         const agent = e.actorType === "agent";
         return (
-          <li
-            key={e.seq}
-            className={cn(
-              "w-52 shrink-0 rounded-lg border px-3 py-2 text-xs transition-all",
-              motion ? "duration-500" : "duration-0",
-              agent ? "border-dashed border-border-strong bg-recessed" : "border-solid bg-card",
-              on ? "opacity-100" : "translate-y-1 opacity-30",
-              e.action.startsWith("ripple.") || e.action === "alert.raised" ? "border-ember" : "",
-            )}
-          >
+          <li key={e.seq} className="w-52 shrink-0">
+            <button
+              type="button"
+              onClick={() => onPick(i)}
+              aria-current={picked === i ? "step" : undefined}
+              title="Show the state as of this step"
+              className={cn(
+                "block h-full w-full rounded-lg border px-3 py-2 text-left text-xs transition-[opacity,transform,border-color,box-shadow] hover:border-border-strong focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none",
+                motion ? "duration-500" : "duration-0",
+                agent ? "border-dashed border-border-strong bg-recessed" : "border-solid bg-card",
+                on ? "opacity-100" : "translate-y-1 opacity-30 hover:opacity-70",
+                e.action.startsWith("ripple.") || e.action === "alert.raised" ? "border-ember" : "",
+                picked === i && "ring-2 ring-foreground",
+              )}
+            >
             <p className="flex items-center gap-1.5">
               {agent ? <Bot className="size-3.5 shrink-0 text-muted-foreground" /> : <UserAvatar id={e.actorId} size="xs" />}
               <span className="truncate font-medium">{e.label}</span>
@@ -394,6 +404,7 @@ function Timeline({ events, played, motion }: { events: ReplayEvent[]; played: n
             </p>
             {e.rationale && <p className={cn("mt-1 line-clamp-2 text-xs", agent ? "text-muted-foreground" : "italic")}>{agent ? e.rationale : `“${e.rationale}”`}</p>}
             {e.scoreSnapshot && <p className="mt-1 text-xs font-medium tabular-nums text-foreground">score {e.scoreSnapshot.score.toFixed(3)} · {e.scoreSnapshot.profileName} v{e.scoreSnapshot.profileVersion}</p>}
+            </button>
           </li>
         );
       })}
