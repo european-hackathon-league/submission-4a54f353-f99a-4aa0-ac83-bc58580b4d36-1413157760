@@ -16,7 +16,7 @@ const sourceLabel: Record<Proposal["source"], string> = {
   monitor: "from monitor",
   strategy_doc: "from your strategy doc",
   feedback: "from feedback",
-  brief_change: "from a brief change",
+  brief_change: "from a product specs change",
   learning: "learned from your decisions",
 };
 

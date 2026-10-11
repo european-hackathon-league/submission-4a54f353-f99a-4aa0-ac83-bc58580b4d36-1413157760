@@ -40,8 +40,8 @@ import type {
 
 export const contextLayerLabel: Record<ContextLayer, string> = {
   brand: "Brand",
-  series_brief: "Your brief",
-  case_stance: "Your stance",
+  series_brief: "Your product specs",
+  case_stance: "Your context",
   requirement_shape: "Your answer",
   feedback: "Feedback",
 };
@@ -207,6 +207,7 @@ export const agentLabel: Record<Agent, string> = {
   customer_public: "Customer & public",
   trends: "Trends agent",
   innovation_scout: "Innovation scout",
+  pm: "Added by a PM",
 };
 
 export const sourceTypeLabel: Record<SourceType, string> = {
@@ -222,6 +223,9 @@ export const sourceTypeLabel: Record<SourceType, string> = {
   competitor_official: "Competitor official",
   trend_report: "Trend report",
   trade_fair: "Trade fair",
+  pm_upload: "Uploaded file",
+  pm_link: "Link",
+  pm_note: "PM note",
 };
 
 export const signalKindLabel: Record<SignalKind, string> = {

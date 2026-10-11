@@ -41,13 +41,13 @@ export function ShapeForm({ caseId, onCreated, onCancel }: { caseId: string; onC
           Drafting with{" "}
           {brief ? (
             <>
-              your brief ({brief.series}
+              your product specs ({brief.series}
               {brief.overlayId ? `, ${regionLabel[brief.region]} overlay` : ""})
             </>
           ) : (
-            "no brief (defaults, tagged as assumptions)"
+            "no product specs (defaults, tagged as assumptions)"
           )}
-          {stance ? `, your stance${stance.ambition ? ` (${ambitionLabel[stance.ambition].toLowerCase()})` : ""}` : ", no stance yet"} and the case evidence.
+          {stance ? `, your context${stance.ambition ? ` (${ambitionLabel[stance.ambition].toLowerCase()})` : ""}` : ", no context yet"} and the case evidence.
           {variantOf && <> Your draft becomes a {regionLabel[brief?.region ?? "global"]} variant of {variantOf}.</>}
         </p>
       </div>

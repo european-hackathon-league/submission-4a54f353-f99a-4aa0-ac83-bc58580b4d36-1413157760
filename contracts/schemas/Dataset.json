@@ -373,7 +373,8 @@
               "competitor",
               "customer_public",
               "trends",
-              "innovation_scout"
+              "innovation_scout",
+              "pm"
             ]
           },
           "sourceType": {
@@ -390,7 +391,10 @@
               "news",
               "competitor_official",
               "trend_report",
-              "trade_fair"
+              "trade_fair",
+              "pm_upload",
+              "pm_link",
+              "pm_note"
             ]
           },
           "sourceName": {
@@ -755,7 +759,8 @@
               "competitor",
               "customer_public",
               "trends",
-              "innovation_scout"
+              "innovation_scout",
+              "pm"
             ]
           },
           "series": {
@@ -872,7 +877,8 @@
               "competitor",
               "customer_public",
               "trends",
-              "innovation_scout"
+              "innovation_scout",
+              "pm"
             ]
           },
           "sourceName": {
@@ -2406,6 +2412,12 @@
           },
           "sentBackReason": {
             "type": "string"
+          },
+          "argumentMd": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "createdAt": {
             "type": "string"

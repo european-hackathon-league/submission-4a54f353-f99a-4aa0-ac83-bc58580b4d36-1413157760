@@ -143,7 +143,7 @@ export function RequirementView() {
             <VersionsPanel versions={b.versions} feedback={b.feedback} />
           </TabsContent>
           <TabsContent value="argument" className="pt-3">
-            <ArgumentSheet b={b} />
+            <ArgumentSheet b={b} canEdit={canEdit} onCite={onCite} />
           </TabsContent>
           <TabsContent value="evidence" className="space-y-2 pt-3">
             <p className="text-xs text-muted-foreground">Evidence is inherited from the confirmed case {b.case.id}. Open the case to filter and add signals.</p>

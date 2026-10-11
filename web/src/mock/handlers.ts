@@ -187,7 +187,7 @@ function assertCanDraft(u: User, c: Case) {
 }
 
 function briefById(d: Dataset, id: string) {
-  return must(d.briefs.find((b) => b.id === id), `Brief ${id}`);
+  return must(d.briefs.find((b) => b.id === id), `Product specs ${id}`);
 }
 
 function assertBriefEditor(u: User, b: SeriesBrief) {
@@ -224,7 +224,7 @@ async function briefImpact(d: Dataset, brief: SeriesBrief, values: Partial<Brief
     const current = snapshotOf(r);
     if (!snapshotsDiffer(current, draft)) continue;
     const fields = tagged.length ? tagged : live;
-    const summary = `v${r.version + 1}: ${changeSummary(current, draft)} (brief: ${fields.map((k) => briefFieldLabel[k].toLowerCase()).join(", ")})`;
+    const summary = `v${r.version + 1}: ${changeSummary(current, draft)} (product specs: ${fields.map((k) => briefFieldLabel[k].toLowerCase()).join(", ")})`;
     out.push({ requirementId: r.id, title: r.title, fields, summary, changes: [{ field: "version", before: current, after: draft }], proposalId: null as string | null });
   }
   return out;
@@ -258,7 +258,7 @@ function maybeLearnCost(d: Dataset, user: User) {
     },
   ]);
   audit({ actorId: "agent:learning", action: "proposal.created", objectType: "brief", objectId: brief.id, after: { field: "costEnvelope" }, rationale: `${signals} expensive drafts rejected or cut` });
-  notify({ userId: user.id, kind: "alert", title: "Learned from your decisions", body: "Set cost sensitivity to high? See your series brief.", link: "/brief", actorId: "agent:learning" });
+  notify({ userId: user.id, kind: "alert", title: "Learned from your decisions", body: "Set cost sensitivity to high? See your product specs.", link: "/brief", actorId: "agent:learning" });
 }
 
 function saveCheck(check: RequirementCheck, trigger: string) {
@@ -357,9 +357,9 @@ export const handlers: Handlers = {
   },
   createOverlay: ({ body, user }) => {
     const d = db();
-    const shared = must(sharedBrief(d, body.series), `Shared brief of ${body.series}`);
+    const shared = must(sharedBrief(d, body.series), `Shared product specs of ${body.series}`);
     if (user.role !== "vehicle_pm" || !user.series.includes(body.series)) throw new ApiError(403, `Only a PM of the ${body.series} creates a regional overlay.`);
-    if (shared.ownerId === user.id) throw new ApiError(409, "You own the shared brief; edit it directly.");
+    if (shared.ownerId === user.id) throw new ApiError(409, "You own the shared product specs; edit them directly.");
     const existing = overlayOf(d, body.series, user.id);
     if (existing) return existing;
     const pre = overlayPrefill(user);
@@ -379,7 +379,7 @@ export const handlers: Handlers = {
       synthetic: true,
     };
     d.briefs.push(overlay);
-    audit({ actorId: user.id, action: "brief.created", objectType: "brief", objectId: overlay.id, after: { series: overlay.series, kind: "overlay", region: overlay.region, parentId: shared.id }, rationale: "Onboarding: regional overlay on the shared brief" });
+    audit({ actorId: user.id, action: "brief.created", objectType: "brief", objectId: overlay.id, after: { series: overlay.series, kind: "overlay", region: overlay.region, parentId: shared.id }, rationale: "Onboarding: regional overlay on the shared product specs" });
     return overlay;
   },
   saveBrief: async ({ params, body, user }) => {
@@ -392,7 +392,7 @@ export const handlers: Handlers = {
     if (b.kind === "overlay") {
       for (const k of Object.keys(values) as BriefFieldKey[]) {
         if (JSON.stringify(values[k]) === JSON.stringify(shared.values[k])) delete values[k];
-        else if (!body.reasons[k] && !b.meta[k]?.reason) throw new ApiError(400, `Say why ${briefFieldLabel[k].toLowerCase()} differs from the shared brief.`);
+        else if (!body.reasons[k] && !b.meta[k]?.reason) throw new ApiError(400, `Say why ${briefFieldLabel[k].toLowerCase()} differs from the shared product specs.`);
       }
     }
     const current = resolveBrief(d, b.series, b.ownerId);
@@ -426,7 +426,7 @@ export const handlers: Handlers = {
         objectId: b.id,
         before,
         after: { ...Object.fromEntries(changedFields.map((k) => [k, b.values[k as BriefFieldKey] ?? "(shared value)"])), confirmed: body.confirm ?? [] },
-        rationale: Object.values(body.reasons).filter(Boolean).join(" · ") || (body.confirm?.length ? "Confirmed pre-filled answers" : "Brief edited"),
+        rationale: Object.values(body.reasons).filter(Boolean).join(" · ") || (body.confirm?.length ? "Confirmed pre-filled answers" : "Product specs edited"),
       });
     }
     // Impact: one new-version proposal per affected requirement, never a silent edit.
@@ -435,8 +435,8 @@ export const handlers: Handlers = {
       if (i.proposalId === null && i.changes.length) {
         const r = d.requirements.find((x) => x.id === i.requirementId)!;
         const [p] = saveProposals(d, [{ objectType: "requirement", objectId: r.id, source: "brief_change", kind: "new_version", summary: i.summary, changes: i.changes, citations: [] }]);
-        audit({ actorId: "agent:impact", action: "proposal.created", objectType: "requirement", objectId: r.id, after: { proposalId: p.id, fields: i.fields }, rationale: `Brief ${b.id} changed` });
-        if (r.ownerId !== user.id) notify({ userId: r.ownerId, kind: "alert", title: "A brief change affects your requirement", body: `${r.id}: ${i.summary}`, link: `/requirements/${r.id}`, actorId: "agent:impact" });
+        audit({ actorId: "agent:impact", action: "proposal.created", objectType: "requirement", objectId: r.id, after: { proposalId: p.id, fields: i.fields }, rationale: `Product specs ${b.id} changed` });
+        if (r.ownerId !== user.id) notify({ userId: r.ownerId, kind: "alert", title: "A product specs change affects your requirement", body: `${r.id}: ${i.summary}`, link: `/requirements/${r.id}`, actorId: "agent:impact" });
         created.push({ ...i, proposalId: p.id });
       } else created.push(i);
     }
@@ -453,7 +453,7 @@ export const handlers: Handlers = {
     const b = briefById(d, params.id);
     assertBriefEditor(user, b);
     const current = resolveBrief(d, b.series, b.ownerId);
-    if (!current) throw new ApiError(409, "The shared brief is incomplete; fill it before extracting a regional overlay.");
+    if (!current) throw new ApiError(409, "The shared product specs are incomplete; fill them in before extracting a regional overlay.");
     const drafts = extractFromDoc(body.text, current.values, b.id);
     const proposals = saveProposals(d, drafts);
     audit({ actorId: "agent:brief_extractor", action: "proposal.created", objectType: "brief", objectId: b.id, after: { count: proposals.length, fields: drafts.map((p) => p.changes[0].field) }, rationale: "Extracted from a pasted strategy doc" });
@@ -468,7 +468,7 @@ export const handlers: Handlers = {
   },
   resolveBriefConflict: ({ params, body, user }) => {
     const d = db();
-    if (user.role !== "head") throw new ApiError(403, "Only the head of product line resolves brief conflicts.");
+    if (user.role !== "head") throw new ApiError(403, "Only the head of product line resolves product specs conflicts.");
     const o = briefById(d, params.id);
     const field = BriefFieldKeys.parse(params.field);
     if (o.kind !== "overlay" || o.values[field] === undefined) throw new ApiError(404, `No regional difference on ${field}.`);
@@ -482,7 +482,7 @@ export const handlers: Handlers = {
     o.version += 1;
     touch(o);
     audit({ actorId: user.id, action: "brief.conflict_resolved", objectType: "brief", objectId: o.id, before: { [field]: before }, after: { resolution: body.resolution, field }, rationale: body.rationale });
-    notify({ userId: o.ownerId, kind: "escalation", title: `Brief difference ${body.resolution === "align" ? "aligned" : "accepted as regional"}`, body: `${briefFieldLabel[field]}: ${body.rationale}`, link: "/brief", actorId: user.id });
+    notify({ userId: o.ownerId, kind: "escalation", title: `Product specs difference ${body.resolution === "align" ? "aligned" : "accepted as regional"}`, body: `${briefFieldLabel[field]}: ${body.rationale}`, link: "/brief", actorId: user.id });
     return o;
   },
   users: () => db().users,
@@ -659,7 +659,7 @@ export const handlers: Handlers = {
       highlights: [body.summary],
       topicId: mostFrequentTopic(d.signals.filter((s) => body.signalIds.includes(s.id))),
       stances: [],
-      bodyMd: `## Problem\n\n${body.summary}\n\n## Who is affected\n\n_To fill._\n\n## Evidence summary\n\n${body.signalIds.length} signals selected on the radar.\n\n## Today's car\n\n_To fill._\n\n## Competitors\n\n_To fill._\n\n## Brand fit\n\n_AI proposal pending._\n\n## Options considered\n\n_None yet._\n\n## Decision log\n\n- ${now().slice(0, 10)} · Case opened by ${user.name}: ${body.rationale}`,
+      bodyMd: `## Problem\n\n${body.summary}\n\n## Who is affected\n\n_To fill._\n\n## Evidence summary\n\n${body.signalIds.length ? `${body.signalIds.length} signals selected on the radar.` : "_Started by hand. Add evidence: files, links or notes._"}\n\n## Today's car\n\n_To fill._\n\n## Competitors\n\n_To fill._\n\n## Brand fit\n\n_AI proposal pending._\n\n## Options considered\n\n_None yet._\n\n## Decision log\n\n- ${now().slice(0, 10)} · Case opened by ${user.name}: ${body.rationale}`,
       bodyVersion: 1,
       signalIds: body.signalIds,
       figures: { perMarket: [], equipmentToday: "To check against the option list", competitorOffer: [], trend: "" },
@@ -690,6 +690,61 @@ export const handlers: Handlers = {
     d.clusters.push({ id: `CL-${id}`, label: c.title, series: c.series, carArea: c.carArea, size: c.signalIds.length, sentiment: 0, markets: {}, caseId: id, signalIds: c.signalIds });
     audit({ actorId: user.id, action: "case.created", objectType: "case", objectId: id, after: { title: c.title, signals: c.signalIds.length }, rationale: body.rationale });
     return c;
+  },
+  addCaseEvidence: ({ params, body, user }) => {
+    const d = db();
+    const c = findCase(d, params.id);
+    assertCaseEditor(user, c);
+    const severity = { complaint: "difficult_to_use", wish: "wish" } as Partial<Record<Signal["kind"], Signal["severity"]>>;
+    const sourceType = { csv_row: "pm_upload", link: "pm_link", note: "pm_note" } as const;
+    // Trust: a PM's file is first-hand data (C), a link is unverified web (D), a note is an assumption (E).
+    const trust = { csv_row: "C", link: "D", note: "E" } as const;
+    const host = (url?: string) => {
+      try {
+        return url ? new URL(url).hostname.replace(/^www\./, "") : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+    const added: Signal[] = body.items.map((it, i) => {
+      const s: Signal = {
+        id: nextId("SIG-PM-", d.signals),
+        kind: it.kind,
+        severity: severity[it.kind] ?? "none",
+        agent: "pm",
+        sourceType: sourceType[it.type],
+        sourceName: it.type === "csv_row" ? (it.source ?? "Uploaded file") : it.type === "link" ? (host(it.url) ?? "Link") : user.name,
+        trust: trust[it.type],
+        url: it.url || undefined,
+        recordRef: it.type === "csv_row" ? `${it.source ?? "upload"}#row${i + 1}` : undefined,
+        publishedAt: now(),
+        fetchedAt: now(),
+        series: c.series,
+        vehicleRole: "current",
+        powertrain: "unknown",
+        market: it.market,
+        marketBasis: it.market === "unknown" ? "unknown" : "stated",
+        carArea: c.carArea,
+        topicId: c.topicId,
+        aspectGroup: null,
+        featureHint: c.featureName,
+        summary: it.title?.trim() || it.text.slice(0, 140),
+        quote: it.text,
+        language: "en",
+        audience: it.type === "link" ? "public" : "owner",
+        caseId: c.id,
+        status: "clustered",
+        classification: { method: "manual", label: `Added by ${user.name}` },
+        synthetic: false,
+      };
+      d.signals.push(s);
+      c.signalIds.push(s.id);
+      return s;
+    });
+    recomputeFigures(d, c);
+    touch(c);
+    audit({ actorId: user.id, action: "case.evidence_added", objectType: "case", objectId: c.id, after: { signals: added.map((s) => s.id) }, rationale: body.rationale });
+    return { case: c, added };
   },
   caseBundle: ({ params }) => {
     const d = db();
@@ -878,7 +933,7 @@ export const handlers: Handlers = {
     assertCanDraft(user, c);
     const before = stanceOf(c, user.id);
     for (const k of Object.keys(body.overrides) as BriefFieldKey[])
-      if ((body.overrides as Record<string, unknown>)[k] !== undefined && !body.overrideReasons[k]) throw new ApiError(400, `Say why this case differs from your brief (${briefFieldLabel[k].toLowerCase()}).`);
+      if ((body.overrides as Record<string, unknown>)[k] !== undefined && !body.overrideReasons[k]) throw new ApiError(400, `Say why this case differs from your product specs (${briefFieldLabel[k].toLowerCase()}).`);
     const stance = { ...body, authorId: user.id, pendingShape: before?.pendingShape ?? [], updatedAt: now() };
     c.stances = [...c.stances.filter((s) => s.authorId !== user.id), stance];
     const parts = [
@@ -888,7 +943,7 @@ export const handlers: Handlers = {
       ...stance.inside.map((x) => x.text),
     ].filter(Boolean);
     c.context.pmInputs = c.context.pmInputs.filter((i) => i.ref !== `stance-${user.id}`);
-    c.context.pmInputs.push({ kind: "note", label: `${user.name}'s stance`, detail: parts.join(" · ") || "No changes to the brief", at: now(), ref: `stance-${user.id}` });
+    c.context.pmInputs.push({ kind: "note", label: `${user.name}'s context`, detail: parts.join(" · ") || "No changes to the product specs", at: now(), ref: `stance-${user.id}` });
     touch(c);
     audit({
       actorId: user.id,
@@ -897,7 +952,7 @@ export const handlers: Handlers = {
       objectId: c.id,
       before: before ? { ambition: before.ambition, overrides: before.overrides } : undefined,
       after: { ambition: stance.ambition, overrides: stance.overrides, takes: stance.evidenceTakes.length, inside: stance.inside.length },
-      rationale: Object.values(stance.overrideReasons).filter(Boolean).join(" · ") || "Stance saved",
+      rationale: Object.values(stance.overrideReasons).filter(Boolean).join(" · ") || "Context saved",
     });
     const message: ChatMessage = {
       id: nextId("MSG-", d.messages),
@@ -1047,11 +1102,17 @@ export const handlers: Handlers = {
     assertReqEditor(user, r);
     const before: Record<string, unknown> = {};
     for (const k of Object.keys(body.patch) as (keyof typeof body.patch)[]) before[k] = structuredClone(r[k]);
-    const next = { ...snapshotOf(r), ...body.patch } as RequirementSnapshot;
-    if (body.patch.description !== undefined) next.descriptionParts = sentences(body.patch.description);
-    next.provenance = retagEdits(snapshotOf(r), next, body.rationale);
     audit({ actorId: user.id, action: "requirement.edited", objectType: "requirement", objectId: r.id, before, after: body.patch, rationale: body.rationale });
-    if (body.patch.manualRank !== undefined) r.manualRank = body.patch.manualRank;
+    // Classification and the argument sheet live outside the versioned snapshot.
+    const { manualRank, carArea, changeDepth, argumentMd, ...versioned } = body.patch;
+    if (manualRank !== undefined) r.manualRank = manualRank;
+    if (carArea !== undefined) r.carArea = carArea;
+    if (changeDepth !== undefined) r.changeDepth = changeDepth;
+    if (argumentMd !== undefined) r.argumentMd = argumentMd;
+    if (!Object.keys(versioned).length) return touch(r);
+    const next = { ...snapshotOf(r), ...versioned } as RequirementSnapshot;
+    if (versioned.description !== undefined) next.descriptionParts = sentences(versioned.description);
+    next.provenance = retagEdits(snapshotOf(r), next, body.rationale);
     applyVersion(d, r, RequirementSnapshot.parse(next), "edit", user.id, body.rationale);
     maybeLearnCost(d, user);
     return r;

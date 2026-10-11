@@ -391,6 +391,12 @@
     "sentBackReason": {
       "type": "string"
     },
+    "argumentMd": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "createdAt": {
       "type": "string"
     },

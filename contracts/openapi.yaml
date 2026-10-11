@@ -864,6 +864,7 @@ paths:
               - customer_public
               - trends
               - innovation_scout
+              - pm
         - name: market
           in: query
           required: false
@@ -1146,7 +1147,7 @@ paths:
           description: Invalid state transition
     post:
       operationId: createCase
-      summary: Start a case from signals
+      summary: Start a case from signals, or empty to fill by hand
       tags:
         - cases
       requestBody:
@@ -1205,7 +1206,6 @@ paths:
                 summary:
                   type: string
                 signalIds:
-                  minItems: 1
                   type: array
                   items:
                     type: string
@@ -1229,6 +1229,100 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Case"
+        "400":
+          description: Invalid request (Zod issues)
+        "403":
+          description: Not allowed for this user (e.g. not the owner)
+        "404":
+          description: Not found
+        "409":
+          description: Invalid state transition
+  /cases/{id}/evidence:
+    post:
+      operationId: addCaseEvidence
+      summary: Add PM evidence (CSV rows, links, notes) as signals
+      tags:
+        - cases
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  minItems: 1
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - csv_row
+                          - link
+                          - note
+                      text:
+                        type: string
+                        minLength: 1
+                      title:
+                        type: string
+                      url:
+                        type: string
+                      source:
+                        type: string
+                      kind:
+                        type: string
+                        enum:
+                          - complaint
+                          - wish
+                          - like
+                          - competitor_fact
+                          - trend
+                          - innovation
+                      market:
+                        type: string
+                        enum:
+                          - EU
+                          - US
+                          - CN
+                          - RoW
+                          - unknown
+                    required:
+                      - type
+                      - text
+                      - kind
+                      - market
+                rationale:
+                  type: string
+                  minLength: 1
+              required:
+                - items
+                - rationale
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  case:
+                    $ref: "#/components/schemas/Case"
+                  added:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Signal"
+                required:
+                  - case
+                  - added
+                additionalProperties: false
         "400":
           description: Invalid request (Zod issues)
         "403":
@@ -1332,6 +1426,8 @@ paths:
                   type: object
                   properties:
                     title:
+                      type: string
+                    shortTitle:
                       type: string
                     summary:
                       type: string
@@ -2265,6 +2361,8 @@ paths:
                   properties:
                     title:
                       type: string
+                    shortTitle:
+                      type: string
                     description:
                       type: string
                     marketScope:
@@ -2351,6 +2449,10 @@ paths:
                           minimum: -9007199254740991
                           maximum: 9007199254740991
                         - type: "null"
+                    argumentMd:
+                      type:
+                        - string
+                        - "null"
                 rationale:
                   type: string
                   minLength: 1
@@ -5524,6 +5626,7 @@ components:
             - customer_public
             - trends
             - innovation_scout
+            - pm
         sourceType:
           type: string
           enum:
@@ -5539,6 +5642,9 @@ components:
             - competitor_official
             - trend_report
             - trade_fair
+            - pm_upload
+            - pm_link
+            - pm_note
         sourceName:
           type: string
         trust:
@@ -5808,6 +5914,7 @@ components:
             - customer_public
             - trends
             - innovation_scout
+            - pm
         series:
           type: string
           enum:
@@ -5891,6 +5998,7 @@ components:
             - customer_public
             - trends
             - innovation_scout
+            - pm
         sourceName:
           type: string
         snippet:
@@ -6714,6 +6822,10 @@ components:
             - type: "null"
         sentBackReason:
           type: string
+        argumentMd:
+          type:
+            - string
+            - "null"
         createdAt:
           type: string
         updatedAt:

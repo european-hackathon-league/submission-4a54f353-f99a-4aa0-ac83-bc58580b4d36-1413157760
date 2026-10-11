@@ -217,12 +217,33 @@ export const CreateCaseBody = z.object({
   type: CaseType,
   changeDepth: ChangeDepth,
   summary: z.string(),
-  signalIds: z.array(z.string()).min(1),
+  /** Empty when the PM starts a case by hand and adds evidence afterwards. */
+  signalIds: z.array(z.string()),
+  rationale: Rationale,
+});
+
+/** Evidence a PM adds by hand: rows of an uploaded CSV, links, or notes. Each item becomes a signal on the case. */
+export const AddEvidenceBody = z.object({
+  items: z
+    .array(
+      z.object({
+        type: z.enum(["csv_row", "link", "note"]),
+        text: z.string().min(1),
+        title: z.string().optional(),
+        url: z.string().optional(),
+        /** File name for csv_row items. */
+        source: z.string().optional(),
+        kind: SignalKind,
+        market: Market,
+      }),
+    )
+    .min(1),
   rationale: Rationale,
 });
 
 export const EditableCaseFields = Case.pick({
   title: true,
+  shortTitle: true,
   summary: true,
   bodyMd: true,
   scope: true,
@@ -291,6 +312,7 @@ export const MeetingNoteBody = z.object({
 
 export const EditableRequirementFields = Requirement.pick({
   title: true,
+  shortTitle: true,
   description: true,
   marketScope: true,
   releaseTarget: true,
@@ -302,6 +324,7 @@ export const EditableRequirementFields = Requirement.pick({
   evidenceLevel: true,
   cost: true,
   manualRank: true,
+  argumentMd: true,
 }).partial();
 
 export const PatchRequirementBody = z.object({ patch: EditableRequirementFields, rationale: Rationale });
@@ -562,7 +585,8 @@ export const endpoints = {
 
   // Cases
   cases: ep({ method: "GET", path: "/cases", tag: "cases", summary: "List cases", query: CaseListQuery, response: z.array(Case) }),
-  createCase: ep({ method: "POST", path: "/cases", tag: "cases", summary: "Start a case from signals", body: CreateCaseBody, response: Case }),
+  createCase: ep({ method: "POST", path: "/cases", tag: "cases", summary: "Start a case from signals, or empty to fill by hand", body: CreateCaseBody, response: Case }),
+  addCaseEvidence: ep({ method: "POST", path: "/cases/:id/evidence", tag: "cases", summary: "Add PM evidence (CSV rows, links, notes) as signals", body: AddEvidenceBody, response: z.object({ case: Case, added: z.array(Signal) }) }),
   caseBundle: ep({ method: "GET", path: "/cases/:id", tag: "cases", summary: "Case with signals, questions, requirements, referrals", response: CaseBundle }),
   patchCase: ep({ method: "PATCH", path: "/cases/:id", tag: "cases", summary: "Edit case fields or body", body: PatchCaseBody, response: Case }),
   transitionCase: ep({ method: "POST", path: "/cases/:id/transition", tag: "cases", summary: "Move a case (state or outcome)", body: CaseTransitionBody, response: Case }),

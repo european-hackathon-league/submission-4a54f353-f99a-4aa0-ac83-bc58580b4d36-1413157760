@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { ArrowDown, ArrowUp, Columns3, Eye, EyeOff, ListOrdered, Minus, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { ArrowDown, ArrowUp, Columns3, Eye, EyeOff, ListOrdered, Minus, Plus, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import {
   CarArea,
   CaseState as CaseStates,
@@ -29,6 +29,7 @@ import { CaseStateDot, Pill, ScoreBar, caseStateTone } from "@/components/common
 import { useUsers } from "@/components/common/people";
 import { CaseCard } from "@/components/cases/case-card";
 import { CaseActionDialog, type UiCaseAction } from "@/components/cases/case-action-dialog";
+import { NewCaseDialog } from "@/components/cases/case-forms";
 import { useScores } from "@/components/cases/use-scores";
 import { WeightPanel } from "@/components/cases/weight-panel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,6 +58,7 @@ export function CasesView() {
 
   const scope: Scope = scopeChoice ?? ((params.get("scope") as Scope | null) ?? (params.get("owner") || user?.role === "head" ? "all" : "mine"));
 
+  const [newCase, setNewCase] = useState(false);
   const { data: cases = [] } = useApi("cases");
   const scores = useScores(undefined, whatIf);
   const { users } = useUsers();
@@ -85,6 +87,10 @@ export function CasesView() {
       <PageHeader
         title="Cases"
         actions={
+          <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => setNewCase(true)}>
+            <Plus className="size-3.5" /> New case
+          </Button>
           <ToggleGroup type="single" variant="outline" size="sm" value={view} onValueChange={(v) => v && setViewUrl(v as "board")}>
             <ToggleGroupItem value="board" className="gap-1.5 px-2.5">
               <Columns3 className="size-3.5" /> Board
@@ -93,6 +99,7 @@ export function CasesView() {
               <ListOrdered className="size-3.5" /> Ranked
             </ToggleGroupItem>
           </ToggleGroup>
+          </div>
         }
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -132,6 +139,7 @@ export function CasesView() {
       ) : (
         <Ranked cases={filtered} scores={scores} whatIf={whatIf} setWhatIf={setWhatIf} baseWeights={me.data?.weightProfile.weights} />
       )}
+      <NewCaseDialog open={newCase} onOpenChange={setNewCase} />
     </div>
   );
 }

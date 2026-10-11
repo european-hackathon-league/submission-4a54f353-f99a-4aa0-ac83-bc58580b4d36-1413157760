@@ -15,9 +15,7 @@ import {
   EyeOff,
   FileText,
   GitBranch,
-  Heart,
   Info,
-  Lightbulb,
   MessageSquare,
   MoreHorizontal,
   Pencil,
@@ -31,7 +29,7 @@ import { caseStateLabel, marketLabel } from "@/contracts";
 import { api } from "@/lib/api/client";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { download, fromNow } from "@/lib/format";
-import { caseSankey, isCustomer, isFact, sayLabel, topicLabels, type SankeyNode } from "@/lib/sankey";
+import { caseSankey, isCustomer, sayLabel, topicLabels, type SankeyNode } from "@/lib/sankey";
 import { cn } from "@/lib/utils";
 import { CaseStateBadge, EvidenceBars, MarketChip, OutcomeBadge, Pill, ReqStatusDot } from "@/components/common/badges";
 import { Markdown } from "@/components/common/markdown";
@@ -41,6 +39,7 @@ import { ObjectActivity } from "@/components/common/activity";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { CaseActionDialog, type UiCaseAction } from "@/components/cases/case-action-dialog";
 import { CaseDetails } from "@/components/cases/case-details";
+import { AddEvidenceDialog, EditCaseDialog } from "@/components/cases/case-forms";
 import { StanceForm } from "@/components/cases/stance-form";
 import { ShapeForm } from "@/components/cases/shape-form";
 import { QuestionsPanel } from "@/components/cases/questions-panel";
@@ -81,6 +80,8 @@ export function CaseView() {
   const [selected, setSelected] = useState<string | null>(null);
   const [reqId, setReqId] = useState<string | null>(null);
   const [action, setAction] = useState<UiCaseAction | null>(null);
+  const [evidence, setEvidence] = useState(params.get("evidence") === "1");
+  const [editDetails, setEditDetails] = useState(false);
   const research = useApiMutation("postMessage", { success: "The assistant is looking for more sources" });
   const patchWatch = useApiMutation("patchCase", { silent: true });
 
@@ -98,9 +99,6 @@ export function CaseView() {
 
   const graph = caseSankey(c, signals, topicLabels(taxonomy.data));
   const customers = signals.filter(isCustomer).length;
-  const likes = signals.filter((s) => s.kind === "like");
-  const facts = signals.filter((s) => isFact(s) && ["A", "B", "C"].includes(s.trust));
-  const assumptions = signals.filter((s) => ["D", "E"].includes(s.trust));
   // A cited signal (?signal=) opens its quote directly.
   const cited = params.get("signal");
   const quoteSet: QuoteSet | null = quotes ?? (cited && signals.some((s) => s.id === cited) ? { title: "Cited source", signalIds: [cited] } : null);
@@ -134,6 +132,11 @@ export function CaseView() {
             <IconButton label={watching ? "Stop watching" : "Watch"} onClick={() => toggleWatch()}>
               {watching ? <EyeOff /> : <Eye />}
             </IconButton>
+            {canEdit && (
+              <IconButton label="Edit details" onClick={() => setEditDetails(true)}>
+                <Pencil />
+              </IconButton>
+            )}
             <IconButton label="Details and score" onClick={() => setDrawer("details")}>
               <Info />
             </IconButton>
@@ -161,25 +164,11 @@ export function CaseView() {
           </span>
         </div>
 
-        {/* One-click facts about the evidence */}
         <div className="mt-4 flex flex-wrap gap-2">
-          <PillButton icon={<Heart />} onClick={() => setQuotes({ title: "What they like", signalIds: likes.map((s) => s.id) })} disabled={!likes.length}>
-            {likes.length} like it today
-          </PillButton>
-          <PillButton icon={<Lightbulb />} onClick={() => setQuotes({ title: "Facts and assumptions", signalIds: [...facts, ...assumptions].map((s) => s.id) })} disabled={!facts.length && !assumptions.length}>
-            {facts.length} facts, {assumptions.length} assumptions
-          </PillButton>
           <MarketsPopover c={c} />
           {canEdit && (
-            <PillButton
-              icon={<Plus />}
-              dashed
-              onClick={() => {
-                setChat(true);
-                research.mutate({ params: { type: "case", id: c.id }, body: { content: "Research what owners say" } });
-              }}
-            >
-              Add source
+            <PillButton icon={<Plus />} dashed onClick={() => setEvidence(true)}>
+              Add evidence
             </PillButton>
           )}
         </div>
@@ -194,7 +183,7 @@ export function CaseView() {
         {/* Three steps */}
         <nav className="mt-5 flex flex-wrap items-center gap-1 border-b" aria-label="Case steps">
           <StepTab n={1} active={step === "evidence"} onClick={() => go("evidence")} label="Evidence" meta={`${signals.length}`} done />
-          <StepTab n={2} active={step === "knowledge"} onClick={() => go("knowledge")} label="Your stance" meta={openQuestions ? `${openQuestions} open` : undefined} done={!!myStance} badge={pending} />
+          <StepTab n={2} active={step === "knowledge"} onClick={() => go("knowledge")} label="Your context" meta={openQuestions ? `${openQuestions} open` : undefined} done={!!myStance} badge={pending} />
           <StepTab n={3} active={step === "requirements"} onClick={() => go("requirements")} label="Requirements" meta={requirements.length ? `${requirements.length}` : undefined} done={requirements.length > 0} />
         </nav>
 
@@ -205,7 +194,7 @@ export function CaseView() {
                 <SankeyChart graph={graph} heroValue={customers} selectedId={selected} onSelect={onNode} />
               </div>
               <Highlights c={c} canEdit={canEdit} onCite={onCite} />
-              <NextButton onClick={() => go("knowledge")}>Next: your stance</NextButton>
+              <NextButton onClick={() => go("knowledge")}>Next: your context</NextButton>
             </div>
           )}
           {step === "knowledge" && (
@@ -260,6 +249,19 @@ export function CaseView() {
       </Sheet>
       <RequirementSheet id={reqId} onOpenChange={(o) => !o && setReqId(null)} />
       <CaseActionDialog c={c} action={action} onOpenChange={(o) => !o && setAction(null)} />
+      <EditCaseDialog c={c} open={editDetails} onOpenChange={setEditDetails} />
+      <AddEvidenceDialog
+        c={c}
+        open={evidence}
+        onOpenChange={(o) => {
+          setEvidence(o);
+          if (!o && params.get("evidence")) router.replace(`/cases/${c.id}?step=${step}`, { scroll: false });
+        }}
+        onResearch={() => {
+          setChat(true);
+          research.mutate({ params: { type: "case", id: c.id }, body: { content: "Research what owners say" } });
+        }}
+      />
     </div>
   );
 
@@ -546,7 +548,7 @@ function RequirementsStep({
           </Button>
         )}
         {!confirmed && !canEdit && <p className="text-sm text-muted-foreground">No requirements yet.</p>}
-        {!confirmed && canEdit && <p className="text-sm text-muted-foreground">Confirm the case, then answer up to three questions; the draft uses your brief and stance.</p>}
+        {!confirmed && canEdit && <p className="text-sm text-muted-foreground">Confirm the case, then answer up to three questions; the draft uses your product specs and context.</p>}
       </div>
       {shaping && (
         <ShapeForm

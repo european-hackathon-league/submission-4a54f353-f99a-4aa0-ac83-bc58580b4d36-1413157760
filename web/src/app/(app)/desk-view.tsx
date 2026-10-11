@@ -297,7 +297,7 @@ function BriefConflictRow({ xs, owner }: { xs: Conflict[]; owner: string }) {
     <li className="flex items-center gap-2 px-2 py-1.5">
       <Link href="/brief" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-0.5 text-sm hover:underline" title={fields}>
         <GitCompare className="size-4 shrink-0 text-tone-fuchsia-dot" />
-        <span className="truncate font-medium">{seriesShort[x.series]} brief</span>
+        <span className="truncate font-medium">{seriesShort[x.series]} product specs</span>
         <span className="truncate text-xs text-muted-foreground">
           {owner} differs on {xs.length === 1 ? briefFieldLabel[x.field].toLowerCase() : `${xs.length} fields`}
         </span>
@@ -308,13 +308,13 @@ function BriefConflictRow({ xs, owner }: { xs: Conflict[]; owner: string }) {
       <RationaleDialog
         open={open}
         onOpenChange={setOpen}
-        title={`${seriesShort[x.series]} brief: ${owner}'s regional differences`}
-        description="Accept a difference as a regional variant (the overlay keeps it) or align it to the shared brief. One rationale covers all of them."
+        title={`${seriesShort[x.series]} product specs: ${owner}'s regional differences`}
+        description="Accept a difference as a regional variant (the overlay keeps it) or align it to the shared product specs. One rationale covers all of them."
         confirmLabel={`Decide ${xs.length === 1 ? "it" : `all ${xs.length}`}`}
         pending={resolve.isPending}
         onSubmit={async (rationale) => {
           for (const c of xs) await resolve.mutateAsync({ params: { id: c.overlayId, field: c.field }, body: { resolution: choice[c.field] ?? "regional_variant", rationale } });
-          toast.success(`${xs.length === 1 ? "Brief difference" : `${xs.length} brief differences`} resolved`);
+          toast.success(`${xs.length === 1 ? "Product specs difference" : `${xs.length} product specs differences`} resolved`);
           setOpen(false);
         }}
       >

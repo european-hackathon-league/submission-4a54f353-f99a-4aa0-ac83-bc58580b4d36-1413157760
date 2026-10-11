@@ -30,7 +30,8 @@ export const Severity = z.enum(["defect", "difficult_to_use", "wish", "none"]);
 export type Severity = z.infer<typeof Severity>;
 
 /** Which agent produced the signal (architecture.mmd §2 + BMW data import). */
-export const Agent = z.enum(["bmw_data", "competitor", "customer_public", "trends", "innovation_scout"]);
+/** "pm" = evidence a PM added by hand (uploaded file, link or note), not fetched by an agent. */
+export const Agent = z.enum(["bmw_data", "competitor", "customer_public", "trends", "innovation_scout", "pm"]);
 export type Agent = z.infer<typeof Agent>;
 
 export const SourceType = z.enum([
@@ -46,6 +47,9 @@ export const SourceType = z.enum([
   "competitor_official",
   "trend_report",
   "trade_fair",
+  "pm_upload",
+  "pm_link",
+  "pm_note",
 ]);
 export type SourceType = z.infer<typeof SourceType>;
 

@@ -136,7 +136,7 @@ async function loadCase(user: User, id: string, c?: Ctx) {
   const row = rowFromPage(page, vehicle, x.profileId);
   const merged = (page.lineage as Row[]).find((l) => l.op === "merge" && l.from_case === id);
   const pmInputs = [
-    ...(page.stances as Row[]).map((s) => ({ kind: "note" as const, label: `${x.all.find((u) => u.id === s.author_id)?.name ?? "A PM"}'s stance`, detail: [s.ambition && `ambition ${s.ambition}`, ...(s.evidence_takes ?? []).map((t: Row) => `${t.effect}: ${t.text}`), ...(s.inside ?? []).map((i: Row) => i.text)].filter(Boolean).join(" · ") || "No changes to the brief", at: String(s.updated_at), ref: `stance-${s.author_id}` })),
+    ...(page.stances as Row[]).map((s) => ({ kind: "note" as const, label: `${x.all.find((u) => u.id === s.author_id)?.name ?? "A PM"}'s context`, detail: [s.ambition && `ambition ${s.ambition}`, ...(s.evidence_takes ?? []).map((t: Row) => `${t.effect}: ${t.text}`), ...(s.inside ?? []).map((i: Row) => i.text)].filter(Boolean).join(" · ") || "No changes to the product specs", at: String(s.updated_at), ref: `stance-${s.author_id}` })),
     ...(page.meeting_notes as Row[]).map((n) => ({ kind: "meeting" as const, label: n.title, detail: `${(n.attendees ?? []).length} attendees`, at: String(n.created_at), ref: n.id })),
     ...(page.questions as Row[]).filter((q) => q.status === "answered").map((q) => ({ kind: "answer" as const, label: `${q.addressee} answered`, detail: q.answer ?? "", at: String(q.answered_at), ref: q.id })),
     ...(page.proposals as Row[]).filter((p) => p.status === "accepted").map((p) => ({ kind: "diff" as const, label: "AI proposal accepted", detail: p.summary, at: String(p.decided_at), ref: p.id })),
@@ -327,7 +327,7 @@ export const backendHandlers: Handlers = {
   previewBriefImpact: ({ user, params, body }) => backend(user.id, "POST", `/briefs/${params.id}/impact`, { body: { values: body.values } }),
   extractBrief: async ({ user, params, body }) => {
     const x = await ctx(user);
-    if (!x.ws.brief) throw new ApiError(409, "The shared brief is incomplete; fill it before extracting from a document.");
+    if (!x.ws.brief) throw new ApiError(409, "The shared product specs are incomplete; fill them in before extracting from a document.");
     return saveProposals(user, extractFromDoc(body.text, x.ws.brief.values, params.id), "brief_extractor");
   },
   briefConflicts: ({ user }) => get(user, "/brief-conflicts") as Promise<any>,
@@ -400,6 +400,9 @@ export const backendHandlers: Handlers = {
   createCase: async ({ user, body }) => {
     const out = await send(user, "POST", "/cases", { vehicle: body.series, title: body.title, summary: body.summary, signal_ids: body.signalIds, scope: body.scope, rationale: body.rationale });
     return (await loadCase(user, out.id)).case;
+  },
+  addCaseEvidence: async () => {
+    throw new ApiError(501, "Adding your own evidence works on the demo data only; the backend has no endpoint for it yet.");
   },
   caseBundle: async ({ user, params }) => {
     const { page, case: c, vehicle, x } = await loadCase(user, params.id);
@@ -580,8 +583,11 @@ export const backendHandlers: Handlers = {
   patchRequirement: async ({ user, params, body }) => {
     const { row, requirement, x } = await loadRequirement(user, params.id);
     const id = encodeURIComponent(params.id);
-    const { manualRank, carArea: _carArea, ...content } = body.patch; // the car area always follows the case's topic
+    // The car area always follows the case's topic; change depth and the edited argument sheet have no backend field yet.
+    const { manualRank, carArea: _carArea, changeDepth: _changeDepth, argumentMd: _argumentMd, ...content } = body.patch;
     void _carArea;
+    void _changeDepth;
+    void _argumentMd;
     if (manualRank !== undefined) await send(user, "POST", `/requirements/${id}/rank`, { rank: manualRank, reason: body.rationale });
     if (Object.keys(content).length) {
       const prev = snapshotFromBackend(row);

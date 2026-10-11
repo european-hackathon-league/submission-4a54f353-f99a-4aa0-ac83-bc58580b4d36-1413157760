@@ -578,6 +578,8 @@ export const Requirement = z.object({
   manualRank: z.number().int().nullable(),
   plannedFeatureId: Id.nullable(),
   sentBackReason: z.string().optional(),
+  /** The PM's edited argument sheet (markdown). Absent = generated from the requirement and its evidence. */
+  argumentMd: z.string().nullable().optional(),
   createdAt: IsoDate,
   updatedAt: IsoDate,
   synthetic: z.boolean(),

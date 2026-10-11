@@ -42,9 +42,9 @@ function effective(input: Base) {
   const tag = (path: string, k: BriefFieldKey, detail?: string, signalIds: string[] = []): Provenance => {
     if (overridden(k)) {
       const reason = input.stance?.overrideReasons[k];
-      return context(path, "case_stance", `stance.${k}`, `Your stance · ${detail ?? briefFieldLabel[k].toLowerCase()} (overrides the brief${reason ? `: ${reason}` : ""})`, signalIds);
+      return context(path, "case_stance", `stance.${k}`, `Your context · ${detail ?? briefFieldLabel[k].toLowerCase()} (overrides the product specs${reason ? `: ${reason}` : ""})`, signalIds);
     }
-    if (!input.brief) return assumption(path, `Assumption · no series brief yet (${briefFieldLabel[k].toLowerCase()} is a default)`, signalIds);
+    if (!input.brief) return assumption(path, `Assumption · no product specs yet (${briefFieldLabel[k].toLowerCase()} is a default)`, signalIds);
     const p = fromBrief(path, k, input.brief.origin[k] === "overlay", detail);
     return { ...p, signalIds };
   };
@@ -120,23 +120,23 @@ function dontFightMatch(input: Base, v: BriefValues): string | null {
 
 function defaultAmbition(input: Base, v: BriefValues, bench: Bench | null, tag: ReturnType<typeof effective>["tag"]): { value: Ambition; why: string; prov: (path: string, ids?: string[]) => Provenance } {
   const df = dontFightMatch(input, v);
-  if (df) return { value: "fix", why: `Your brief says don't fight on "${df}": fix the complaint, don't race the competitor.`, prov: (p, ids) => tag(p, "dontFightOn", `don't fight on ${df}`, ids) };
+  if (df) return { value: "fix", why: `Your product specs say don't fight on "${df}": fix the complaint, don't race the competitor.`, prov: (p, ids) => tag(p, "dontFightOn", `don't fight on ${df}`, ids) };
   if (input.stance?.ambition)
     return {
       value: input.stance.ambition,
-      why: `Your stance on this case: ${ambitionLabel[input.stance.ambition].toLowerCase()}.`,
-      prov: (p, ids = []) => context(p, "case_stance", "stance.ambition", `Your stance · ${ambitionLabel[input.stance!.ambition!].toLowerCase()}`, ids),
+      why: `Your context on this case: ${ambitionLabel[input.stance.ambition].toLowerCase()}.`,
+      prov: (p, ids = []) => context(p, "case_stance", "stance.ambition", `Your context · ${ambitionLabel[input.stance!.ambition!].toLowerCase()}`, ids),
     };
   if (v.changeAmbition.level === "revolution" || v.targetCustomer.who === "conquest")
     return {
       value: "beat",
-      why: `Your brief: ${v.changeAmbition.level === "revolution" ? "revolution" : "win buyers from competitors"}, so the target should beat the best competitor.`,
+      why: `Your product specs: ${v.changeAmbition.level === "revolution" ? "revolution" : "win buyers from competitors"}, so the target should beat the best competitor.`,
       prov: (p, ids) => tag(p, v.changeAmbition.level === "revolution" ? "changeAmbition" : "targetCustomer", v.changeAmbition.level === "revolution" ? "revolution" : "conquest buyers", ids),
     };
   if (bench)
     return {
       value: "match",
-      why: `Your brief is an evolution${bench.fromThesis ? ` and its thesis names ${bench.competitor}` : ""}: match the best competitor rather than beat it.`,
+      why: `Your product specs call for an evolution${bench.fromThesis ? ` and its thesis names ${bench.competitor}` : ""}: match the best competitor rather than beat it.`,
       prov: (p, ids) => tag(p, bench.fromThesis ? "thesis" : "changeAmbition", bench.fromThesis ? `thesis names ${bench.competitor}` : "evolution", ids),
     };
   return { value: "fix", why: "No competitor benchmark: fix the customer problem first.", prov: (p, ids) => tag(p, "changeAmbition", "evolution", ids) };
@@ -180,7 +180,7 @@ export function composeShapeQuestions(input: Base): ShapeQuestion[] {
       ? c.marketConflict.note
       : input.region === "CN"
         ? `You plan for China, and ${ev.counts.CN} of ${ev.used.length} records are Chinese. One global target, or a China variant next to the global requirement?`
-        : `${Math.round((ev.counts[topMarket] / total) * 100)}% of the records come from ${marketLabel[topMarket as Market]} (brief weight ${Math.round(v.marketWeights[topMarket] * 100)}%), but your brief puts more weight on ${heavier.map((m) => `${marketLabel[m as Market]} (${Math.round(v.marketWeights[m] * 100)}%)`).join(", ")}.`;
+        : `${Math.round((ev.counts[topMarket] / total) * 100)}% of the records come from ${marketLabel[topMarket as Market]} (product specs weight ${Math.round(v.marketWeights[topMarket] * 100)}%), but your product specs put more weight on ${heavier.map((m) => `${marketLabel[m as Market]} (${Math.round(v.marketWeights[m] * 100)}%)`).join(", ")}.`;
     qs.push(
       withPending({
         key: "scope",
@@ -191,7 +191,7 @@ export function composeShapeQuestions(input: Base): ShapeQuestion[] {
           ...(regional ? [{ value: "variant", label: variantLabel }] : []),
         ],
         default: regional ? def : "global",
-        defaultWhy: def === "variant" ? "Your region has its own brief, so the variant follows it." : "The brief is global and no market conflict is known.",
+        defaultWhy: def === "variant" ? "Your region has its own product specs, so the variant follows them." : "The product specs are global and no market conflict is known.",
         trigger: { layer: "series_brief", signalIds: ev.top, briefField: "marketWeights" },
       }),
     );
@@ -218,7 +218,7 @@ export function composeShapeQuestions(input: Base): ShapeQuestion[] {
       withPending({
         key: "release",
         question: "This needs a platform-deep change. Which release?",
-        why: `Your brief says "${v.givens.frozen[0]}" is frozen; open releases: ${v.givens.openReleases.map((r) => releaseLabel[r]).join(", ")}.`,
+        why: `Your product specs say "${v.givens.frozen[0]}" is frozen; open releases: ${v.givens.openReleases.map((r) => releaseLabel[r]).join(", ")}.`,
         options: v.givens.openReleases.map((r) => ({ value: r, label: releaseLabel[r] })),
         default: def,
         defaultWhy: `${releaseLabel[def]} is the first open release that can take a platform change.`,
@@ -322,7 +322,7 @@ export function composeDrafts(input: DraftInput): Draft[] {
   });
   for (const t of (input.stance?.evidenceTakes ?? []).map((t, i) => ({ t, i }))) {
     const before = ev.all.length;
-    parts.push({ text: `Read with your stance: ${t.t.text} (${ev.used.length} of ${before} records kept).`, prov: (p) => context(p, "case_stance", "stance.evidenceTakes", `Your stance · ${t.t.effect} ${t.t.powertrain ?? t.t.market ?? t.t.keyword ?? ""}`.trim()) });
+    parts.push({ text: `Read with your context: ${t.t.text} (${ev.used.length} of ${before} records kept).`, prov: (p) => context(p, "case_stance", "stance.evidenceTakes", `Your context · ${t.t.effect} ${t.t.powertrain ?? t.t.market ?? t.t.keyword ?? ""}`.trim()) });
   }
   // Missing evidence, said out loud.
   if (marketScope === "CN" && ev.counts.CN < 3) {
@@ -336,7 +336,7 @@ export function composeDrafts(input: DraftInput): Draft[] {
     const missing = MARKETS.filter((m) => v.marketWeights[m] >= 0.2 && !ev.counts[m]);
     if (missing.length)
       parts.push({
-        text: `No customer records from ${missing.map((m) => marketLabel[m as Market]).join(" or ")} yet, although the brief weights ${missing.length === 1 ? "it" : "them"} ${missing.map((m) => `${Math.round(v.marketWeights[m] * 100)}%`).join(" / ")}: the global target assumes they share the problem.`,
+        text: `No customer records from ${missing.map((m) => marketLabel[m as Market]).join(" or ")} yet, although the product specs weight ${missing.length === 1 ? "it" : "them"} ${missing.map((m) => `${Math.round(v.marketWeights[m] * 100)}%`).join(" / ")}: the global target assumes they share the problem.`,
         prov: (p) => assumption(p, `Assumption · no ${missing.map((m) => marketLabel[m as Market]).join("/")} evidence`),
       });
   }
@@ -473,7 +473,7 @@ export function composeDrafts(input: DraftInput): Draft[] {
     text: `Rough cost ${size} from the change depth${ambition === "beat" ? " (one size up to beat the competitor)" : ""}${overEnvelope ? `; over your envelope (${v.costEnvelope.perCarBand}), Finance must confirm` : ""}.`,
     prov: (p) => assumption(p, overEnvelope ? "Assumption · over the cost envelope" : "Assumption · rough cost"),
   });
-  if (!input.brief) assumptions.push({ text: "No series brief yet: scope, release and ambition use defaults.", prov: (p) => assumption(p, "Assumption · no brief") });
+  if (!input.brief) assumptions.push({ text: "No product specs yet: scope, release and ambition use defaults.", prov: (p) => assumption(p, "Assumption · no product specs") });
 
   // Title
   const suffix = marketScope === "CN" ? " (China)" : marketScope === "RoW" ? " (Rest of World)" : "";

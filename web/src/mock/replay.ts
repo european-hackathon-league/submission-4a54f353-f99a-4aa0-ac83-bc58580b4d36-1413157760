@@ -15,7 +15,7 @@ const LABELS: Record<string, string> = {
   "case.scored": "Case scored",
   "case.state_changed": "Case moved",
   "case.decided": "Case decided",
-  "case.stance_saved": "PM stance saved",
+  "case.stance_saved": "PM context saved",
   "case.rescored": "Case re-scored",
   "case.edited": "Case edited",
   "weight_profile.updated": "Weight profile changed",

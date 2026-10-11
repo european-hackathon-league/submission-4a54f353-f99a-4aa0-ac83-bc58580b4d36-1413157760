@@ -56,7 +56,7 @@ export function BriefView() {
   const { shared, overlay, proposals } = bundle.data;
 
   if (user.role !== "vehicle_pm") return <ReadOnlyBriefs briefs={all.data} role={user.role} />;
-  if (!shared) return <PageHeader title="Series brief" description={`No shared brief exists for the ${seriesLabel[user.series[0]]} yet. Ask the lead PM to set it up.`} />;
+  if (!shared) return <PageHeader title="Product specs" description={`No shared product specs exist for the ${seriesLabel[user.series[0]]} yet. Ask the lead PM to set it up.`} />;
 
   const isOwner = shared.ownerId === user.id;
   const editable = isOwner ? shared : overlay;
@@ -65,11 +65,11 @@ export function BriefView() {
   return (
     <div>
       <PageHeader
-        title={onboarding ? `Welcome, ${user.name.split(" ")[0]}: your ${seriesLabel[shared.series]} brief` : `${seriesLabel[shared.series]} brief`}
+        title={onboarding ? `Welcome, ${user.name.split(" ")[0]}: your ${seriesLabel[shared.series]} product specs` : `${seriesLabel[shared.series]} product specs`}
         description={
           isOwner
-            ? "The shared brief for this car project. Every requirement drafted for the series inherits it; a change shows which requirements it affects before anything changes."
-            : `Shared brief by the lead PM, plus your ${regionLabel[user.region]} overlay: only what differs for your region, each with a reason. Differences show on both briefs and the head of product line decides them.`
+            ? "The shared product specs for this car project. Every requirement drafted for the series inherits them; a change shows which requirements it affects before anything changes."
+            : `Shared product specs by the lead PM, plus your ${regionLabel[user.region]} overlay: only what differs for your region, each with a reason. Differences show on both and the head of product line decides them.`
         }
         actions={
           onboarding ? (
@@ -105,7 +105,7 @@ export function BriefView() {
 }
 
 function CreateOverlay({ series, region, shared }: { series: SeriesBrief["series"]; region: string; shared: SeriesBrief }) {
-  const create = useApiMutation("createOverlay", { success: "Regional brief created: confirm what differs, or paste your strategy doc" });
+  const create = useApiMutation("createOverlay", { success: "Regional product specs created: confirm what differs, or paste your strategy doc" });
   const { name } = useUsers();
   return (
     <div className="space-y-4 rounded-xl border bg-card p-5">
@@ -121,7 +121,7 @@ function CreateOverlay({ series, region, shared }: { series: SeriesBrief["series
         ))}
       </div>
       <Button onClick={() => create.mutate({ body: { series } })} disabled={create.isPending}>
-        <Sparkles className="size-4" /> Create my regional brief
+        <Sparkles className="size-4" /> Create my regional product specs
       </Button>
     </div>
   );
@@ -159,7 +159,7 @@ function StrategyDoc({ briefId, userId }: { briefId: string; userId: string }) {
             setText("");
           }}
         >
-          <Sparkles className="size-4" /> {extract.isPending ? "Reading…" : "Propose brief values"}
+          <Sparkles className="size-4" /> {extract.isPending ? "Reading…" : "Propose values"}
         </Button>
         <Button variant="ghost" onClick={() => setOpen(false)}>
           Cancel
@@ -179,7 +179,7 @@ function BriefEditor({ brief, shared, isOverlay }: { brief: SeriesBrief; shared:
   const [clear, setClear] = useState<Set<BriefFieldKey>>(new Set());
   const [impact, setImpact] = useState<BriefImpact[] | null>(null);
   const [result, setResult] = useState<BriefImpact[] | null>(null);
-  const save = useApiMutation("saveBrief", { success: (r) => (r.impact.length ? `Brief saved · ${r.impact.length} requirement${r.impact.length === 1 ? "" : "s"} affected` : "Brief saved") });
+  const save = useApiMutation("saveBrief", { success: (r) => (r.impact.length ? `Product specs saved · ${r.impact.length} requirement${r.impact.length === 1 ? "" : "s"} affected` : "Product specs saved") });
 
   const metaOf = (k: BriefFieldKey) => (isOverlay && brief.values[k] !== undefined ? brief.meta[k] : shared.meta[k]);
   const unconfirmed = BriefFieldKeys.options.filter((k) => (isOverlay ? brief.values[k] !== undefined && !brief.meta[k]?.confirmed : !shared.meta[k]?.confirmed));
@@ -265,7 +265,7 @@ function BriefEditor({ brief, shared, isOverlay }: { brief: SeriesBrief; shared:
               else await submit();
             }}
           >
-            <CheckCircle2 className="size-4" /> {dirty.size || clear.size ? "Save brief" : `Confirm ${unconfirmed.length} answer${unconfirmed.length === 1 ? "" : "s"}`}
+            <CheckCircle2 className="size-4" /> {dirty.size || clear.size ? "Save product specs" : `Confirm ${unconfirmed.length} answer${unconfirmed.length === 1 ? "" : "s"}`}
           </Button>
         )}
       </div>
@@ -290,7 +290,7 @@ function BriefEditor({ brief, shared, isOverlay }: { brief: SeriesBrief; shared:
       <Dialog open={!!result?.length} onOpenChange={(o) => !o && setResult(null)}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Brief saved</DialogTitle>
+            <DialogTitle>Product specs saved</DialogTitle>
             <DialogDescription>Open a requirement to accept or reject its proposed version.</DialogDescription>
           </DialogHeader>
           <ImpactList items={result ?? []} />
@@ -458,11 +458,11 @@ function ReadOnlyBriefs({ briefs, role }: { briefs: SeriesBrief[]; role: string 
   return (
     <div>
       <PageHeader
-        title="Series briefs"
+        title="Product specs"
         description={
           role === "head"
-            ? "Every car project's shared brief and the regional overlays. Differences between them are decided on your desk (Review)."
-            : "Briefs belong to vehicle PMs. When you draft on a case, the brief of the case's series is used."
+            ? "Every car project's shared product specs and the regional overlays. Differences between them are decided on your desk (Review)."
+            : "Product specs belong to vehicle PMs. When you draft on a case, the product specs of the case's series are used."
         }
       />
       <div className="mx-auto max-w-4xl space-y-4 px-6 py-8">

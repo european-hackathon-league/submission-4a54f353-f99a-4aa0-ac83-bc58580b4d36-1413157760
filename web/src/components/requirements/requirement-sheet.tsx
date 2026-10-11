@@ -108,7 +108,7 @@ function Body({ id }: { id: string }) {
           <VersionsPanel versions={b.versions} feedback={b.feedback} />
         </TabsContent>
         <TabsContent value="argument" className="pt-3">
-          <ArgumentSheet b={b} />
+          <ArgumentSheet b={b} canEdit={canEdit} onCite={onCite} />
         </TabsContent>
         <TabsContent value="chat" className="h-[60vh] overflow-hidden rounded-xl border bg-card pt-0">
           <ChatPanel objectType="requirement" objectId={r.id} proposals={b.proposals} canEdit={canEdit} onCite={onCite} />

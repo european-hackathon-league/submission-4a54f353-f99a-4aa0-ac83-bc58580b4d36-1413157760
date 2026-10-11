@@ -25,7 +25,7 @@ export function VariantsCompare({ r, others, onOpen, onCite }: { r: Requirement;
   ];
   return (
     <div className="rounded-lg border bg-card text-sm">
-      <div className="border-b px-4 py-2.5 text-[13px] font-semibold">Same case, two briefs: why the requirements differ</div>
+      <div className="border-b px-4 py-2.5 text-[13px] font-semibold">Same case, two sets of product specs: why the requirements differ</div>
       <table className="w-full text-xs">
         <thead className="text-left text-muted-foreground">
           <tr>

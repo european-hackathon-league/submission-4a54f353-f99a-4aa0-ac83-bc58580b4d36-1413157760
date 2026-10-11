@@ -52,7 +52,7 @@ export function PersonaMenu({ user }: { user: User }) {
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => router.push("/brief")}>
-          <Compass className="size-4" /> My series brief
+          <Compass className="size-4" /> My product specs
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/settings")}>
           <Settings className="size-4" /> Settings and weights

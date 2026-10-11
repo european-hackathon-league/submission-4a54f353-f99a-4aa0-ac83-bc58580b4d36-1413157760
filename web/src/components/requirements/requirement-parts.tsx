@@ -2,15 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, ClipboardCopy, MessageSquareQuote, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, ClipboardCopy, Eye, MessageSquareQuote, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  CarArea as CarAreas,
+  ChangeDepth as ChangeDepths,
   CostSize as CostSizes,
   CostSource as CostSources,
   EvidenceLevel as EvidenceLevels,
   MetricBasis as MetricBases,
   Region as Regions,
   ReleaseTarget as ReleaseTargets,
+  carAreaLabel,
+  changeDepthLabel,
   evidenceLabel,
   marketLabel,
   regionLabel,
@@ -23,7 +27,8 @@ import {
 } from "@/contracts";
 import { useApiMutation } from "@/lib/api/hooks";
 import { cn } from "@/lib/utils";
-import { EvidenceBadge, Pill, RegionChip, ReleaseChip } from "@/components/common/badges";
+import { AreaChip, DepthChip, EvidenceBadge, Pill, RegionChip, ReleaseChip } from "@/components/common/badges";
+import { Markdown } from "@/components/common/markdown";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { ProvChip, ProvenanceLegend, ProvText, provenanceMap } from "@/components/requirements/provenance";
 import { ReplayButton } from "@/components/replay/replay-overlay";
@@ -33,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 
 /** Status buttons a user may press on a requirement (owner moves it, the head signs off). */
@@ -196,9 +202,15 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
       </div>
       {editing ? (
         <>
-          <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input value={d.title} onChange={(e) => set("title", e.target.value)} />
+          <div className="grid gap-3 sm:grid-cols-[1fr_2fr]">
+            <div className="space-y-1.5">
+              <Label>Short name</Label>
+              <Input value={d.shortTitle} onChange={(e) => set("shortTitle", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Title</Label>
+              <Input value={d.title} onChange={(e) => set("title", e.target.value)} />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Description (specific, customer-facing)</Label>
@@ -208,6 +220,8 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
             <SelectField label="Release" value={d.releaseTarget} options={ReleaseTargets.options.map((o) => [o, releaseLabel[o]])} onChange={(v) => set("releaseTarget", v as Requirement["releaseTarget"])} />
             <SelectField label="Market scope" value={d.marketScope} options={Regions.options.map((o) => [o, regionLabel[o]])} onChange={(v) => set("marketScope", v as Requirement["marketScope"])} />
             <SelectField label="Evidence level" value={d.evidenceLevel} options={EvidenceLevels.options.map((o) => [o, evidenceLabel[o]])} onChange={(v) => set("evidenceLevel", v as Requirement["evidenceLevel"])} />
+            <SelectField label="Car area" value={d.carArea} options={CarAreas.options.map((o) => [o, carAreaLabel[o]])} onChange={(v) => set("carArea", v as Requirement["carArea"])} />
+            <SelectField label="Change depth" value={d.changeDepth} options={ChangeDepths.options.map((o) => [o, changeDepthLabel[o]])} onChange={(v) => set("changeDepth", v as Requirement["changeDepth"])} />
           </div>
         </>
       ) : (
@@ -226,6 +240,8 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
               <RegionChip region={d.marketScope} /> <ProvChip p={prov.get("marketScope")} onCite={onCite} />
             </span>
             <EvidenceBadge level={d.evidenceLevel} />
+            <AreaChip area={d.carArea} />
+            <DepthChip depth={d.changeDepth} />
           </div>
         </>
       )}
@@ -331,8 +347,8 @@ export function Spec({ r, canEdit, onCite }: { r: Requirement; canEdit: boolean;
         description="Every edit is stored with before/after in the audit trail."
         pending={patch.isPending}
         onSubmit={async (rationale) => {
-          const { title, description, releaseTarget, marketScope, evidenceLevel, metrics, acceptanceCriteria, assumptions, cost } = draft;
-          await patch.mutateAsync({ params: { id: r.id }, body: { patch: { title, description, releaseTarget, marketScope, evidenceLevel, metrics, acceptanceCriteria, assumptions, cost }, rationale } });
+          const { shortTitle, title, description, releaseTarget, marketScope, evidenceLevel, carArea, changeDepth, metrics, acceptanceCriteria, assumptions, cost } = draft;
+          await patch.mutateAsync({ params: { id: r.id }, body: { patch: { shortTitle, title, description, releaseTarget, marketScope, evidenceLevel, carArea, changeDepth, metrics, acceptanceCriteria, assumptions, cost }, rationale } });
           setSave(false);
           setEditing(false);
         }}
@@ -381,46 +397,103 @@ function ListField({ title, items, editing, onChange, chip }: { title: string; i
   );
 }
 
-export function ArgumentSheet({ b }: { b: RequirementBundle }) {
+/** The generated argument sheet: one paragraph per point so it renders as markdown, citations as [ID]. */
+export function generatedArgument(b: RequirementBundle) {
   const c = b.case;
+  const r = b.requirement;
   const strongest = b.signals.filter((s) => s.agent === "bmw_data" && s.sourceType === "bmw_feedback" && s.kind !== "like").slice(0, 3);
   const study = b.signals.filter((s) => s.sourceType === "bmw_study");
   const comp = b.signals.filter((s) => s.kind === "competitor_fact");
-  const lines = [
-    `# ${b.requirement.id} · ${b.requirement.title}`,
-    "",
+  const quotes = strongest.map((s) => `- "${s.quote.slice(0, 180)}${s.quote.length > 180 ? "…" : ""}" [${s.id}] (${marketLabel[s.market]})`).join("\n");
+  return [
+    `## ${r.id} · ${r.title}`,
     `**Why customers need it:** ${c.summary}`,
-    ...strongest.map((s) => `- "${s.quote.slice(0, 180)}${s.quote.length > 180 ? "…" : ""}" (${s.id}, ${marketLabel[s.market]})`),
-    "",
+    quotes,
     `**Study:** ${study.map((s) => s.summary).join("; ") || "no linked attribute"}`,
     `**Competition:** ${comp.map((s) => `${s.competitor}: ${s.summary}`).join("; ") || c.figures.competitorOffer.join("; ") || "not researched"}`,
-    `**Markets:** ${c.figures.perMarket.map((m) => `${marketLabel[m.market]} ${m.customers} customers${m.salesShare2030 ? ` (${Math.round(m.salesShare2030 * 100)}% of 2030 volume)` : ""}`).join(", ")}`,
+    `**Markets:** ${c.figures.perMarket.map((m) => `${marketLabel[m.market]} ${m.customers} customers${m.salesShare2030 ? ` (${Math.round(m.salesShare2030 * 100)}% of 2030 volume)` : ""}`).join(", ") || "none yet"}`,
     `**Brand fit:** ${c.brandFit.value.toFixed(2)}: ${c.brandFit.reason}`,
-    `**Target:** ${b.requirement.metrics.map((m) => `${m.question} → ${m.target} (${m.basis})`).join("; ")}`,
-    `**Rough cost:** ${b.requirement.cost.size}, ${b.requirement.cost.eurBand} (${b.requirement.cost.source.replace("_", " ")})`,
-    `**Release:** ${releaseLabel[b.requirement.releaseTarget]} · **Evidence:** ${evidenceLabel[b.requirement.evidenceLevel]}`,
-    `**Open assumptions:** ${b.requirement.assumptions.join("; ") || "none"}`,
-  ];
-  const text = lines.join("\n");
+    `**Target:** ${r.metrics.map((m) => `${m.question} → ${m.target} (${m.basis})`).join("; ") || "none yet"}`,
+    `**Rough cost:** ${r.cost.size}, ${r.cost.eurBand} (${r.cost.source.replace("_", " ")})`,
+    `**Release:** ${releaseLabel[r.releaseTarget]} · **Evidence:** ${evidenceLabel[r.evidenceLevel]}`,
+    `**Open assumptions:** ${r.assumptions.join("; ") || "none"}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function ArgumentSheet({ b, canEdit, onCite }: { b: RequirementBundle; canEdit: boolean; onCite?: (ref: string) => void }) {
+  const r = b.requirement;
+  const text = r.argumentMd ?? generatedArgument(b);
+  const [mode, setMode] = useState<"preview" | "edit">("preview");
+  const [draft, setDraft] = useState(text);
+  const patch = useApiMutation("patchRequirement", { success: "Argument sheet saved" });
+  const save = async (argumentMd: string | null, rationale: string) => {
+    await patch.mutateAsync({ params: { id: r.id }, body: { patch: { argumentMd }, rationale } });
+    setMode("preview");
+  };
   return (
     <div className="space-y-4 rounded-xl border bg-card p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h3 className="text-lg leading-snug font-semibold">Argument sheet for the engineering meeting</h3>
           <p className="mt-0.5 text-[13px] text-muted-foreground">Complaint · wish · competition · cost, every line traceable. Engineers will challenge it, so it shows assumptions too.</p>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={async () => {
-            await navigator.clipboard.writeText(text);
-            toast.success("Copied as markdown");
-          }}
-        >
-          <ClipboardCopy className="size-3.5" /> Copy
-        </Button>
+        <div className="flex items-center gap-2">
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={mode}
+            onValueChange={(v) => {
+              if (!v) return;
+              if (v === "edit") setDraft(text);
+              setMode(v as "preview");
+            }}
+          >
+            <ToggleGroupItem value="preview" className="gap-1.5 px-2.5">
+              <Eye className="size-3.5" /> Preview
+            </ToggleGroupItem>
+            <ToggleGroupItem value="edit" className="gap-1.5 px-2.5" disabled={!canEdit}>
+              <Pencil className="size-3.5" /> Edit
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              await navigator.clipboard.writeText(mode === "edit" ? draft : text);
+              toast.success("Copied as markdown");
+            }}
+          >
+            <ClipboardCopy className="size-3.5" /> Copy
+          </Button>
+        </div>
       </div>
-      <pre className="rounded-lg border bg-recessed p-5 font-sans text-sm leading-relaxed whitespace-pre-wrap">{text}</pre>
+      {mode === "edit" ? (
+        <>
+          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} className="min-h-[380px] font-mono text-xs leading-relaxed" aria-label="Argument sheet markdown" />
+          <div className="flex flex-wrap items-center gap-2">
+            {r.argumentMd != null && (
+              <Button size="sm" variant="ghost" disabled={patch.isPending} onClick={() => save(null, "Argument sheet reset to the generated version")}>
+                <RotateCcw className="size-3.5" /> Reset to generated
+              </Button>
+            )}
+            <span className="flex-1" />
+            <Button size="sm" variant="ghost" onClick={() => setMode("preview")}>
+              Cancel
+            </Button>
+            <Button size="sm" disabled={patch.isPending || draft === text} onClick={() => save(draft, "Edited the argument sheet")}>
+              Save
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="rounded-lg border bg-recessed p-5">
+          <Markdown onCite={onCite}>{text}</Markdown>
+        </div>
+      )}
+      {r.argumentMd != null && mode === "preview" && <p className="text-xs text-muted-foreground">Edited by hand. It no longer updates when the requirement changes.</p>}
     </div>
   );
 }
