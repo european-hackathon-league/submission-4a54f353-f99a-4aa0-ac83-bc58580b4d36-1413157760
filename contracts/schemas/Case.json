@@ -9,6 +9,9 @@
     "title": {
       "type": "string"
     },
+    "shortTitle": {
+      "type": "string"
+    },
     "summary": {
       "type": "string"
     },
@@ -607,6 +610,7 @@
   "required": [
     "id",
     "title",
+    "shortTitle",
     "summary",
     "highlights",
     "topicId",

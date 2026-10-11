@@ -90,6 +90,7 @@ export type CaseSpec = Omit<
   | "relatedSeries"
   | "factors"
   | "highlights"
+  | "shortTitle"
   | "topicId"
   | "pmContext"
 > & {

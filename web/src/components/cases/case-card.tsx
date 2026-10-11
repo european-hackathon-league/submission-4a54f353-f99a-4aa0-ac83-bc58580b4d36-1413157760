@@ -7,33 +7,32 @@ import { cn } from "@/lib/utils";
 import { EvidenceBars, OutcomeBadge } from "@/components/common/badges";
 import { UserAvatar } from "@/components/common/people";
 
+/** Board card: the short name, who owns it, how many customers, how strong the evidence. */
 export function CaseCard({ c, score, rank, dragging }: { c: Case; score?: number; rank?: number; compact?: boolean; dragging?: boolean }) {
   const customers = c.figures.perMarket.reduce((s, m) => s + m.customers, 0);
   return (
     <Link
       href={`/cases/${c.id}`}
+      title={c.title}
       className={cn(
         "block rounded-lg border bg-card p-3 text-left shadow-xs transition hover:border-primary/50 hover:shadow-sm",
         dragging && "rotate-1 shadow-lg ring-2 ring-primary/40",
         c.outcome === "rejected" && "opacity-60",
       )}
     >
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {rank !== undefined && <span className="font-mono font-semibold text-foreground">#{rank}</span>}
-        <span className="font-mono">{c.id}</span>
-        <span className="flex-1" />
+      <div className="flex items-start gap-2">
+        <span className="min-w-0 flex-1 text-sm leading-snug font-semibold">{c.shortTitle}</span>
         {c.newSignalCount > 0 && (
-          <span className="flex items-center gap-0.5 rounded bg-primary/10 px-1 text-primary" title="New signals">
+          <span className="flex items-center gap-0.5 rounded bg-primary/10 px-1 text-[11px] text-primary" title="New signals">
             <Sparkles className="size-3" />
             {c.newSignalCount}
           </span>
         )}
-        {c.marketConflict && c.state !== "decided" && <AlertTriangle className="size-3.5 text-amber-500" aria-label="Market conflict" />}
-        {c.originCaseId && <GitBranch className="size-3.5" aria-label="Linked case" />}
+        {c.marketConflict && c.state !== "decided" && <AlertTriangle className="size-3.5 shrink-0 text-amber-500" aria-label="Market conflict" />}
+        {c.originCaseId && <GitBranch className="size-3.5 shrink-0 text-muted-foreground" aria-label="Linked case" />}
       </div>
-      <div className="mt-1 line-clamp-2 text-sm leading-snug font-medium">{c.title}</div>
       {c.outcome && (
-        <div className="mt-2">
+        <div className="mt-1.5">
           <OutcomeBadge outcome={c.outcome} />
         </div>
       )}
@@ -44,13 +43,9 @@ export function CaseCard({ c, score, rank, dragging }: { c: Case; score?: number
           {customers}
         </span>
         <span className="flex-1" />
+        {rank !== undefined && <span className="tabular-nums" title={score !== undefined ? `Score ${score.toFixed(2)}` : undefined}>#{rank}</span>}
         <EvidenceBars level={c.evidenceLevel} showLabel={false} />
       </div>
-      {score !== undefined && (
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted" title={`Score ${score.toFixed(2)}`}>
-          <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round(score * 100)}%` }} />
-        </div>
-      )}
     </Link>
   );
 }

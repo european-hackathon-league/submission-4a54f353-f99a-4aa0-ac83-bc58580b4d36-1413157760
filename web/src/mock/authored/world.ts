@@ -14,7 +14,7 @@ import type { ChatSeed, VerbatimSelector, WebSignalSpec } from "./types";
 /** Fixed "now" of the synthetic world: the morning after the hackathon kick-off. */
 export const NOW = "2026-10-11T08:00:00Z";
 
-type ReqSpec = Omit<Requirement, "synthetic" | "manualRank" | "createdAt" | "updatedAt"> & { createdAt: string; updatedAt?: string };
+type ReqSpec = Omit<Requirement, "synthetic" | "manualRank" | "createdAt" | "updatedAt" | "shortTitle"> & { createdAt: string; updatedAt?: string };
 
 export const requirementSpecs: ReqSpec[] = [
   {

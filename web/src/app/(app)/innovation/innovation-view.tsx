@@ -8,8 +8,8 @@ import { horizonLabel, seriesShort, type InnovationEntry, type Series } from "@/
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/common/page";
-import { AreaChip, EvidenceBadge, Pill } from "@/components/common/badges";
-import { AvatarStack, UserAvatar, useUsers } from "@/components/common/people";
+import { Pill } from "@/components/common/badges";
+import { AvatarStack } from "@/components/common/people";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,7 +32,6 @@ export function InnovationView() {
 
 function InnovationCard({ e, userId, mySeries }: { e: InnovationEntry; userId?: string; mySeries: Series[] }) {
   const router = useRouter();
-  const { name } = useUsers();
   const vote = useApiMutation("voteInnovation", { silent: true });
   const pull = useApiMutation("pullInnovation", { success: (c) => `Pulled into ${c.series} as ${c.id}` });
   const [open, setOpen] = useState(false);
@@ -40,51 +39,35 @@ function InnovationCard({ e, userId, mySeries }: { e: InnovationEntry; userId?: 
   const voted = !!userId && e.meta.votes.includes(userId);
   return (
     <div className="flex flex-col rounded-xl border bg-card p-4 shadow-xs">
-      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <Lightbulb className="size-3.5 text-fuchsia-500" />
-        <span className="font-mono">{e.case.id}</span>
-        <Pill t="fuchsia">{horizonLabel[e.meta.horizon]}</Pill>
+      <div className="flex items-center gap-2">
+        <span className="grid size-8 place-items-center rounded-lg bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400">
+          <Lightbulb className="size-4" />
+        </span>
         <span className="flex-1" />
-        {e.case.createdBy.startsWith("agent:") ? <Pill t="sky">innovation scout</Pill> : <span>by {name(e.case.ownerId)}</span>}
+        <Pill t="fuchsia">{horizonLabel[e.meta.horizon]}</Pill>
       </div>
-      <Link href={`/cases/${e.case.id}`} className="mt-2 text-base leading-snug font-semibold hover:underline">
-        {e.case.title}
+      <Link href={`/cases/${e.case.id}`} title={e.case.title} className="mt-3 text-base leading-snug font-semibold hover:underline">
+        {e.case.shortTitle}
       </Link>
-      <p className="mt-1 text-sm text-muted-foreground">{e.meta.pitch}</p>
-      <div className="mt-3 flex flex-wrap gap-1">
-        <AreaChip area={e.case.carArea} />
-        <EvidenceBadge level={e.case.evidenceLevel} />
-        {e.meta.interestedSeries.map((s) => (
-          <Pill key={s}>{seriesShort[s]}</Pill>
-        ))}
-      </div>
-      {e.case.figures.competitorOffer.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Competitors: {e.case.figures.competitorOffer.join(" · ")}</p>}
-      {e.meta.pulledInto.length > 0 && (
-        <p className="mt-2 text-xs">
-          Pulled into:{" "}
-          {e.meta.pulledInto.map((id) => (
-            <Link key={id} href={`/cases/${id}`} className="mr-1 font-mono text-primary hover:underline">
-              {id}
-            </Link>
-          ))}
-        </p>
-      )}
+      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground" title={e.meta.pitch}>
+        {e.meta.pitch}
+      </p>
+      {e.meta.pulledInto.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Pulled into {e.meta.pulledInto.length} series</p>}
       <div className="mt-auto flex items-center gap-2 pt-4">
         <Button size="sm" variant={voted ? "default" : "outline"} onClick={() => vote.mutate({ params: { caseId: e.case.id }, body: {} })}>
           <ThumbsUp className={cn("size-3.5", voted && "fill-current")} /> {e.meta.votes.length}
         </Button>
-        <AvatarStack ids={e.meta.votes} max={5} />
+        <AvatarStack ids={e.meta.votes} max={4} />
         <span className="flex-1" />
-        <UserAvatar id={e.case.ownerId} size="xs" />
         <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-          <ArrowDownToLine className="size-3.5" /> Pull into my series
+          <ArrowDownToLine className="size-3.5" /> Pull in
         </Button>
       </div>
       <RationaleDialog
         open={open}
         onOpenChange={setOpen}
         title="Pull into your series"
-        description="Creates a linked case in your workspace with all signals. The original owner is notified."
+        description="A linked case with all signals lands on your board."
         confirmLabel="Pull"
         pending={pull.isPending}
         onSubmit={async (rationale) => {

@@ -242,6 +242,8 @@ export type PmContext = z.infer<typeof PmContext>;
 export const Case = z.object({
   id: Id,
   title: z.string(),
+  /** 2-4 words for lists, cards and diagrams; the title stays the full problem statement. */
+  shortTitle: z.string(),
   summary: z.string(),
   /** Three short bullets shown under the evidence diagram: problem, who, competition. */
   highlights: z.array(z.string()),
@@ -368,6 +370,8 @@ export const Requirement = z.object({
   caseId: Id,
   series: Series,
   title: z.string(),
+  /** 2-4 words for lists; the title stays the full SMART sentence. */
+  shortTitle: z.string(),
   description: z.string(),
   marketScope: Region,
   variantOf: Id.nullable(),

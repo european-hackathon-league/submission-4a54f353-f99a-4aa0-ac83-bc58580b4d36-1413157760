@@ -23,8 +23,7 @@ import { downloadDeck } from "@/lib/deck";
 import { download } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PageHeader, PageSkeleton } from "@/components/common/page";
-import { Pill, ReleaseChip, ReqStatusBadge, type Tone } from "@/components/common/badges";
-import { UserAvatar } from "@/components/common/people";
+import { Pill, ReqStatusDot, type Tone } from "@/components/common/badges";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { RequirementSheet } from "@/components/requirements/requirement-sheet";
 import { Button } from "@/components/ui/button";
@@ -32,6 +31,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const actionTone: Record<PlanAction, Tone> = { keep: "slate", new: "emerald", improve: "sky", remove: "red" };
+const actionText: Record<PlanAction, string> = { keep: "text-muted-foreground", new: "text-positive", improve: "text-sky-600 dark:text-sky-400", remove: "text-negative" };
+const releaseShort = { next_gen: "Next gen", lci: "LCI", ota: "OTA" } as const;
 
 type Filter = "active" | "progress" | "signed_off" | "planned" | "rejected";
 const filters: [Filter, string, (s: RequirementStatus) => boolean][] = [
@@ -170,16 +171,13 @@ function AreaBlock({
           const f = featureOf.get(r.id);
           return (
             <li key={r.id}>
-              <button onClick={() => onOpen(r.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/50">
-                <UserAvatar id={r.ownerId} size="xs" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{r.title}</span>
-                  <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
+              <button onClick={() => onOpen(r.id)} title={r.title} className="grid w-full grid-cols-[1fr_90px_120px_130px] items-center gap-3 px-4 py-2.5 text-left transition hover:bg-muted/50">
+                <span className="truncate text-sm font-medium">{r.shortTitle}</span>
+                <span className={cn("text-xs font-medium", f ? actionText[f.action] : "text-muted-foreground")}>{f ? planActionLabel[f.action] : "–"}</span>
+                <span className="text-xs text-muted-foreground">
+                  {releaseShort[r.releaseTarget]} · Cost {r.cost.size}
                 </span>
-                {f && <Pill t={actionTone[f.action]}>{planActionLabel[f.action]}</Pill>}
-                <ReleaseChip release={r.releaseTarget} />
-                <Pill>Cost {r.cost.size}</Pill>
-                <ReqStatusBadge status={r.status} />
+                <ReqStatusDot status={r.status} />
               </button>
             </li>
           );

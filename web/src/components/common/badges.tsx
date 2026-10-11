@@ -73,6 +73,31 @@ export const reqTone: Record<RequirementStatus, Tone> = {
   rejected: "red",
 };
 
+const dotColor: Record<Tone, string> = {
+  slate: "bg-slate-400",
+  sky: "bg-sky-500",
+  violet: "bg-violet-500",
+  amber: "bg-amber-500",
+  emerald: "bg-emerald-500",
+  red: "bg-red-500",
+  fuchsia: "bg-fuchsia-500",
+  blue: "bg-blue-500",
+  teal: "bg-teal-500",
+  outline: "bg-muted-foreground/50",
+};
+
+/** Quiet status for lists: a coloured dot plus a short word, no box. */
+export function StatusDot({ t, children, className }: { t: Tone; children?: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn("inline-flex shrink-0 items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground", className)}>
+      <span className={cn("size-2 rounded-full", dotColor[t])} aria-hidden />
+      {children}
+    </span>
+  );
+}
+export const CaseStateDot = ({ state }: { state: CaseState }) => <StatusDot t={caseStateTone[state]}>{caseStateLabel[state]}</StatusDot>;
+export const ReqStatusDot = ({ status }: { status: RequirementStatus }) => <StatusDot t={reqTone[status]}>{requirementStatusLabel[status]}</StatusDot>;
+
 export const CaseStateBadge = ({ state }: { state: CaseState }) => <Pill t={caseStateTone[state]}>{caseStateLabel[state]}</Pill>;
 export const OutcomeBadge = ({ outcome }: { outcome: CaseOutcome }) => <Pill t={outcomeTone[outcome]}>{caseOutcomeLabel[outcome]}</Pill>;
 export const ReqStatusBadge = ({ status }: { status: RequirementStatus }) => <Pill t={reqTone[status]}>{requirementStatusLabel[status]}</Pill>;
@@ -121,14 +146,16 @@ export const TypeChip = ({ type }: { type: CaseType }) => <Pill>{caseTypeLabel[t
 export const DepthChip = ({ depth }: { depth: ChangeDepth }) => <Pill>{changeDepthLabel[depth]}</Pill>;
 export const ReleaseChip = ({ release }: { release: ReleaseTarget }) => <Pill t={release === "ota" ? "teal" : release === "lci" ? "amber" : "blue"}>{releaseLabel[release]}</Pill>;
 
+export const trustText: Record<Trust, string> = {
+  A: "BMW data",
+  B: "official / primary source",
+  C: "professional review or press",
+  D: "owner forum / social",
+  E: "announcement = assumption",
+};
+
 export function TrustBadge({ trust }: { trust: Trust }) {
-  const text: Record<Trust, string> = {
-    A: "A · BMW data",
-    B: "B · official / primary source",
-    C: "C · professional review or press",
-    D: "D · owner forum / social",
-    E: "E · announcement = assumption",
-  };
+  const text: Record<Trust, string> = Object.fromEntries(Object.entries(trustText).map(([k, v]) => [k, `${k} · ${v}`])) as Record<Trust, string>;
   const t: Record<Trust, Tone> = { A: "emerald", B: "sky", C: "slate", D: "amber", E: "red" };
   return (
     <Tooltip>

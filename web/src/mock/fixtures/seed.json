@@ -14288,6 +14288,7 @@
   {
    "id": "CASE-G60-0001",
    "title": "Frequent functions take too many steps since physical shortcuts were removed",
+   "shortTitle": "Physical shortcuts",
    "summary": "Owners miss the programmable memory and radio preset buttons; menus slow down everyday functions.",
    "highlights": [
     "Since the move to the Curved Display with OS 8.5, owners must go through menus for functions they use many times a day (radio presets, climate, recent calls).",
@@ -14480,6 +14481,7 @@
   {
    "id": "CASE-G60-0002",
    "title": "Auto start-stop cannot be switched off permanently",
+   "shortTitle": "Start-stop memory",
    "summary": "Drivers want a stored setting that keeps engine start-stop (MSA) off across restarts.",
    "highlights": [
     "Engine start-stop (MSA) re-activates on every start.",
@@ -14615,6 +14617,7 @@
   {
    "id": "CASE-G60-0003",
    "title": "i5 winter range and public fast charging fall short of expectations",
+   "shortTitle": "Winter range & charging",
    "summary": "BEV owners report range loss in winter and unreliable or slow public charging, while rivals advertise 700+ km and 20-minute stops.",
    "highlights": [
     "i5 owners lose noticeable range in cold weather and struggle with public charging (finding chargers, slow sessions).",
@@ -14787,6 +14790,7 @@
   {
    "id": "CASE-G60-0004",
    "title": "Hands-free tailgate rarely opens on the first try",
+   "shortTitle": "Hands-free tailgate",
    "summary": "The non-contact trunk opening is a top usability complaint: owners kick several times or give up.",
    "highlights": [
     "The kick sensor of the non-contact tailgate opening does not respond reliably.",
@@ -14911,6 +14915,7 @@
   {
    "id": "CASE-G60-0005",
    "title": "Climate control is slow to react and hard to operate",
+   "shortTitle": "Climate control",
    "summary": "Heater and AC controls are among the weakest US study items; owners report slow cool-down and fiddly touch sliders.",
    "highlights": [
     "Owners find the climate controls hard to use (touch sliders, menus) and the cabin slow to cool down.",
@@ -15039,6 +15044,7 @@
   {
    "id": "CASE-G60-0006",
    "title": "No spare wheel or credible flat-tire solution",
+   "shortTitle": "Flat-tire solution",
    "summary": "US owners rate flat-tire preparedness worst of all G60 study items and ask for a spare or run-flats.",
    "highlights": [
     "Customers feel unprepared for a flat tire: no spare, mobility kit only.",
@@ -15162,6 +15168,7 @@
   {
    "id": "CASE-G60-0007",
    "title": "Seat massage is missing in the 5 Series",
+   "shortTitle": "Seat massage",
    "summary": "A small group of owners asks for massage seats; Mercedes is seen as owning this attribute.",
    "highlights": [
     "Some owners would like massage seats in the 5 Series.",
@@ -15281,6 +15288,7 @@
   {
    "id": "CASE-G60-0008",
    "title": "A front trunk (frunk) on the i5",
+   "shortTitle": "Frunk",
    "summary": "BEV owners expect extra storage under the bonnet; the i5 shares the ICE packaging and has none.",
    "highlights": [
     "BEV owners expect a frunk; the i5 does not have one.",
@@ -15409,6 +15417,7 @@
   {
    "id": "CASE-G60-0009",
    "title": "Phone integration drops: CarPlay disconnects and wireless charging stops",
+   "shortTitle": "Phone connection",
    "summary": "Apple CarPlay disconnects and the wireless charging pad stops or overheats the phone.",
    "highlights": [
     "Wireless CarPlay drops and the wireless charging tray stops charging or heats the phone.",
@@ -15542,6 +15551,7 @@
   {
    "id": "CASE-G60-0010",
    "title": "Panorama roof that opens, more ambient light",
+   "shortTitle": "Opening glass roof",
    "summary": "Wishes for an opening glass roof and richer ambient lighting (observed, below threshold).",
    "highlights": [
     "Some owners want the glass roof to open and more ambient light options.",
@@ -15651,6 +15661,7 @@
   {
    "id": "CASE-G60-0011",
    "title": "Luggage loading is awkward and capacity feels small",
+   "shortTitle": "Luggage loading",
    "summary": "Ease of loading is the lowest EU study item for the 5 Series; China G68 owners rate it low too.",
    "highlights": [
     "Loading and unloading luggage is rated poorly; capacity feels small in Europe.",
@@ -15803,6 +15814,7 @@
   {
    "id": "CASE-G60-0012",
    "title": "5 Series is not perceived as sporty anymore",
+   "shortTitle": "Sporty feel",
    "summary": "EU sportiness 7.64 vs 9.34 for the 1 Series, while drivetrain and handling are the top likes.",
    "highlights": [
     "Driving dynamics are loved, but the 5 Series does not *feel* sporty to European customers.",
@@ -15965,6 +15977,7 @@
   {
    "id": "CASE-G60-CN-0001",
    "title": "5 Series Li feels under-equipped against Chinese rivals",
+   "shortTitle": "Equipment level (China)",
    "summary": "China G68 rates level of equipment 7.49 (7 Series: 9.82) while Chinese rivals ship rich standard equipment.",
    "highlights": [
     "Chinese customers perceive the 5 Series Li as under-equipped for its price compared to Chinese premium rivals that make fridges, rear screens, ventilated and…",
@@ -16107,6 +16120,7 @@
   {
    "id": "CASE-G60-CN-0002",
    "title": "Rear-seat cooler for chauffeured long-wheelbase customers",
+   "shortTitle": "Rear-seat cooler",
    "summary": "Rear-seat owners in China expect a cooler/fridge; Chinese rivals offer one as standard.",
    "highlights": [
     "Chauffeured customers of the long-wheelbase 5 Series expect cold drinks in the rear.",
@@ -16216,6 +16230,7 @@
   {
    "id": "CASE-G60-CN-0003",
    "title": "BEV range target falls behind Chinese benchmarks (CLTC)",
+   "shortTitle": "CLTC range",
    "summary": "Xiaomi SU7 Max advertises 800 km CLTC; the i5 Li target of 700 km CLTC looks outdated.",
    "highlights": [
     "Chinese BEV buyers compare CLTC range figures directly.",
@@ -16327,6 +16342,7 @@
   {
    "id": "CASE-G60-CN-0004",
    "title": "Connected services and in-car apps lag behind local ecosystems",
+   "shortTitle": "Digital ecosystem (China)",
    "summary": "Connected services score 7.35 in China; local rivals integrate WeChat, payments and app stores deeply.",
    "highlights": [
     "Chinese customers expect their digital ecosystem in the car.",
@@ -16424,6 +16440,7 @@
   {
    "id": "CASE-HMI-0001",
    "title": "Touch-first operation frustrates owners across all series",
+   "shortTitle": "Touch-first operation",
    "summary": "1 Series touch screen (83 DTU), 7 Series operating concept (33 DTU) and 5 Series menu complaints point to one Baukasten problem.",
    "highlights": [
     "Across series, owners struggle with touch-first operation.",
@@ -16569,6 +16586,7 @@
   {
    "id": "CASE-F70-0001",
    "title": "No printed owner's manual",
+   "shortTitle": "Printed manual",
    "summary": "UK and Japanese owners, often older, want a paper manual; digital-only is a top 'want'.",
    "highlights": [
     "Owners want a printed manual; the F70 is digital only.",
@@ -16678,6 +16696,7 @@
   {
    "id": "CASE-F70-0002",
    "title": "Touch screen operation on the 1 Series is hard to use while driving",
+   "shortTitle": "Touch screen",
    "summary": "Biggest F70 pain point (83 DTU). Referred to the HMI attribute PM because the module is shared.",
    "highlights": [
     "Touch-only interaction is difficult while driving; owners would prefer a dial.",
@@ -16789,6 +16808,7 @@
   {
    "id": "CASE-F70-0003",
    "title": "Luggage capacity is the lowest-rated 1 Series attribute",
+   "shortTitle": "Boot space",
    "summary": "EU study luggage capacity 7.07, the lowest F70 score.",
    "highlights": [
     "Small boot compared to rivals.",
@@ -16895,6 +16915,7 @@
   {
    "id": "CASE-F70-0004",
    "title": "Artificial exhaust pops through the speakers on the M135",
+   "shortTitle": "Exhaust pops",
    "summary": "Enthusiasts call the synthetic sound 'quite sad'. Honest sportiness vs fake sound.",
    "highlights": [
     "Synthetic exhaust sound through the speakers disappoints enthusiasts.",
@@ -16994,6 +17015,7 @@
   {
    "id": "CASE-G70-0001",
    "title": "Rear-view mirror is blocked when blinds or the theatre screen are down",
+   "shortTitle": "Rear-view mirror",
    "summary": "Owners want a camera-based rear-view mirror; 'E-mirror preparation' exists but no mirror is offered.",
    "highlights": [
     "With privacy blinds or the theatre screen down, the driver cannot see backwards.",
@@ -17106,6 +17128,7 @@
   {
    "id": "CASE-G70-0002",
    "title": "7 Series cabin cools down too slowly",
+   "shortTitle": "Cabin cool-down",
    "summary": "Climatization 32 DTU; 'Mercedes has a much better system'.",
    "highlights": [
     "Slow cool-down in hot climates.",
@@ -17209,6 +17232,7 @@
   {
    "id": "CASE-G70-0003",
    "title": "Chinese owners find the 7 Series cramped; Europeans find it roomy",
+   "shortTitle": "Rear space",
    "summary": "Rear roominess China 7.52 vs EU 9.41. One car or a China long-wheelbase variant?",
    "highlights": [
     "Chinese (likely chauffeured) owners find the rear cramped; Europeans find it roomy but overpriced.",
@@ -17327,6 +17351,7 @@
   {
    "id": "CASE-G70-0004",
    "title": "Rear-console cooler module (shared with 5 Series China)",
+   "shortTitle": "Rear cooler module",
    "summary": "Linked case from Wei's referral: one cooler module for the 7 Series and the 5 Series Li.",
    "highlights": [
     "Shared cooler module for the rear console.",
@@ -17425,6 +17450,7 @@
   {
    "id": "CASE-INNO-0001",
    "title": "Conversational AI assistant that can explain and control the car",
+   "shortTitle": "AI assistant",
    "summary": "LLM-based in-car assistants (Mercedes, Tesla, Chinese brands) set a new bar for voice control.",
    "highlights": [
     "Today's Intelligent Personal Assistant is rated 'difficult to use' (G70 17 DTU).",
@@ -17546,6 +17572,7 @@
   {
    "id": "CASE-INNO-0002",
    "title": "Smart-glass panorama roof with switchable shading",
+   "shortTitle": "Smart-glass roof",
    "summary": "Dimmable glass replaces blinds; addresses sun-protection wishes and the fixed-glass complaint.",
    "highlights": [
     "Sun protection wishes (G70 8) and fixed glass roof.",
@@ -17651,6 +17678,7 @@
   {
    "id": "CASE-INNO-0003",
    "title": "Vehicle-to-load: power outdoor gear and the home from the i5",
+   "shortTitle": "Vehicle-to-load",
    "summary": "Bidirectional charging (V2L/V2H) as a BEV benefit; popular in China and with US owners.",
    "highlights": [
     "Owners want to use the battery for camping or as home backup.",
@@ -18010,6 +18038,7 @@
    "caseId": "CASE-G60-0002",
    "series": "G60",
    "title": "Driver can keep auto start-stop off permanently",
+   "shortTitle": "Start-stop stays off",
    "description": "The driver can switch engine start-stop (MSA) off with a stored setting that persists across ignition cycles until the driver changes it. Applies to all ICE and PHEV derivatives in all markets; delivered as an over-the-air update.",
    "marketScope": "global",
    "variantOf": null,
@@ -18057,6 +18086,7 @@
    "caseId": "CASE-G60-0004",
    "series": "G60",
    "title": "Hands-free tailgate opens on the first kick in at least 95% of attempts",
+   "shortTitle": "Tailgate opens first kick",
    "description": "With the comfort-access key in range, a single foot movement under the rear bumper opens the tailgate on the first attempt in at least 95% of attempts, including with a wet or dirty bumper. Applies to all G60 derivatives with automatic tailgate, all markets, from the mid-life update.",
    "marketScope": "global",
    "variantOf": null,
@@ -18106,6 +18136,7 @@
    "caseId": "CASE-G60-0009",
    "series": "G60",
    "title": "Wireless charging keeps the phone charging and below 40 °C on any trip",
+   "shortTitle": "Phone charging under 40 °C",
    "description": "The wireless charging tray charges a current flagship phone at ≥ 15 W and keeps it below 40 °C during a 2-hour drive at 30 °C ambient. All derivatives, all markets, next generation.",
    "marketScope": "global",
    "variantOf": null,
@@ -18156,6 +18187,7 @@
    "caseId": "CASE-G60-0009",
    "series": "G60",
    "title": "Wireless CarPlay and Android Auto stay connected for the whole trip",
+   "shortTitle": "CarPlay stays connected",
    "description": "Wireless projection reconnects within 10 s after start and drops at most once per 10 driving hours. All derivatives, all markets.",
    "marketScope": "global",
    "variantOf": null,
@@ -18204,6 +18236,7 @@
    "caseId": "CASE-G60-CN-0002",
    "series": "G60",
    "title": "Rear-console cooler for 2 × 0.5 l bottles, ≤ 8 °C within 30 min (5 Series Li, China)",
+   "shortTitle": "Rear cooler 8 °C",
    "description": "Optional rear-console cooler on the 5 Series long-wheelbase for China holds two 0.5 l bottles and cools them to 8 °C or below within 30 minutes. Shared module with the 7 Series (see CASE-G70-0004).",
    "marketScope": "CN",
    "variantOf": null,
@@ -18253,6 +18286,7 @@
    "caseId": "CASE-G60-CN-0003",
    "series": "G60",
    "title": "i5 Li successor reaches at least 750 km CLTC in the long-range variant",
+   "shortTitle": "750 km CLTC",
    "description": "The long-range BEV variant of the 5 Series Li successor reaches at least 750 km CLTC. Cycles are never mixed: WLTP and EPA targets are set separately by the RoW PM.",
    "marketScope": "CN",
    "variantOf": null,
@@ -18295,6 +18329,7 @@
    "caseId": "CASE-G70-0001",
    "series": "G70",
    "title": "Camera-based rear-view mirror usable with blinds or theatre screen down",
+   "shortTitle": "Camera mirror",
    "description": "An optional digital rear-view mirror shows the rear camera image whenever the rear view is blocked by privacy blinds or the theatre screen. All markets, mid-life update.",
    "marketScope": "global",
    "variantOf": null,
@@ -18337,6 +18372,7 @@
    "caseId": "CASE-F70-0001",
    "series": "F70",
    "title": "Printed owner's manual available free on request at handover (UK, Japan)",
+   "shortTitle": "Printed manual on request",
    "description": "Customers can order a printed quick-reference owner's manual at handover at no cost. UK and Japan first, from the mid-life update.",
    "marketScope": "RoW",
    "variantOf": null,

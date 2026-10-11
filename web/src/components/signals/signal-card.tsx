@@ -1,29 +1,33 @@
 "use client";
 
+import { useState } from "react";
 import { ExternalLink, FileSpreadsheet } from "lucide-react";
 import type { Signal } from "@/contracts";
 import { agentLabel, marketLabel, signalKindLabel, sourceTypeLabel } from "@/contracts";
-import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { MarketChip, Pill, SyntheticTag, TrustBadge, type Tone } from "@/components/common/badges";
+import { SyntheticTag, trustText } from "@/components/common/badges";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const kindTone: Record<Signal["kind"], Tone> = {
-  complaint: "red",
-  wish: "amber",
-  like: "emerald",
-  competitor_fact: "violet",
-  trend: "sky",
-  innovation: "fuchsia",
+const kindBorder: Record<Signal["kind"], string> = {
+  complaint: "border-l-negative",
+  wish: "border-l-primary",
+  like: "border-l-positive",
+  competitor_fact: "border-l-chart-5",
+  trend: "border-l-sky-500",
+  innovation: "border-l-fuchsia-500",
 };
 
+/**
+ * One signal: the quote first, one quiet line of provenance under it.
+ * Details (ID, record pointer, trust, agent) sit in tooltips, not on the card.
+ */
 export function SignalCard({
   s,
   highlighted,
   selectable,
   selected,
   onSelect,
-  compact,
 }: {
   s: Signal;
   highlighted?: boolean;
@@ -32,55 +36,56 @@ export function SignalCard({
   onSelect?: (v: boolean) => void;
   compact?: boolean;
 }) {
-  const severity = s.severity === "defect" ? "Defect" : s.severity === "difficult_to_use" ? "Difficult to use" : null;
+  const [open, setOpen] = useState(false);
+  const meta = [sourceTypeLabel[s.sourceType], s.market !== "unknown" ? marketLabel[s.market] : null, s.powertrain !== "unknown" ? s.powertrain : null, s.publishedAt.slice(0, 4)].filter(Boolean);
   return (
-    <div id={`signal-${s.id}`} className={cn("rounded-lg border bg-card p-3 transition", highlighted && "ring-2 ring-primary", selected && "border-primary/60 bg-primary/5")}>
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-        {selectable && <Checkbox checked={selected} onCheckedChange={(v) => onSelect?.(!!v)} className="mr-1" aria-label={`Select ${s.id}`} />}
-        <span className="font-mono font-medium">{s.id}</span>
-        <Pill t={kindTone[s.kind]}>{signalKindLabel[s.kind]}</Pill>
-        {severity && <Pill t="outline">{severity}</Pill>}
-        <MarketChip market={s.market} />
-        {s.marketBasis === "inferred" && <span className="text-muted-foreground" title="Market inferred, not stated">(inferred)</span>}
-        {s.powertrain !== "unknown" && <Pill>{s.powertrain}</Pill>}
-        <TrustBadge trust={s.trust} />
-        {s.synthetic && <SyntheticTag />}
-        <span className="flex-1" />
-        <span className="text-muted-foreground">{fmtDate(s.publishedAt)}</span>
-      </div>
-      <blockquote className={cn("mt-2 border-l-2 pl-3 text-sm leading-relaxed", s.kind === "like" ? "border-emerald-400" : s.kind === "complaint" ? "border-red-400" : "border-muted-foreground/40", compact && "line-clamp-3")}>
-        {s.quote}
-        {s.quoteEn && s.quoteEn !== s.quote && <span className="mt-1 block text-xs text-muted-foreground">EN: {s.quoteEn}</span>}
-      </blockquote>
-      {s.metric && (
-        <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-violet-50 px-2 py-1 text-xs dark:bg-violet-950/50">
-          <span className="font-medium">{s.competitor}</span> {s.metric.name}: <span className="font-mono font-semibold">{s.metric.value.toLocaleString()} {s.metric.unit}</span>
-          {s.metric.cycle && <Pill>{s.metric.cycle}</Pill>}
+    <div
+      id={`signal-${s.id}`}
+      className={cn("flex gap-3 rounded-lg border border-l-[3px] bg-card p-3 transition", kindBorder[s.kind], highlighted && "ring-2 ring-primary", selected && "bg-primary/5")}
+      title={`${s.id} · ${signalKindLabel[s.kind]}`}
+    >
+      {selectable && <Checkbox checked={selected} onCheckedChange={(v) => onSelect?.(!!v)} className="mt-0.5" aria-label={`Select ${s.id}`} />}
+      <div className="min-w-0 flex-1">
+        {s.metric && (
+          <div className="mb-1 text-sm">
+            <span className="font-semibold">{s.competitor}</span> · {s.metric.name}{" "}
+            <span className="font-semibold tabular-nums">
+              {s.metric.value.toLocaleString()} {s.metric.unit}
+              {s.metric.cycle && ` ${s.metric.cycle}`}
+            </span>
+          </div>
+        )}
+        <button onClick={() => setOpen(!open)} className={cn("block text-left text-sm leading-relaxed", !open && "line-clamp-3")}>
+          {s.quoteEn && s.quoteEn !== s.quote ? s.quoteEn : s.quote}
+        </button>
+        <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="truncate">{meta.join(" · ")}</span>
+          {s.synthetic && <SyntheticTag />}
+          <span className="flex-1" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help rounded border px-1 font-mono text-[10px]">{s.trust}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              Trust {s.trust}: {trustText[s.trust]} · {agentLabel[s.agent]}
+            </TooltipContent>
+          </Tooltip>
+          {s.recordRef && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help" aria-label={`BMW record ${s.recordRef}`}>
+                  <FileSpreadsheet className="size-3.5" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono">{s.recordRef}</TooltipContent>
+            </Tooltip>
+          )}
+          {s.url && (
+            <a href={s.url} target="_blank" rel="noreferrer" className="text-primary hover:underline" aria-label="Open source">
+              <ExternalLink className="size-3.5" />
+            </a>
+          )}
         </div>
-      )}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-        <span>{s.sourceName}</span>
-        <span>· {sourceTypeLabel[s.sourceType]}</span>
-        <span>· {agentLabel[s.agent]}</span>
-        {s.audience !== "owner" && <span>· {s.audience}</span>}
-        {s.reach !== undefined && (
-          <span title="Stored but not used as weight: reach is not relevance">
-            · {s.reach.toLocaleString()} {s.reachUnit}
-          </span>
-        )}
-        {s.country && <span>· {s.country}</span>}
-        <span className="flex-1" />
-        {s.recordRef && (
-          <span className="flex items-center gap-1 font-mono" title="Pointer into the provided BMW data">
-            <FileSpreadsheet className="size-3" />
-            {s.recordRef}
-          </span>
-        )}
-        {s.url && (
-          <a href={s.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-            Source <ExternalLink className="size-3" />
-          </a>
-        )}
       </div>
     </div>
   );

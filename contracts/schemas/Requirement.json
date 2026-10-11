@@ -21,6 +21,9 @@
     "title": {
       "type": "string"
     },
+    "shortTitle": {
+      "type": "string"
+    },
     "description": {
       "type": "string"
     },
@@ -227,6 +230,7 @@
     "caseId",
     "series",
     "title",
+    "shortTitle",
     "description",
     "marketScope",
     "variantOf",

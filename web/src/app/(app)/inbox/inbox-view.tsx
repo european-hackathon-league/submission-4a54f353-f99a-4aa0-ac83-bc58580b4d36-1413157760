@@ -2,152 +2,153 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Check, CornerUpLeft, Scale } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, ChevronRight, CornerUpLeft, MoreHorizontal, Scale } from "lucide-react";
 import type { Referral } from "@/contracts";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { fromNow } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { PageHeader, Empty } from "@/components/common/page";
-import { Pill } from "@/components/common/badges";
+import { PageHeader } from "@/components/common/page";
 import { UserAvatar, useUsers } from "@/components/common/people";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { notificationIcon } from "@/components/shell/notification-bell";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+/** One feed: referrals that wait for an answer on top, then everything else, one line each. */
 export function InboxView() {
   const me = useApi("me");
   const { data: referrals = [] } = useApi("referrals");
-  const { data: alerts = [] } = useApi("alerts");
   const { data: notifications = [] } = useApi("notifications");
   const { data: cases = [] } = useApi("cases");
   const read = useApiMutation("readNotifications", { silent: true });
+  const router = useRouter();
+  const { name } = useUsers();
+  const [showSent, setShowSent] = useState(false);
   const user = me.data?.user;
-  const caseById = new Map(cases.map((c) => [c.id, c]));
-  const incoming = referrals.filter((r) => r.toUserId === user?.id);
-  const outgoing = referrals.filter((r) => r.fromUserId === user?.id);
+  const shortOf = new Map(cases.map((c) => [c.id, c.shortTitle]));
+  const waiting = referrals.filter((r) => r.toUserId === user?.id && r.status === "pending" && r.kind === "referral");
+  const sent = referrals.filter((r) => r.fromUserId === user?.id);
+  const unread = notifications.filter((n) => !n.read).length;
 
   return (
-    <div>
-      <PageHeader title="Inbox" />
-      <Tabs defaultValue="routing" className="p-6">
-        <TabsList>
-          <TabsTrigger value="routing">Referrals ({incoming.filter((r) => r.status === "pending").length})</TabsTrigger>
-          <TabsTrigger value="alerts">Agent flags ({alerts.filter((a) => a.status === "open").length})</TabsTrigger>
-          <TabsTrigger value="all">Notifications ({notifications.filter((n) => !n.read).length})</TabsTrigger>
-        </TabsList>
-        <TabsContent value="routing" className="space-y-6 pt-4">
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">To me</h3>
-            {incoming.length === 0 && <Empty title="No referrals to you" />}
-            {incoming.map((r) => (
-              <ReferralRow key={r.id} r={r} caseTitle={caseById.get(r.caseId)?.title} incoming />
-            ))}
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">From me</h3>
-            {outgoing.length === 0 && <p className="text-sm text-muted-foreground">You haven&apos;t referred or escalated anything.</p>}
-            {outgoing.map((r) => (
-              <ReferralRow key={r.id} r={r} caseTitle={caseById.get(r.caseId)?.title} />
-            ))}
-          </div>
-        </TabsContent>
-        <TabsContent value="alerts" className="space-y-2 pt-4">
-          {alerts.map((a) => (
-            <Link key={a.id} href={a.caseId ? `/cases/${a.caseId}` : "#"} className={cn("flex items-start gap-3 rounded-lg border bg-card p-3 hover:border-primary/50", a.status !== "open" && "opacity-60")}>
-              <AlertTriangle className="mt-0.5 size-4 text-amber-500" />
-              <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                  {a.title} <Pill t={a.status === "open" ? "amber" : "slate"}>{a.status}</Pill>
-                </span>
-                <span className="block text-xs text-muted-foreground">{a.detail}</span>
-                {a.resolution && <span className="block text-xs">Resolution: {a.resolution}</span>}
-              </span>
-              <span className="text-xs text-muted-foreground">{fromNow(a.createdAt)}</span>
-            </Link>
-          ))}
-          {alerts.length === 0 && <Empty title="No alerts" />}
-        </TabsContent>
-        <TabsContent value="all" className="pt-4">
-          <div className="mb-2 flex justify-end">
-            <Button size="sm" variant="outline" onClick={() => read.mutate({ body: {} })}>
+    <div className="mx-auto max-w-4xl">
+      <PageHeader
+        title="Inbox"
+        actions={
+          unread > 0 && (
+            <Button size="sm" variant="ghost" onClick={() => read.mutate({ body: {} })}>
               Mark all read
             </Button>
-          </div>
-          <div className="overflow-hidden rounded-lg border bg-card">
-            {notifications.map((n) => {
-              const Icon = notificationIcon[n.kind];
-              return (
-                <Link key={n.id} href={n.link} className={cn("flex items-center gap-3 border-b px-4 py-2.5 last:border-0 hover:bg-muted/40", !n.read && "bg-primary/5")}>
-                  <Icon className="size-4 text-muted-foreground" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{n.title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{n.body}</span>
-                  </span>
-                  <span className="text-xs text-muted-foreground">{fromNow(n.createdAt)}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </TabsContent>
-      </Tabs>
+          )
+        }
+      />
+      <div className="space-y-6 p-6">
+        {waiting.length > 0 && (
+          <section className="overflow-hidden rounded-xl border border-primary/30 bg-card shadow-xs">
+            {waiting.map((r) => (
+              <ReferralRow key={r.id} r={r} label={shortOf.get(r.caseId) ?? r.caseId} from={name(r.fromUserId)} />
+            ))}
+          </section>
+        )}
+
+        <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
+          {notifications.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">Nothing yet</p>}
+          {notifications.map((n) => {
+            const Icon = notificationIcon[n.kind];
+            return (
+              <Tooltip key={n.id} delayDuration={400}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      if (!n.read) read.mutate({ body: { ids: [n.id] } });
+                      router.push(n.link);
+                    }}
+                    className="flex w-full items-center gap-3 border-b px-4 py-3 text-left text-sm transition last:border-0 hover:bg-muted/50"
+                  >
+                    <span className={cn("size-2 shrink-0 rounded-full", n.read ? "bg-transparent" : "bg-primary")} />
+                    <Icon className="size-4 shrink-0 text-muted-foreground" />
+                    <span className={cn("min-w-0 flex-1 truncate", !n.read && "font-medium")}>{n.title}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{fromNow(n.createdAt)}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" className="max-w-sm">
+                  {n.body}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </section>
+
+        {sent.length > 0 && (
+          <section>
+            <button onClick={() => setShowSent(!showSent)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+              <ChevronRight className={cn("size-4 transition", showSent && "rotate-90")} /> Sent by me · {sent.length}
+            </button>
+            {showSent && (
+              <ul className="mt-2 overflow-hidden rounded-xl border bg-card">
+                {sent.map((r) => (
+                  <li key={r.id} className="flex items-center gap-3 border-b px-4 py-2.5 text-sm last:border-0">
+                    <UserAvatar id={r.toUserId} size="xs" />
+                    <Link href={`/cases/${r.caseId}`} className="min-w-0 flex-1 truncate hover:underline">
+                      {shortOf.get(r.caseId) ?? r.caseId}
+                    </Link>
+                    <span className="text-xs text-muted-foreground">
+                      {r.kind === "escalation" ? "Escalation" : "Referral"} · {r.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
 
-function ReferralRow({ r, caseTitle, incoming }: { r: Referral; caseTitle?: string; incoming?: boolean }) {
-  const { name } = useUsers();
+function ReferralRow({ r, label, from }: { r: Referral; label: string; from: string }) {
   const [decision, setDecision] = useState<"accept" | "decline" | "escalate" | null>(null);
   const decide = useApiMutation("decideReferral", {
-    success: (x) => (x.status === "accepted" ? `Accepted: linked case ${x.linkedCaseId} created in your workspace` : `Referral ${x.status}`),
+    success: (x) => (x.status === "accepted" ? "Accepted: the case is now on your board" : `Referral ${x.status}`),
   });
-  const pending = r.status === "pending";
   return (
-    <div className="flex flex-wrap items-start gap-3 rounded-lg border bg-card p-3">
-      <UserAvatar id={incoming ? r.fromUserId : r.toUserId} />
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Pill t={r.kind === "escalation" ? "violet" : "sky"}>{r.kind}</Pill>
-          <span className="font-medium">{incoming ? `From ${name(r.fromUserId)}` : `To ${name(r.toUserId)}`}</span>
-          <Pill t={pending ? "amber" : r.status === "accepted" || r.status === "resolved" ? "emerald" : "slate"}>{r.status}</Pill>
-          <span className="text-xs text-muted-foreground">{fromNow(r.createdAt)}</span>
-        </div>
-        <Link href={`/cases/${r.caseId}`} className="block text-sm text-primary hover:underline">
-          {r.caseId} · {caseTitle}
-        </Link>
-        <p className="text-sm text-muted-foreground">“{r.note}”</p>
-        {r.linkedCaseId && (
-          <p className="text-xs">
-            Linked case: <Link className="font-mono text-primary hover:underline" href={`/cases/${r.linkedCaseId}`}>{r.linkedCaseId}</Link>
-          </p>
-        )}
-        {r.declineReason && <p className="text-xs">Declined: {r.declineReason}</p>}
-        {r.resolution && <p className="text-xs">Resolution: {r.resolution}</p>}
-      </div>
-      {incoming && pending && r.kind === "referral" && (
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => setDecision("accept")}>
-            <Check className="size-3.5" /> Accept
+    <div className="flex items-center gap-3 border-b px-4 py-3 last:border-0">
+      <UserAvatar id={r.fromUserId} size="sm" />
+      <Tooltip delayDuration={400}>
+        <TooltipTrigger asChild>
+          <Link href={`/cases/${r.caseId}`} className="min-w-0 flex-1 truncate text-sm hover:underline">
+            <span className="text-muted-foreground">{from.split(" ")[0]} referred</span> <span className="font-medium">{label}</span>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="start" className="max-w-sm">
+          “{r.note}”
+        </TooltipContent>
+      </Tooltip>
+      <Button size="sm" onClick={() => setDecision("accept")}>
+        <Check className="size-3.5" /> Accept
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => setDecision("decline")}>
+        <CornerUpLeft className="size-3.5" /> Send back
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="icon-sm" variant="ghost" aria-label="More">
+            <MoreHorizontal className="size-4" />
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setDecision("decline")}>
-            <CornerUpLeft className="size-3.5" /> Send back
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setDecision("escalate")}>
-            <Scale className="size-3.5" /> Escalate
-          </Button>
-        </div>
-      )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setDecision("escalate")}>
+            <Scale /> Escalate to head of product line
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <RationaleDialog
         open={!!decision}
         onOpenChange={(o) => !o && setDecision(null)}
-        title={decision === "accept" ? "Accept the referral" : decision === "decline" ? "Send the referral back" : "Escalate to the head of product line"}
-        description={
-          decision === "accept"
-            ? "A linked case is created in your workspace with all signals; the sender stays linked and is notified."
-            : decision === "decline"
-              ? "The case goes back to the sender's board (Ready to decide)."
-              : "If you and the sender disagree on who owns it."
-        }
+        title={decision === "accept" ? `Accept: ${label}` : decision === "decline" ? `Send back: ${label}` : `Escalate: ${label}`}
+        description={decision === "accept" ? "A linked case with all signals lands on your board." : decision === "decline" ? "It goes back to the sender." : "When you two can't agree who owns it."}
         pending={decide.isPending}
         onSubmit={async (rationale) => {
           await decide.mutateAsync({ params: { id: r.id }, body: { decision: decision!, rationale } });
