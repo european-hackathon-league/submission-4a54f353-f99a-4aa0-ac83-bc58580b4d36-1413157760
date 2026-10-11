@@ -29,9 +29,9 @@ export function SettingsView() {
   return (
     <div>
       <PageHeader title="Settings" />
-      <div className="grid gap-4 p-6 xl:grid-cols-2">
+      <div className="mx-auto grid max-w-[1280px] gap-6 p-6 xl:grid-cols-2">
         <Section title="Workspace">
-          <div className="space-y-4 text-sm">
+          <div className="space-y-6 text-sm">
             <div className="flex flex-wrap gap-2">
               <Pill t="blue">{seriesShort[ws.series]}</Pill>
               <Pill t="outline">{regionLabel[ws.region]}</Pill>
@@ -67,7 +67,7 @@ export function SettingsView() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <Label>Source filter (applies to scores and counts)</Label>
               <label className="flex items-center gap-2">
                 <Switch checked={ws.sourceFilter.excludeSocial} onCheckedChange={(v) => update.mutate({ body: { sourceFilter: { ...ws.sourceFilter, excludeSocial: v } } })} /> Exclude social media and video comments
@@ -98,14 +98,14 @@ export function SettingsView() {
         <Section title="Weight profiles">
           <div className="space-y-3">
             {(profiles.data ?? []).map((p) => (
-              <div key={p.id} className="rounded-lg border p-3">
-                <div className="flex items-center gap-2 text-sm">
+              <div key={p.id} className="rounded-lg border bg-card p-4">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="font-medium">{p.name}</span>
                   {p.isDefault ? <Pill t="emerald">default · head of product line</Pill> : <Pill>{name(p.ownerId ?? "")}</Pill>}
                   {p.id === ws.weightProfileId && <Pill t="blue">active</Pill>}
                 </div>
-                <p className="text-xs text-muted-foreground">{p.description}</p>
-                <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
+                <p className="mt-1 text-xs text-muted-foreground">{p.description}</p>
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
                   {FactorKeys.options.map((f) => (
                     <span key={f} className="flex justify-between gap-2">
                       <span className="truncate text-muted-foreground">{factorLabel[f]}</span>
@@ -113,7 +113,7 @@ export function SettingsView() {
                     </span>
                   ))}
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Cost factor on requirement rank: S ×{p.costMultiplier.S} · M ×{p.costMultiplier.M} · L ×{p.costMultiplier.L}
                 </p>
               </div>
@@ -261,8 +261,8 @@ function BrandEditor({ profile, canEdit, updatedBy }: { profile: BrandProfile; c
       </div>
     );
   return (
-    <div className="space-y-3 text-sm">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+    <div className="space-y-4 text-sm">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         Updated {fmtDate(profile.updatedAt)} by {updatedBy}. Used by the AI for brand-fit proposals and visible in every case&apos;s context pack.
         <span className="flex-1" />
         {canEdit ? (
@@ -277,9 +277,9 @@ function BrandEditor({ profile, canEdit, updatedBy }: { profile: BrandProfile; c
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {profile.pillars.map((p) => (
-          <div key={p.name} className="rounded-lg border p-3">
-            <div className="font-medium">{p.name}</div>
-            <div className="text-xs text-muted-foreground">{p.description}</div>
+          <div key={p.name} className="rounded-lg border bg-recessed p-4">
+            <div className="font-semibold">{p.name}</div>
+            <div className="mt-1 text-xs text-muted-foreground">{p.description}</div>
           </div>
         ))}
       </div>

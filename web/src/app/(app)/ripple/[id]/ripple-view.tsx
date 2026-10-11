@@ -37,13 +37,13 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const verdictCell: Record<ImpactVerdict, string> = {
-  behind: "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200",
-  at_par: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200",
-  still_ahead: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200",
-  not_comparable: "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300",
+  behind: "border-tone-red-bd border-l-tone-red-dot bg-tone-red-bg text-tone-red-fg hover:border-tone-red-dot",
+  at_par: "border-tone-amber-bd border-l-tone-amber-dot bg-tone-amber-bg text-tone-amber-fg hover:border-tone-amber-dot",
+  still_ahead: "border-tone-emerald-bd border-l-tone-emerald-dot bg-tone-emerald-bg text-tone-emerald-fg hover:border-tone-emerald-dot",
+  not_comparable: "border-tone-slate-bd border-l-tone-slate-dot bg-tone-slate-bg text-tone-slate-fg hover:border-tone-slate-dot",
 };
 const verdictPill: Record<ImpactVerdict, "red" | "amber" | "emerald" | "slate"> = { behind: "red", at_par: "amber", still_ahead: "emerald", not_comparable: "slate" };
-const pulseColor: Record<ImpactVerdict, string> = { behind: "rgb(239 68 68 / 0.5)", at_par: "rgb(245 158 11 / 0.5)", still_ahead: "rgb(16 185 129 / 0.45)", not_comparable: "rgb(148 163 184 / 0.4)" };
+const pulseColor: Record<ImpactVerdict, string> = { behind: "rgb(255 90 0 / 0.45)", at_par: "rgb(255 90 0 / 0.4)", still_ahead: "rgb(255 90 0 / 0.3)", not_comparable: "rgb(255 90 0 / 0.2)" };
 
 type Live = { verdict: ImpactVerdict; gap: number | null; theirs: number | null; low: number | null; high: number | null; cycle: string | null };
 
@@ -76,7 +76,7 @@ export function RippleView() {
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <Waves className="size-5 text-amber-500" /> World changed: {r.fact.competitor} {r.fact.value} {r.fact.unit} {r.fact.cycle}
+            <Waves className="size-6 text-ember" /> World changed: {r.fact.competitor} {r.fact.value} {r.fact.unit} {r.fact.cycle}
           </span>
         }
         description={`${r.fact.summary} · ${r.fact.sourceName} · ${fmtDate(r.createdAt)}`}
@@ -94,7 +94,7 @@ export function RippleView() {
           <Info className="mt-0.5 size-4 shrink-0" /> {r.statusReason}
         </p>
       </PageHeader>
-      <div className="space-y-4 p-6">
+      <div className="space-y-6 p-6">
         <NormalizationBand ripple={r} conversions={conversions} override={override} setOverride={setOverride} user={user} />
         <PortfolioGrid ripple={r} live={live} user={user} showAll={showAll} setShowAll={setShowAll} onOpen={(row, area) => setDrawer({ row, area })} />
         <p className="text-xs text-muted-foreground">
@@ -112,12 +112,12 @@ function NormalizationBand({ ripple: r, conversions, override, setOverride, user
   const save = useApiMutation("saveConversion", { success: "Team factor saved; open ripples re-assessed" });
   if (!used.length)
     return (
-      <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground shadow-xs">
+      <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
         No cycle conversion needed: every comparable target uses the fact&apos;s cycle ({r.fact.cycle}).
       </div>
     );
   return (
-    <div className="space-y-3 rounded-xl border bg-card p-4 shadow-xs">
+    <div className="space-y-3 rounded-xl border bg-card p-5">
       {used.map((c) => {
         const f = override[c.id] ?? c.factor;
         const value = Math.round(r.fact.value * (c.from === r.fact.cycle ? f : 1 / f));
@@ -126,7 +126,7 @@ function NormalizationBand({ ripple: r, conversions, override, setOverride, user
         return (
           <div key={c.id} className="space-y-2">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <p className="text-base font-semibold tabular-nums">
+              <p className="text-lg font-semibold tabular-nums">
                 {r.fact.value} {r.fact.unit} {r.fact.cycle} ≈ {value} {r.fact.unit} {to}
               </p>
               <label className="flex items-center gap-2 text-sm">
@@ -138,7 +138,7 @@ function NormalizationBand({ ripple: r, conversions, override, setOverride, user
                   step={0.01}
                   value={f}
                   onChange={(e) => setOverride({ ...override, [c.id]: Number(e.target.value) })}
-                  className="w-40 accent-primary"
+                  className="w-40 accent-ember"
                   aria-label={`${c.from} to ${c.to} factor`}
                 />
                 <span className="w-10 font-mono tabular-nums">{f.toFixed(2)}</span>
@@ -193,9 +193,9 @@ function PortfolioGrid({ ripple: r, live, user, showAll, setShowAll, onOpen }: {
   const srcRow = rows.indexOf(r.fact.market === "CN" ? "G60_CN" : "G60");
   const srcCol = Math.max(0, areas.indexOf(affected[0]));
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-xs">
-      <div className="mb-3 flex items-center gap-3">
-        <p className="text-sm font-semibold">Portfolio</p>
+    <div className="rounded-xl border bg-card p-5">
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="text-lg font-semibold">Portfolio</p>
         <span className="text-xs text-muted-foreground">Series × car area. Your cells are outlined; colleagues&apos; cells show their avatar. Click a cell for its items.</span>
         <Button size="xs" variant="ghost" className="ml-auto" onClick={() => setShowAll(!showAll)}>
           {showAll ? "Only affected areas" : `Show all ${CarAreas.options.length}`}
@@ -219,7 +219,7 @@ function PortfolioGrid({ ripple: r, live, user, showAll, setShowAll, onOpen }: {
                 <th className="text-left text-xs font-medium whitespace-nowrap">{portfolioRowLabel[row]}</th>
                 {areas.map((area, ci) => {
                   const items = cell(row, area);
-                  if (!items.length) return <td key={area} className="h-16 rounded-lg border border-dashed" />;
+                  if (!items.length) return <td key={area} className="h-16 rounded-lg border border-dashed border-border-strong/70" />;
                   // Targets decide the colour; a case without a target (today's car) only when the cell has no target.
                   const targets = items.filter((i) => i.kind === "requirement");
                   const cases = items.filter((i) => i.kind === "case");
@@ -232,15 +232,15 @@ function PortfolioGrid({ ripple: r, live, user, showAll, setShowAll, onOpen }: {
                     <td key={area} className="h-16 p-0">
                       <button
                         onClick={() => onOpen(row, area)}
-                        className={cn("ripple-cell flex h-full w-full flex-col justify-between rounded-lg border px-2.5 py-1.5 text-left transition-colors", verdictCell[worst], mine && "ring-2 ring-foreground ring-offset-1 ring-offset-background")}
+                        className={cn("ripple-cell flex h-full w-full flex-col justify-between rounded-lg border border-l-4 px-2.5 py-1.5 text-left transition-colors duration-150", verdictCell[worst], mine && "ring-2 ring-foreground ring-offset-2 ring-offset-card")}
                         style={{ ["--ripple-delay" as string]: `${distance * 280}ms`, ["--ripple-color" as string]: pulseColor[worst] }}
                         aria-label={`${portfolioRowLabel[row]}, ${carAreaLabel[area]}: ${verdictLabel[worst]}, ${items.length} items`}
                       >
                         <span className="flex items-center gap-1.5 text-xs font-semibold">
                           {verdictLabel[worst]}
-                          {items.some((i) => i.muted) && <span className="font-normal opacity-70">· muted</span>}
+                          {items.some((i) => i.muted) && <span className="font-normal">· muted</span>}
                         </span>
-                        <span className="flex items-center gap-1 text-[11px] opacity-80">
+                        <span className="flex items-center gap-1 text-[11px]">
                           {targets.length ? `${targets.length} target${targets.length > 1 ? "s" : ""}` : "no target"}
                           {targets.some((i) => i.alsoRows.includes(row)) && " · Baukasten"}
                           {moved.length > 0 && ` · ${moved.length} case re-ranked ↑`}
@@ -309,13 +309,13 @@ function ItemRow({ ripple: r, it, live, user, focused }: { ripple: Ripple; it: R
   if (regional && !it.variant && it.kind === "requirement" && it.ours?.market === "global" && user.region === "CN") actions.push("market_variant");
   const href = it.kind === "requirement" ? `/requirements/${it.objectId}` : `/cases/${it.objectId}`;
   return (
-    <li className={cn("space-y-2 px-5 py-4", focused && "bg-amber-50/60 dark:bg-amber-950/20")}>
+    <li className={cn("space-y-2 px-6 py-5", focused && "bg-recessed shadow-[inset_3px_0_0_var(--color-ember)]")}>
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={href} className="font-mono text-xs hover:underline">
+        <Link href={href} className="font-mono text-xs font-medium underline decoration-border-strong underline-offset-2 transition-colors duration-150 hover:decoration-foreground">
           {it.objectId}
         </Link>
         <Pill t={verdictPill[live.verdict]}>{verdictLabel[live.verdict]}</Pill>
-        {live.verdict !== it.verdict && <span className="text-[11px] text-muted-foreground">(server: {verdictLabel[it.verdict].toLowerCase()} at the team factor)</span>}
+        {live.verdict !== it.verdict && <span className="text-xs text-muted-foreground">(server: {verdictLabel[it.verdict].toLowerCase()} at the team factor)</span>}
         {it.muted && <Pill t="slate">Muted</Pill>}
         <span className="text-xs text-muted-foreground">
           {portfolioRowLabel[it.row]}
@@ -363,7 +363,7 @@ function ItemRow({ ripple: r, it, live, user, focused }: { ripple: Ripple; it: R
         </p>
       </div>
       {(it.decision || it.variant) && (
-        <div className="space-y-1 rounded-md border bg-muted/40 px-3 py-2 text-xs">
+        <div className="space-y-1 rounded-lg border bg-recessed px-3 py-2.5 text-xs">
           {it.decision && (
             <p>
               <span className="font-medium">{rippleDecisionLabel[it.decision.kind]}</span> by {name(it.decision.by)} · “{it.decision.rationale}”
@@ -422,7 +422,7 @@ function ItemRow({ ripple: r, it, live, user, focused }: { ripple: Ripple; it: R
 
 function ProposalLink({ id, href }: { id: string; href: string }) {
   return (
-    <Link href={href} className="ml-1 inline-flex items-center gap-0.5 text-primary hover:underline">
+    <Link href={href} className="ml-1 inline-flex items-center gap-0.5 font-medium text-foreground underline decoration-border-strong underline-offset-2 transition-colors duration-150 hover:decoration-foreground">
       {id} pending <ArrowRight className="size-3" />
     </Link>
   );

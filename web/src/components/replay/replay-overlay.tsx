@@ -97,12 +97,12 @@ function Stage({ x, graphTopics, clock, scrub, setScrub, onClose }: { x: ReplayR
 
   return (
     <>
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2.5">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-5 py-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">
             Trace replay · <span className="font-mono">{r.id}</span>
           </p>
-          <h2 className="truncate text-sm font-semibold" title={r.title}>
+          <h2 className="truncate text-[15px] font-semibold" title={r.title}>
             {r.title}
           </h2>
         </div>
@@ -113,7 +113,10 @@ function Stage({ x, graphTopics, clock, scrub, setScrub, onClose }: { x: ReplayR
               <button
                 key={b.id}
                 onClick={() => (clock.setPlaying(false), clock.goTo(i), setScrub(null))}
-                className={cn("rounded-full px-2.5 py-1 text-xs transition", i === clock.beat ? "bg-foreground text-background" : i < clock.beat ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors duration-150 before:size-1.5 before:shrink-0 before:rounded-full before:content-['']",
+                  i === clock.beat ? "bg-foreground font-medium text-background before:bg-ember" : i < clock.beat ? "text-foreground before:bg-ember/60 hover:bg-muted" : "text-muted-foreground before:bg-border-strong hover:bg-muted hover:text-foreground",
+                )}
               >
                 {b.label}
               </button>
@@ -139,11 +142,11 @@ function Stage({ x, graphTopics, clock, scrub, setScrub, onClose }: { x: ReplayR
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto p-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="relative min-w-0">
           <SankeyChart graph={graph} heroValue={x.counts.customers} reveal={REVEAL[beat]} revealMs={revealMs} highlight={highlight} />
           {beat === "opening" && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-[1px]">
+            <div className="absolute inset-0 flex items-center justify-center bg-background/75 backdrop-blur-[2px]">
               <RequirementCard x={x} owner={name(r.ownerId)} />
             </div>
           )}
@@ -154,7 +157,7 @@ function Stage({ x, graphTopics, clock, scrub, setScrub, onClose }: { x: ReplayR
         </aside>
       </div>
 
-      <footer className="border-t px-4 py-3">
+      <footer className="border-t px-5 py-3">
         <Timeline events={x.events} played={scrub !== null ? scrub + 1 : played} motion={motion} />
         <Scrubber x={x} at={at} onChange={setScrub} />
       </footer>
@@ -166,7 +169,7 @@ function RequirementCard({ x, owner }: { x: ReplayResponse; owner: string }) {
   const r = x.requirement;
   const m = r.metrics[0];
   return (
-    <div className="w-full max-w-md rounded-2xl border bg-card p-5 shadow-lg">
+    <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-md">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="font-mono text-muted-foreground">{r.id}</span>
         <ReqStatusBadge status={r.status} />
@@ -204,9 +207,9 @@ function BeatPanel({ x, beat, progress, graph, intact, name }: { x: ReplayRespon
           </p>
           <ul className="space-y-1.5">
             {quotes.slice(0, shown).map((s) => (
-              <li key={s.id} className="animate-in fade-in slide-in-from-left-1 rounded-md border bg-card px-2.5 py-1.5 text-xs duration-300 motion-reduce:animate-none">
+              <li key={s.id} className="animate-in fade-in slide-in-from-left-1 rounded-lg border bg-card px-3 py-2 text-xs text-foreground duration-300 motion-reduce:animate-none">
                 <p className="line-clamp-2">“{s.quoteEn ?? s.quote}”</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {marketLabel[s.market]} · {s.sourceName} · <span className="font-mono">{s.id}</span>
                 </p>
               </li>
@@ -226,14 +229,14 @@ function BeatPanel({ x, beat, progress, graph, intact, name }: { x: ReplayRespon
               const label = mostCommon(bmw.map((s) => s.classification!.label ?? ""));
               const model = sigs.find((s) => s.classification?.method === "llm")?.classification;
               return (
-                <li key={n.id} className="rounded-md border bg-card px-2.5 py-1.5 text-xs">
-                  <p className="font-medium">
+                <li key={n.id} className="rounded-lg border bg-card px-3 py-2 text-xs">
+                  <p className="font-medium text-foreground">
                     {n.label}
                     {n.say && <span className="font-normal text-muted-foreground"> · {sayLabel[n.say]}</span>} <span className="text-muted-foreground">({n.value})</span>
                   </p>
-                  {bmw.length > 0 && <p className="text-[11px] text-muted-foreground">BMW label (lookup): “{label}”{bmw.length < sigs.length ? ` · ${bmw.length} of ${sigs.length}` : ""}</p>}
+                  {bmw.length > 0 && <p className="text-xs text-muted-foreground">BMW label (lookup): “{label}”{bmw.length < sigs.length ? ` · ${bmw.length} of ${sigs.length}` : ""}</p>}
                   {model && (
-                    <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Bot className="size-3" /> {model.model} · {model.promptVersion}
                     </p>
                   )}
@@ -254,8 +257,8 @@ function BeatPanel({ x, beat, progress, graph, intact, name }: { x: ReplayRespon
           {x.alerts.length > 0 && (
             <ul className="mt-2 space-y-1.5">
               {x.alerts.map((a) => (
-                <li key={a.id} className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs dark:border-amber-800 dark:bg-amber-950/40">
-                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+                <li key={a.id} className="flex gap-2 rounded-lg border border-tone-amber-bd bg-tone-amber-bg px-3 py-2 text-xs text-foreground shadow-[inset_3px_0_0_var(--color-ember)]">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
                   <span>
                     <span className="font-medium">{a.title}</span>
                     {a.resolution && <span className="block text-muted-foreground">{a.resolution}</span>}
@@ -271,14 +274,14 @@ function BeatPanel({ x, beat, progress, graph, intact, name }: { x: ReplayRespon
       return (
         <Panel title="5 · Planned">
           {x.plannedFeature ? (
-            <div className="animate-in fade-in slide-in-from-top-3 rounded-lg border bg-card p-3 text-sm duration-500 motion-reduce:animate-none">
-              <p className="flex items-center gap-1.5 font-medium">
+            <div className="animate-in fade-in slide-in-from-top-3 rounded-lg border bg-card p-4 text-sm duration-500 motion-reduce:animate-none">
+              <p className="flex items-center gap-1.5 font-medium text-foreground">
                 <CalendarCheck className="size-4 text-positive" /> {x.plannedFeature.name}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Vehicle plan {x.requirement.series} · {releaseLabel[x.plannedFeature.release]} · today: {x.plannedFeature.todayDetail}
               </p>
-              <p className="mt-2 text-xs">
+              <p className="mt-2 text-xs text-foreground">
                 <span className="font-mono">{x.requirement.id}</span> lands in this slot{x.plannedFeature.requirementIds.length > 1 ? ` with ${x.plannedFeature.requirementIds.filter((i) => i !== x.requirement.id).join(", ")}` : ""}.
               </p>
             </div>
@@ -294,9 +297,9 @@ function BeatPanel({ x, beat, progress, graph, intact, name }: { x: ReplayRespon
 
 function Panel({ title, lead, children }: { title: string; lead?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border bg-card/50 p-3">
-      <p className="text-sm font-semibold">{title}</p>
-      {lead && <p className="mb-2 text-xs font-medium tabular-nums text-primary">{lead}</p>}
+    <div className="rounded-xl border bg-card p-5">
+      <p className="text-[15px] font-semibold">{title}</p>
+      {lead && <p className="mt-0.5 mb-3 text-[13px] font-medium tabular-nums text-foreground">{lead}</p>}
       <div className="text-sm text-muted-foreground">{children}</div>
     </div>
   );
@@ -312,47 +315,47 @@ function ScoreBuild({ snap, today, progress }: { snap: ScoreSnapshot; today: Rep
       <p className="mb-2 text-xs">
         Under <span className="font-medium text-foreground">{snap.profileName} v{snap.profileVersion}</span>, the profile active on the decision date. Rank {snap.rank} of {snap.of} then; {today.rank} of {today.of} today.
       </p>
-      <ul className="space-y-1">
+      <ul className="space-y-1.5">
         {factors.map((f, i) => (
-          <li key={f} className={cn("grid grid-cols-[110px_1fr_44px] items-center gap-2 text-xs transition-opacity duration-300", i >= shown && "opacity-0")}>
+          <li key={f} className={cn("grid grid-cols-[120px_1fr_48px] items-center gap-2 text-xs text-foreground transition-opacity duration-300 motion-reduce:transition-none", i >= shown && "opacity-0")}>
             <span className="truncate" title={`weight ${snap.weights[f]} × factor ${snap.factors[f]}`}>
               {factorLabel[f]}
             </span>
             <span className="h-2 rounded-full bg-muted">
-              <span className="block h-2 rounded-full bg-primary transition-[width] duration-500 motion-reduce:transition-none" style={{ width: i < shown ? `${((snap.contributions[f] ?? 0) / max) * 100}%` : 0 }} />
+              <span className={cn("block h-2 rounded-full transition-[width] duration-500 motion-reduce:transition-none", i === shown - 1 && shown < factors.length ? "bg-ember" : "bg-foreground/80")} style={{ width: i < shown ? `${((snap.contributions[f] ?? 0) / max) * 100}%` : 0 }} />
             </span>
-            <span className="text-right tabular-nums">+{(snap.contributions[f] ?? 0).toFixed(3)}</span>
+            <span className="text-right font-mono tabular-nums">+{(snap.contributions[f] ?? 0).toFixed(3)}</span>
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11px]">Contribution = weight × factor ÷ Σ weights. Hover a factor for its weight and value.</p>
+      <p className="mt-3 text-xs">Contribution = weight × factor ÷ Σ weights. Hover a factor for its weight and value.</p>
     </Panel>
   );
 }
 
 function ChainBadge({ x, intact, name }: { x: ReplayResponse; intact: boolean; name: (id: string) => string }) {
   return (
-    <div className={cn("rounded-xl border p-3", intact ? "border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30" : "border-red-300 bg-red-50/60 dark:border-red-800 dark:bg-red-950/30")}>
-      <p className={cn("flex items-center gap-2 text-base font-semibold", intact ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300")}>
+    <div className={cn("rounded-xl border p-5", intact ? "border-tone-emerald-bd bg-tone-emerald-bg" : "border-tone-red-dot/70 bg-tone-red-bg")}>
+      <p className={cn("flex items-center gap-2 text-lg font-semibold", intact ? "text-tone-emerald-fg" : "text-tone-red-fg")}>
         {intact ? <ShieldCheck className="size-5" /> : <ShieldX className="size-5" />} {intact ? "Chain intact" : "Chain broken"}
       </p>
-      <ul className="mt-2 space-y-1.5">
+      <ul className="mt-3 space-y-2">
         {x.integrity.map((c) => (
           <li key={c.id} className="text-xs">
-            <p className={cn("flex items-start gap-1.5 font-medium", c.ok ? "text-foreground" : "text-red-700 dark:text-red-300")}>
-              {c.ok ? <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> : <X className="mt-0.5 size-3.5 shrink-0" />} {c.label}
+            <p className={cn("flex items-start gap-1.5 font-medium", c.ok ? "text-foreground" : "text-tone-red-fg")}>
+              {c.ok ? <Check className="mt-0.5 size-3.5 shrink-0 text-positive" /> : <X className="mt-0.5 size-3.5 shrink-0" />} {c.label}
             </p>
             <p className="pl-5 text-muted-foreground">{c.detail}</p>
             {c.failures.map((f) => (
-              <p key={f} className="pl-5 text-red-700 dark:text-red-300">
+              <p key={f} className="pl-5 text-tone-red-fg">
                 {f}
               </p>
             ))}
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11px] text-muted-foreground">Recomputed now from the stored records and the append-only log ({fmtDate(x.generatedAt)}).</p>
-      <Button size="sm" variant="outline" className="mt-2" onClick={() => downloadText(`audit-chain_${x.requirement.id}.md`, renderDossier(x, name))}>
+      <p className="mt-3 text-xs text-muted-foreground">Recomputed now from the stored records and the append-only log ({fmtDate(x.generatedAt)}).</p>
+      <Button size="sm" variant="outline" className="mt-3" onClick={() => downloadText(`audit-chain_${x.requirement.id}.md`, renderDossier(x, name))}>
         <Download className="size-3.5" /> Export dossier
       </Button>
     </div>
@@ -374,23 +377,23 @@ function Timeline({ events, played, motion }: { events: ReplayEvent[]; played: n
           <li
             key={e.seq}
             className={cn(
-              "w-52 shrink-0 rounded-lg border px-2.5 py-2 text-xs transition-all",
+              "w-52 shrink-0 rounded-lg border px-3 py-2 text-xs transition-all",
               motion ? "duration-500" : "duration-0",
-              agent ? "border-dashed bg-muted/30" : "border-solid bg-card shadow-xs",
+              agent ? "border-dashed border-border-strong bg-recessed" : "border-solid bg-card",
               on ? "opacity-100" : "translate-y-1 opacity-30",
-              e.action.startsWith("ripple.") || e.action === "alert.raised" ? "border-amber-400" : "",
+              e.action.startsWith("ripple.") || e.action === "alert.raised" ? "border-ember" : "",
             )}
           >
             <p className="flex items-center gap-1.5">
               {agent ? <Bot className="size-3.5 shrink-0 text-muted-foreground" /> : <UserAvatar id={e.actorId} size="xs" />}
               <span className="truncate font-medium">{e.label}</span>
             </p>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {fmtDate(e.at)} · {e.actorName}
               {e.version ? ` · v${e.version}` : ""}
             </p>
-            {e.rationale && <p className={cn("mt-1 line-clamp-2 text-[11px]", agent ? "text-muted-foreground" : "italic")}>{agent ? e.rationale : `“${e.rationale}”`}</p>}
-            {e.scoreSnapshot && <p className="mt-1 text-[11px] tabular-nums text-primary">score {e.scoreSnapshot.score.toFixed(3)} · {e.scoreSnapshot.profileName} v{e.scoreSnapshot.profileVersion}</p>}
+            {e.rationale && <p className={cn("mt-1 line-clamp-2 text-xs", agent ? "text-muted-foreground" : "italic")}>{agent ? e.rationale : `“${e.rationale}”`}</p>}
+            {e.scoreSnapshot && <p className="mt-1 font-mono text-xs font-medium tabular-nums text-foreground">score {e.scoreSnapshot.score.toFixed(3)} · {e.scoreSnapshot.profileName} v{e.scoreSnapshot.profileVersion}</p>}
           </li>
         );
       })}
@@ -408,7 +411,7 @@ function Scrubber({ x, at, onChange }: { x: ReplayResponse; at: number; onChange
     <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
       <label className="flex min-w-0 flex-1 items-center gap-2">
         <span className="shrink-0 text-muted-foreground">Scrub</span>
-        <input type="range" min={0} max={x.events.length - 1} value={at} onChange={(ev) => onChange(Number(ev.target.value))} className="w-full accent-primary" aria-label="Scrub the timeline" />
+        <input type="range" min={0} max={x.events.length - 1} value={at} onChange={(ev) => onChange(Number(ev.target.value))} className="w-full accent-ember" aria-label="Scrub the timeline" />
       </label>
       <p className="tabular-nums" aria-live="polite">
         As of <span className="font-medium">{fmtDate(e.at)}</span>: {version ? `v${version}` : "no requirement yet"} · {snap ? `score ${snap.score.toFixed(3)} (${snap.profileName} v${snap.profileVersion})` : "not scored at a decision yet"} · {evidence} records
