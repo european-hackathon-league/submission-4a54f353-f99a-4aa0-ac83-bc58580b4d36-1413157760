@@ -82,7 +82,7 @@ try {
     }
     // axe on the 1440 light state (with the target's actions applied).
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
-    await page.evaluateOnNewDocument(() => localStorage.setItem("theme", "light"));
+    await page.evaluateOnNewDocument((th) => localStorage.setItem("theme", th), process.env.AXE_THEME ?? "light");
     await open(page, t);
     await page.evaluate(axeSource);
     const axe = await page.evaluate(async () => {
