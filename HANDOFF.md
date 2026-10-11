@@ -12,11 +12,15 @@ Phases 0 to 10 of `plan.md`, each with a "Completed phase N" commit (7, 8, 9, 10
 
 ## Not done, needs the user
 
-1. **Supabase build.** `backend/.env` is set and both the database (session pooler, eu-west-3) and storage were reached; the database is still empty. Run `cd backend && uv run python -m app.demo build` (no `--fresh`: it is refused on Supabase anyway), then `uv run python -m app.demo e2e "G60 / USA"`. About 10 minutes. Ask the user before running it if they have not said go.
-2. **OpenAI key** (`OPENAI_API_KEY`): then `uv run python -m app.cases.pipeline` (classifies the 666 quarantined and 2,557 topic-less rows first), re-embed (`app.signals.embed --provider-change`), re-tune the case threshold (`app.cases.tune`), `app.signals.eval_taxonomy --split dev` (then `--split test` once), rebuild the RAG index.
-3. **Phase 8 checkpoint:** show `backend/reports/fetch_plan.md` (about 4,500 requests per incremental run, about 150,000 for the backfill) before the first real `python -m app.fetch.worker --backfill`. Reddit OAuth and a YouTube Data API key are missing.
-4. Team review of the phase 2 CSVs in `backend/seed/review/`.
+1. **Supabase build (in progress on 2026-10-11, started from the session before this one).** The project (ref `tqbabtnmxkonjjjuahcp`, eu-west-3) was wiped and all 13 migrations applied; `python -m app.demo build` runs with gpt-6-luna (bulk) and gpt-6.1-sol (requirement texts only). If it is not finished or failed, check `agent_run` on Supabase (the last rows show the step and the error) and re-run `cd backend && uv run python -m app.demo build`: finished seed steps are skipped and LLM classifications are cached in `backend/.data/llm_cache/`. Do not run the end-to-end demo (`app.demo e2e`) on Supabase: it would confirm and approve a case in the real data (user decision: the PM confirms the first real case in the UI).
+2. **OpenAI** is set (`backend/.env`). Still open with it: re-tune the case threshold for OpenAI embeddings (`app.cases.tune`, 0.55 is untuned) and the taxonomy eval (`app.signals.eval_taxonomy --split dev`, then `--split test` once). The user does not want local tests that call the AI: tests always run offline.
+3. **Phase 8 checkpoint:** `backend/reports/fetch_plan.md` plans about 336 requests per day on average (cadence per source, budget 500) and about 29,000 for the backfill, spread by the budget; ask before the first real run. Reddit is disabled (no API access); the YouTube key is set.
+4. Done: the user approved every row of the phase 2 review CSVs (changes.md R2.1).
 5. Real users: `app_user` rows with the Supabase auth user ids (demo users have fixed placeholder ids).
+
+## Next: wire the UI
+
+The UI branch is merged into `main` (user, 2026-10-11). The user explains how the UI works; the backend contract is `backend/API.md` and the OpenAPI spec at `/docs`. Auth: the UI sends the Supabase access token (`AUTH_MODE=supabase`), or `X-User-Id` with a demo user id in dev mode (`app/demo.py`, `DEMO_USERS`). Only `notification` is readable by the browser (Realtime); everything else goes through the API.
 
 ## How to run
 

@@ -325,6 +325,29 @@ def load_extra_slugs(conn) -> int:
                              on_conflict_do_nothing=True)
 
 
+DECISIONS = REGISTRY_YAML.parent / "source_decisions.yaml"
+
+
+def apply_source_decisions(conn) -> int:
+    """Fetch cadence per source and disabled sources (seed/source_decisions.yaml). Idempotent."""
+    data = yaml.safe_load(DECISIONS.read_text(encoding="utf-8"))
+    by_step = {int(k): int(v) for k, v in data["refresh_days_by_step"].items()}
+    changed = 0
+    for src in conn.execute("select source_id, fetch_step, enabled from source_registry").fetchall():
+        sid = src["source_id"]
+        changes = {"refresh_days": int(data.get("refresh_days", {}).get(sid) or by_step.get(src["fetch_step"] or 0, 1))}
+        reason = (data.get("disabled") or {}).get(sid)
+        if reason:
+            changes.update(enabled=False, disabled_reason=reason.strip())
+        before = conn.execute("select refresh_days, enabled, disabled_reason from source_registry"
+                              " where source_id = %s", (sid,)).fetchone()
+        if any(before[k] != v for k, v in changes.items()):
+            audit.update(conn, "source_registry", {"source_id": sid}, changes, actor=ACTOR,
+                         rationale=f"source decision (seed/source_decisions.yaml){': ' + reason.strip() if reason else ''}")
+            changed += 1
+    return changed
+
+
 if __name__ == "__main__":
     d = build()
     print(f"{len(d['sources'])} sources, {len(d['competitors'])} competitors, {len(d['slugs'])} slugs -> {REGISTRY_YAML}")

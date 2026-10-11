@@ -79,3 +79,23 @@ def topic_ids(conn) -> dict[str, str]:
 def mapping(conn, kind: str) -> dict[str, str]:
     rows = conn.execute("select value, feature_id from feature_mapping where kind = %s", (kind,)).fetchall()
     return {r["value"]: str(r["feature_id"]) for r in rows}
+
+
+def confirm_reviewed(conn) -> int:
+    """Mark mappings as team-confirmed once their review CSV row says ``confirmed = yes``
+    (databases seeded before the review). Never changes a mapped topic."""
+    from app.seed.option_load import _read_csv
+
+    study = {r["attribute"] for r in _read("study_attributes.csv") if _decision(r, "proposed_topic")[1]}
+    items = {r["item_name"] for r in _read_csv("option_features.csv")
+             if (r.get("confirmed") or "").strip().lower() == "yes"}
+    codes = {r["sa_code"] for v in ("F70", "G60", "G70") for r in _read_csv(f"option_list_{v}.csv")
+             if r["sa_code"] and r["item_name"] in items}
+    rows = conn.execute(
+        "select id, kind, value from feature_mapping where confirmed_by is null"
+        " and kind in ('study_attribute', 'option_code')").fetchall()
+    updates = [({"id": r["id"]}, {"confirmed_by": "team"}) for r in rows
+               if (r["kind"] == "study_attribute" and r["value"] in study)
+               or (r["kind"] == "option_code" and r["value"] in codes)]
+    return audit.update_many(conn, "feature_mapping", updates, actor=ACTOR,
+                             rationale="review CSV row confirmed by the team (2026-10-11)")

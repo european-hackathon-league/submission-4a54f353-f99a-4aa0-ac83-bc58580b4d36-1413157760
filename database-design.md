@@ -78,6 +78,8 @@ Every source ID of fetching-sources section 3, parsed once, plus the internal so
 | `delay_seconds` | numeric | per-site politeness delay |
 | `last_cursor` | jsonb | newest seen item per subject; drives incremental runs |
 | `backfill_done_at` | timestamptz | set after the one-time backfill |
+| `refresh_days` | int | fetch cadence: the daily worker runs the source only when its last successful run is at least this old (1 to 365; migration 0012, values from `backend/seed/source_decisions.yaml`) |
+| `disabled_reason` | text | why a source is switched off (e.g. `reddit`: API access needs an approved developer application) |
 
 ### `site_slug`
 Slug of each vehicle or competitor on each site (fetching-sources 3.9, 3.10).

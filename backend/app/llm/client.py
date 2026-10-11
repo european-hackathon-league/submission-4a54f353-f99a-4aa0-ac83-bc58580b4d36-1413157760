@@ -124,13 +124,13 @@ class OpenAILLM:
     def structured(self, prompt: Prompt, schema: type[T], model: str | None = None, **variables: Any) -> LLMResult[T]:
         from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
 
-        model = model or self._settings.openai_chat_model
+        model = model or self._settings.llm_model_for(prompt.name)
         system, user = prompt.render(**variables)
 
         @retry(
             retry=retry_if_exception_type((RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)),
             wait=wait_exponential(min=2, max=60),
-            stop=stop_after_attempt(5),
+            stop=stop_after_attempt(8),  # rides out a short network drop (about 5 min)
             reraise=True,
         )
         def call():
@@ -149,7 +149,8 @@ class OpenAILLM:
         usage = response.usage
         tokens_in = usage.prompt_tokens if usage else 0
         tokens_out = usage.completion_tokens if usage else 0
-        cost = (tokens_in * self._settings.openai_price_in + tokens_out * self._settings.openai_price_out) / 1e6
+        price_in, price_out = self._settings.llm_price(response.model or model)
+        cost = (tokens_in * price_in + tokens_out * price_out) / 1e6
         result = LLMResult(data, response.model, prompt.prompt_version, tokens_in, tokens_out, cost)
         _track(result)
         return result

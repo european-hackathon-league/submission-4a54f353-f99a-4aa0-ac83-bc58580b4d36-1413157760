@@ -170,7 +170,7 @@ def _llm_answer(conn, turn: Turn, question: str, history: list[dict]) -> tuple[s
     system, _ = prompt.render(object_type=turn.object_type, object_id=turn.object_id, guard=prompts.INJECTION_GUARD)
     messages = [{"role": "system", "content": system}] + history + [{"role": "user", "content": question}]
     for _ in range(MAX_STEPS):
-        response = client.chat.completions.create(model=settings.openai_chat_model, messages=messages,
+        response = client.chat.completions.create(model=settings.llm_model_for("rag_agent"), messages=messages,
                                                   tools=_tool_specs())
         msg = response.choices[0].message
         if not msg.tool_calls:
@@ -201,7 +201,7 @@ def ask(conn, object_type: str, object_id: str, question: str, *, actor: str, re
     model = None
     if llm_available():
         raw, prompt_version = _llm_answer(conn, turn, question, history)
-        model = get_settings().openai_chat_model
+        model = get_settings().llm_model_for("rag_agent")
     else:
         raw, prompt_version = _extractive(conn, turn, question), "rag_extractive@v1"
     answer, cited = check_citations(conn, raw, turn.retrieved)

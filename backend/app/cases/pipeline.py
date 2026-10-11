@@ -31,9 +31,9 @@ def thresholds_for(conn, vehicle: str | None = None) -> dict:
     return merged
 
 
-def update_case(conn, case_id: str, *, run_id=None, brand_profile: str = "") -> dict:
+def update_case(conn, case_id: str, *, run_id=None, brand_profile: str = "", fig: dict | None = None) -> dict:
     th = thresholds_for(conn)
-    fig = figures.compute(conn, case_id, reach_cap=int(th.get("reach_cap", 100000)))
+    fig = fig or figures.compute(conn, case_id, reach_cap=int(th.get("reach_cap", 100000)))
     audit.update(conn, "case_item", {"id": case_id}, {"figures": fig}, actor=ACTOR, run_id=run_id,
                  rationale="case figures recomputed")
     case = conn.execute("select * from case_item where id = %s", (case_id,)).fetchone()
@@ -91,8 +91,20 @@ def run(initial: bool = False) -> dict:
         touched = [r["id"] for r in conn.execute(
             "select distinct c.id from case_item c join signal s on s.case_id = c.id"
             " where s.updated_at >= (select started_at from agent_run where id = %s)", (run_id,)).fetchall()]
-        opened = sum(update_case(conn, cid, run_id=run_id, brand_profile=profile["body_md"] if profile else "")
-                     ["opened"] for cid in touched)
+        brand = profile["body_md"] if profile else ""
+        # Figures first, then the AI tags of every case and line in parallel (cached), then the writes.
+        figs = {cid: figures.compute(conn, cid, reach_cap=int(th.get("reach_cap", 100000))) for cid in touched}
+        jobs = []
+        for cid in touched:
+            case = conn.execute("select * from case_item where id = %s", (cid,)).fetchone()
+            feature = conn.execute("select name, car_area from feature where id = %s", (case["feature_id"],)).fetchone()
+            for cv in conn.execute("select vehicle, release_fit_source from case_vehicle where case_id = %s",
+                                   (cid,)).fetchall():
+                if cv["release_fit_source"] != "pm":
+                    jobs.append((case, feature, figs[cid], cv["vehicle"], brand))
+        tags.prefetch(jobs)
+        opened = sum(update_case(conn, cid, run_id=run_id, brand_profile=brand, fig=figs[cid])["opened"]
+                     for cid in touched)
         result = {"classify": classified, "cluster": grouped, "cases_updated": len(touched), "opened": opened,
                   "provider": feature_link.provider_key(), "similarity_case": sim}
         conn.execute("update agent_run set status = 'ok', ended_at = now(), params = %s where id = %s",

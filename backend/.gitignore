@@ -1,6 +1,8 @@
 .env
 .venv/
-.data/
+.data/*
+# LLM answers are shared so a build on another machine does not pay for them again
+!.data/llm_cache/
 __pycache__/
 .pytest_cache/
 *.pyc

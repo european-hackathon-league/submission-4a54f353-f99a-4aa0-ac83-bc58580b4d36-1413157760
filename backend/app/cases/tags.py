@@ -14,7 +14,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from app.llm import prompts
+from app.config import get_settings
+from app.llm import cache, prompts
 from app.llm.client import LLMUnavailable, get_llm, llm_available
 
 # Features that are mostly software and can change over the air (hardware such as
@@ -58,21 +59,48 @@ def rule_release_fit(feature: str, car_area: str, defects: int, customers: int) 
                         f"{customers} customers, {defects} defects")
 
 
+def _inputs(case: dict, feature: dict, figures: dict, vehicle: str, brand_profile: str) -> dict:
+    v = figures["by_vehicle"].get(vehicle, {})
+    return {"brand_profile": brand_profile, "vehicle": vehicle, "feature": feature["name"],
+            "car_area": feature["car_area"], "title": case["title"], "body": (case["body_md"] or "")[:4000],
+            "customers": str(v.get("distinct_customers", 0)),
+            "defects": str(sum(m["defects"] for m in v.get("markets", {}).values()))}
+
+
+def _cache_key(inputs: dict) -> str:
+    return cache.key(prompts.load("case_tags").prompt_version, get_settings().llm_model_for("case_tags"), inputs)
+
+
+def _llm_tags(inputs: dict) -> dict:
+    result = get_llm().structured(prompts.load("case_tags"), Tags, guard=prompts.INJECTION_GUARD,
+                                  **{**inputs, "body": prompts.wrap_source(inputs["body"])})
+    t = result.data
+    return {"brand_fit": t.brand_fit, "brand_fit_reason": t.brand_fit_reason, "segment": t.segment,
+            "release_fit": t.release_fit, "release_fit_reason": t.release_fit_reason,
+            "source": f"llm:{result.prompt_version}"}
+
+
+def prefetch(jobs: list[tuple]) -> dict:
+    """Judge the tags of many (case, feature, figures, vehicle, brand profile) in parallel (cached)."""
+    if not llm_available():
+        return {}
+    items = [_inputs(*j) for j in jobs]
+    return cache.prefetch("case_tags", [(_cache_key(i), (lambda i=i: _llm_tags(i))) for i in items])
+
+
 def propose(case: dict, feature: dict, figures: dict, vehicle: str, brand_profile: str) -> dict:
     v = figures["by_vehicle"].get(vehicle, {})
     defects = sum(m["defects"] for m in v.get("markets", {}).values())
     customers = v.get("distinct_customers", 0)
     if llm_available():
+        inputs = _inputs(case, feature, figures, vehicle, brand_profile)
+        k = _cache_key(inputs)
         try:
-            result = get_llm().structured(
-                prompts.load("case_tags"), Tags, guard=prompts.INJECTION_GUARD, brand_profile=brand_profile,
-                vehicle=vehicle, feature=feature["name"], car_area=feature["car_area"], title=case["title"],
-                body=prompts.wrap_source(case["body_md"][:4000]), customers=str(customers), defects=str(defects),
-            )
-            t = result.data
-            return {"brand_fit": t.brand_fit, "brand_fit_reason": t.brand_fit_reason, "segment": t.segment,
-                    "release_fit": t.release_fit, "release_fit_reason": t.release_fit_reason,
-                    "source": f"llm:{result.prompt_version}"}
+            hit = cache.get("case_tags", k)
+            if hit is None:
+                hit = _llm_tags(inputs)
+                cache.put("case_tags", k, hit)
+            return hit
         except LLMUnavailable:
             pass
     fit, reason = rule_release_fit(feature["name"], feature["car_area"], defects, customers)

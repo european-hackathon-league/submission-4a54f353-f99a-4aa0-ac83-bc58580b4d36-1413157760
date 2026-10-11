@@ -1,25 +1,25 @@
 vehicle,page,variant,metric,value,value_text,unit,line,confirmed
-F70,20,118d,acceleration 0-100 km/h,8.3,"8,3",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",
-F70,20,120,acceleration 0-100 km/h,7.9,"7,9",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",
-F70,20,120d,acceleration 0-100 km/h,9.8,"9,8",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",
-F70,20,116,acceleration 0-100 km/h,7.8,"7,8",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",
-F70,20,123 xDrive,acceleration 0-100 km/h,6.3,"6,3",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",
-F70,20,M135 xDrive,acceleration 0-100 km/h,4.9,"4,9",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",
-F70,20,118d,top speed,222.0,222,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,
-F70,20,120,top speed,222.0,222,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,
-F70,20,120d,top speed,210.0,210,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,
-F70,20,116,top speed,226.0,226,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,
-F70,20,123 xDrive,top speed,246.0,246,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,
-F70,20,M135 xDrive,top speed,250.0,250,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,
-F70,20,118d,fuel consumption WLTP,4.8,"4,8 – 4,6",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",
-F70,20,120,fuel consumption WLTP,4.4,"4,4 – 4,3",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",
-F70,20,120d,fuel consumption WLTP,6.1,"6,1 – 5,9",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",
-F70,20,116,fuel consumption WLTP,5.5,"5,5 – 5,3",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",
-F70,20,123 xDrive,fuel consumption WLTP,6.1,"6,1 – 5,9",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",
-F70,20,M135 xDrive,fuel consumption WLTP,8.2,"8,2 – 7,6",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",
-F70,20,118d,luggage volume,380.0,380 – 1.200,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,
-F70,20,120,luggage volume,300.0,300 – 1.135,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,
-F70,20,120d,luggage volume,380.0,380 – 1.200,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,
-F70,20,116,luggage volume,300.0,300 – 1.135,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,
-F70,20,123 xDrive,luggage volume,300.0,300 – 1.135,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,
-F70,20,M135 xDrive,luggage volume,380.0,380 – 1.200,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,
+F70,20,118d,acceleration 0-100 km/h,8.3,"8,3",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",yes
+F70,20,120,acceleration 0-100 km/h,7.9,"7,9",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",yes
+F70,20,120d,acceleration 0-100 km/h,9.8,"9,8",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",yes
+F70,20,116,acceleration 0-100 km/h,7.8,"7,8",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",yes
+F70,20,123 xDrive,acceleration 0-100 km/h,6.3,"6,3",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",yes
+F70,20,M135 xDrive,acceleration 0-100 km/h,4.9,"4,9",s,"Beschleunigung 0–100 km/h in s 8,3 7,9 9,8 7,8 6,3 4,9",yes
+F70,20,118d,top speed,222.0,222,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,yes
+F70,20,120,top speed,222.0,222,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,yes
+F70,20,120d,top speed,210.0,210,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,yes
+F70,20,116,top speed,226.0,226,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,yes
+F70,20,123 xDrive,top speed,246.0,246,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,yes
+F70,20,M135 xDrive,top speed,250.0,250,km/h,Höchstgeschwindigkeit in km/h 222 222 210 226 246 250,yes
+F70,20,118d,fuel consumption WLTP,4.8,"4,8 – 4,6",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",yes
+F70,20,120,fuel consumption WLTP,4.4,"4,4 – 4,3",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",yes
+F70,20,120d,fuel consumption WLTP,6.1,"6,1 – 5,9",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",yes
+F70,20,116,fuel consumption WLTP,5.5,"5,5 – 5,3",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",yes
+F70,20,123 xDrive,fuel consumption WLTP,6.1,"6,1 – 5,9",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",yes
+F70,20,M135 xDrive,fuel consumption WLTP,8.2,"8,2 – 7,6",l/100 km,"Kraftstoffverbrauch, kombiniert WLTP in l/100 km 4,8 – 4,6 4,4 – 4,3 6,1 – 5,9 5,5 – 5,3 6,1 – 5,9 8,2 – 7,6",yes
+F70,20,118d,luggage volume,380.0,380 – 1.200,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,yes
+F70,20,120,luggage volume,300.0,300 – 1.135,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,yes
+F70,20,120d,luggage volume,380.0,380 – 1.200,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,yes
+F70,20,116,luggage volume,300.0,300 – 1.135,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,yes
+F70,20,123 xDrive,luggage volume,300.0,300 – 1.135,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,yes
+F70,20,M135 xDrive,luggage volume,380.0,380 – 1.200,l,Gepäckraumvolumen in l 380 – 1.200 300 – 1.135 380 – 1.200 300 – 1.135 300 – 1.135 380 – 1.200,yes

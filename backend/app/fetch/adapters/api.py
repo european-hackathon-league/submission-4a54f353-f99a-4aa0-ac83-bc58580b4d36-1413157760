@@ -218,6 +218,8 @@ def youtube_comments(ctx: FetchContext, source: dict, subject: Subject, cursor: 
     if not key:
         raise NotConfigured("youtube-comments needs YOUTUBE_API_KEY (YouTube Data API v3)")
     out = FetchResult()
+    if subject.kind != "vehicle":
+        return out  # a search costs 100 of 10,000 daily quota units: BMW lines only (changes.md 8.10)
     channels = youtube_channels()
     term = (subject.safe_terms("en") or [subject.label])[0]
     seen = set(cursor.get(cursor_key(subject), []))

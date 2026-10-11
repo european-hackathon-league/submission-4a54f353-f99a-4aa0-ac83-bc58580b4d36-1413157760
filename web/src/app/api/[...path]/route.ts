@@ -3,13 +3,16 @@ import { ZodError } from "zod";
 import { endpoints, type EndpointName } from "@/contracts";
 import { handlers } from "@/mock/handlers";
 import { ApiError, db } from "@/mock/store";
+import { backendHandlers } from "@/backend/handlers";
+import { personaUsers } from "@/backend/personas";
 
 /**
  * MOCK BACKEND. One catch-all route that implements the REST contract in
- * src/contracts/api.ts on the in-memory store. The real backend (FastAPI on
- * Supabase) implements the same contract; point NEXT_PUBLIC_API_BASE_URL at it
- * and this folder can be deleted.
+ * src/contracts/api.ts on the in-memory store. With DATA_SOURCE=backend the
+ * adapter in src/backend serves the endpoints it implements from the FastAPI
+ * backend (BACKEND_URL); this mock serves the rest (INTEGRATION-GUIDE.md section 8).
  */
+const USE_BACKEND = process.env.DATA_SOURCE === "backend";
 
 const routes = (Object.keys(endpoints) as EndpointName[]).map((name) => {
   const def = endpoints[name];
@@ -41,7 +44,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
 
   try {
     const userId = req.headers.get("x-user-id") ?? req.cookies.get("rs_user")?.value ?? "u-lena";
-    const user = db().users.find((u) => u.id === userId);
+    const user = (USE_BACKEND ? personaUsers() : db().users).find((u) => u.id === userId);
     if (!user) throw new ApiError(401, `Unknown user ${userId}`);
 
     const def = route.def as { query?: { parse(v: unknown): unknown }; body?: { parse(v: unknown): unknown }; response: { safeParse(v: unknown): { success: boolean; error?: ZodError } } };
@@ -52,12 +55,12 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       body = def.body.parse(text ? JSON.parse(text) : {});
     }
 
-    const handler = handlers[route.name] as (c: unknown) => unknown;
+    const handler = ((USE_BACKEND && backendHandlers[route.name]) || handlers[route.name]) as (c: unknown) => unknown;
     const result = await handler({ params: route.params, query, body, user });
 
     if (process.env.NODE_ENV !== "production") {
       const check = def.response.safeParse(result);
-      if (!check.success) console.error(`[mock] ${route.name} response breaks the contract:`, check.error?.issues.slice(0, 5));
+      if (!check.success) console.error(`[${USE_BACKEND && backendHandlers[route.name] ? "backend" : "mock"}] ${route.name} response breaks the contract:`, check.error?.issues.slice(0, 5));
     }
     return Response.json(result);
   } catch (error) {

@@ -10,14 +10,17 @@ the LLM later. The heuristic never guesses a topic: those rows wait for the LLM.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-from dataclasses import dataclass
+import threading
+from dataclasses import asdict, dataclass
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from app import taxonomy
+from app.config import BACKEND_DIR, get_settings
 from app.llm import prompts
 from app.llm.client import LLMUnavailable, get_llm, llm_available
 
@@ -121,13 +124,68 @@ def _llm_batch(rows) -> dict[int, Verdict]:
     return out
 
 
+CACHE_DIR = BACKEND_DIR / ".data" / "llm_cache"
+
+
+def _cache_key(text: str) -> str:
+    """Same text, prompt version and model = same answer; a re-run (e.g. after a dropped
+    connection) reuses it instead of paying for the call again."""
+    prompt = prompts.load("feedback_classify")
+    return hashlib.sha256(f"{prompt.prompt_version}|{get_settings().llm_model_for('feedback_classify')}|{text}"
+                          .encode()).hexdigest()
+
+
+def _load_cache() -> dict[str, dict]:
+    path = CACHE_DIR / "feedback_classify.jsonl"
+    if not path.exists():
+        return {}
+    out = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            item = json.loads(line)
+            out[item["key"]] = item["verdict"]
+        except (ValueError, KeyError):
+            continue  # a line cut off by a crash
+    return out
+
+
+_CACHE_LOCK = threading.Lock()  # parallel batches append to one file
+
+
+def _save_cache(entries: list[tuple[str, Verdict]]) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    with _CACHE_LOCK, open(CACHE_DIR / "feedback_classify.jsonl", "a", encoding="utf-8") as f:
+        for key, verdict in entries:
+            f.write(json.dumps({"key": key, "verdict": asdict(verdict)}, ensure_ascii=False) + "\n")
+
+
 def classify_rows(rows, batch_size: int = 25) -> dict[int, Verdict]:
-    """excel_row -> Verdict for every row that needs a classification from its text."""
+    """excel_row -> Verdict for every row that needs a classification from its text.
+    LLM answers are cached on disk per batch (backend/.data/llm_cache)."""
     verdicts: dict[int, Verdict] = {}
     if llm_available():
+        cache = _load_cache()
+        todo = []
+        for r in rows:
+            hit = cache.get(_cache_key(r.text))
+            if hit:
+                verdicts[r.excel_row] = Verdict(**hit)
+            else:
+                todo.append(r)
+        # Batches run in parallel (changes.md 10.12); each answered batch is cached at once.
+        from concurrent.futures import ThreadPoolExecutor
+
+        batches = [todo[i : i + batch_size] for i in range(0, len(todo), batch_size)]
+
+        def run(batch):
+            answers = _llm_batch(batch)
+            _save_cache([(_cache_key(r.text), answers[r.excel_row]) for r in batch if r.excel_row in answers])
+            return answers
+
         try:
-            for i in range(0, len(rows), batch_size):
-                verdicts.update(_llm_batch(rows[i : i + batch_size]))
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                for answers in pool.map(run, batches):
+                    verdicts.update(answers)
         except LLMUnavailable:
             pass
     for r in rows:

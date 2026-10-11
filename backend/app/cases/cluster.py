@@ -119,6 +119,7 @@ def initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN, run_id=N
     for r in rows:
         by_group[(r["feature_id"], r["feature"], r["aspect_group"])].append(r)
     created = split_groups = 0
+    planned = []
     for (feature_id, feature_name, aspect), members in by_group.items():
         vectors = as_matrix([m["embedding"] for m in members])
         labels = group_labels(vectors, min_similarity, split_min)
@@ -130,8 +131,12 @@ def initial(conn, min_similarity: float, *, split_min: int = SPLIT_MIN, run_id=N
             split_groups += 1
             why += f", large group split by cosine >= {min_similarity:.2f}"
         for group in sorted(groups.values(), key=len, reverse=True):
-            create_case(conn, feature_id, feature_name, group, aspect_group=aspect, run_id=run_id, rationale=why)
-            created += 1
+            planned.append((feature_id, feature_name, aspect, group, why))
+    # Case pages are written in parallel first (cached); creating the cases then reads the cache.
+    writer.prefetch([(_label(name, aspect), group) for _, name, aspect, group, _ in planned])
+    for feature_id, feature_name, aspect, group, why in planned:
+        create_case(conn, feature_id, feature_name, group, aspect_group=aspect, run_id=run_id, rationale=why)
+        created += 1
     return {"signals": len(rows), "groups": len(by_group), "split_groups": split_groups, "cases": created}
 
 
