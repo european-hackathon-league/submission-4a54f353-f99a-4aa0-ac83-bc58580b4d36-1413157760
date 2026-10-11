@@ -71,6 +71,39 @@ Rules:
 - **Learning is proposed, never applied.** E.g. three cost-L rejects propose "set cost sensitivity to high?".
 - **Regional overlay.** Wei (China) inherits Lena's shared brief and overrides only what differs, each with a reason. Differences show on both briefs and in Katrin's Review card; she accepts each as a regional variant or aligns it. On a shared case Wei co-drafts a China variant next to Lena's global requirement, and the requirement view compares the two.
 
+## 5b. Trace replay: one click, the whole chain (criterion 3)
+*Replay* on any requirement plays its life in about 15 seconds. It opens on the requirement, rewinds to the first customer quote, and plays forward:
+
+| Beat | What the PM sees | Where it comes from |
+|---|---|---|
+| Voices | Real BMW quotes with market and source; sample of 12, all counted | Signals of the case, each with its stored source record |
+| Signals | Topic × type nodes, each with how it was classified | BMW VFC label (lookup) or model + prompt version |
+| Case and score | The score built factor by factor, with "today" next to it | Score snapshot frozen on the decision event, under the weight profile active then |
+| Decisions | Timeline: agents dashed with a bot icon, people solid with avatar and quoted reason | Append-only audit log |
+| Planned | The vehicle-plan slot | Vehicle plan |
+
+**End state: Chain intact.** Four checks are recomputed on every call; a failure is shown in red with its reason, never hidden:
+- every quote is found in its source record
+- every record's SHA-256 matches its text
+- the audit log has no sequence gaps for the chain
+- every status change carries a rationale
+
+A scrubber shows version, score and evidence as of any date. *Export dossier* writes the same sections as the backend's audit-chain report. The static Sankey with highlights is the base and the motion is layered on top; with reduced motion the beats step instead of animate.
+
+## 5c. World changed: the competitor ripple (criterion 5 + honesty)
+A competitor fact arrives through the agent run (Signals → Refresh) and is judged against every target that uses the same metric, across series, market variants and Baukasten.
+
+- **Machine-comparable targets.** Each metric carries a `targetSpec` (key, comparator, value, unit, cycle, market). The text stays for people.
+- **Normalization is visible.** "800 km CLTC ≈ 680 km WLTP · factor 0.85 · range 0.80–0.90 · assumption". There is no published conversion, so the factor is a labelled team assumption. The PM can try another factor live; only the head saves a new team value, with a reason.
+- **Verdicts:** behind, at par (±3%), still ahead, not comparable (with the reason: different segment, other market, no conversion). China targets compare in CLTC.
+- **One screen:** series × car area, cells pulse from the source and are colored by verdict. Your cells are outlined; colleagues' show their avatar. The impact list shows ours vs. theirs, rank before → after with "moved because", and who was notified.
+- **The right people:** owners and co-owners get an alert, watchers an FYI, the head when a signed-off target is affected.
+- **Never an auto-edit.** *Raise target* and *Create market variant* are proposals. Changing a signed-off target resets it to PM-approved. *Keep, with reason* and *Reopen case* are audited decisions. All of them show up in the requirement's replay.
+- **Against alarm fatigue:**
+  - low-trust facts (D, E) only go on the watch list
+  - a kept target stays muted until the gap grows by more than a threshold (Settings, change logged)
+  - the PM's reason goes into the monitor's context
+
 ## 6. AI in the loop (all proposals, never silent edits)
 - Answers with citations to signal IDs.
 - Proposes field and page edits as diffs.
@@ -78,4 +111,4 @@ Rules:
 - Proposes brief values from a pasted strategy doc and new requirement versions after feedback or a brief change.
 - Runs on-demand research that adds signals.
 - Extracts answers from pasted meeting notes.
-- The monitor raises alerts (competitor raises the bar, contradicts).
+- The monitor raises alerts (competitor raises the bar, contradicts) and assesses a competitor fact across the portfolio (ripple), with proposals per affected target.

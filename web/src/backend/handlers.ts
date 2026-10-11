@@ -40,6 +40,8 @@ import { provenanceCounts, provenanceLine, sentences } from "@/mock/ai/provenanc
 import { ruleCheck } from "@/mock/ai/quality";
 import { caseSegments, segmentReply } from "@/mock/ai/segment";
 import { extractFromDoc } from "@/mock/briefs";
+import { conversions as teamConversions, monitorSettings as defaultMonitorSettings } from "@/mock/authored/world";
+import { buildReplay } from "@/mock/replay";
 import { backend, cached, invalidateCache, type QueryValue } from "./client";
 import { FACTOR_TO_BACKEND, brandFitToBackend, marketFromBackend, marketToBackend, releaseToBackend, weightsFromBackend, weightsToBackend } from "./map";
 import {
@@ -134,7 +136,7 @@ async function loadCase(user: User, id: string, c?: Ctx) {
   const row = rowFromPage(page, vehicle, x.profileId);
   const merged = (page.lineage as Row[]).find((l) => l.op === "merge" && l.from_case === id);
   const pmInputs = [
-    ...(page.stances as Row[]).map((s) => ({ kind: "note" as const, label: `${x.all.find((u) => u.id === s.author_id)?.name ?? "A PM"}'s stance`, detail: [s.ambition && `ambition ${s.ambition}`, ...(s.evidence_takes ?? []).map((t: Row) => `${t.effect}: ${t.text}`), ...(s.inside ?? []).map((i: Row) => i.text)].filter(Boolean).join(" · ") || "No changes to the brief", at: String(s.updated_at), ref: `stance-${s.author_id}` })),
+    ...(page.stances as Row[]).map((s) => ({ kind: "note" as const, label: `${x.all.find((u) => u.id === s.author_id)?.name ?? "A PM"}'s context`, detail: [s.ambition && `ambition ${s.ambition}`, ...(s.evidence_takes ?? []).map((t: Row) => `${t.effect}: ${t.text}`), ...(s.inside ?? []).map((i: Row) => i.text)].filter(Boolean).join(" · ") || "No changes to the product specs", at: String(s.updated_at), ref: `stance-${s.author_id}` })),
     ...(page.meeting_notes as Row[]).map((n) => ({ kind: "meeting" as const, label: n.title, detail: `${(n.attendees ?? []).length} attendees`, at: String(n.created_at), ref: n.id })),
     ...(page.questions as Row[]).filter((q) => q.status === "answered").map((q) => ({ kind: "answer" as const, label: `${q.addressee} answered`, detail: q.answer ?? "", at: String(q.answered_at), ref: q.id })),
     ...(page.proposals as Row[]).filter((p) => p.status === "accepted").map((p) => ({ kind: "diff" as const, label: "AI proposal accepted", detail: p.summary, at: String(p.decided_at), ref: p.id })),
@@ -163,7 +165,7 @@ async function loadRequirement(user: User, id: string, c?: Ctx) {
 
 /** The mock's pure helpers read a Dataset; give them the slice they need. */
 function mini(parts: Partial<Dataset>): Dataset {
-  return { generatedAt: new Date().toISOString(), users: [], workspaces: [], weightProfiles: [], signals: [], clusters: [], agentRuns: [], quarantine: [], cases: [], questions: [], meetingNotes: [], proposals: [], requirements: [], referrals: [], innovation: [], plans: [], messages: [], comments: [], notifications: [], alerts: [], briefs: [], requirementVersions: [], feedback: [], audit: [], ...parts } as Dataset;
+  return { generatedAt: new Date().toISOString(), users: [], workspaces: [], weightProfiles: [], signals: [], clusters: [], agentRuns: [], quarantine: [], cases: [], questions: [], meetingNotes: [], proposals: [], requirements: [], referrals: [], innovation: [], plans: [], messages: [], comments: [], notifications: [], alerts: [], briefs: [], requirementVersions: [], feedback: [], audit: [], sourceRecords: [], conversions: teamConversions, ripples: [], rippleMutes: [], monitorSettings: defaultMonitorSettings, ...parts } as Dataset;
 }
 
 async function brandProfile(user: User): Promise<BrandProfile> {
@@ -255,6 +257,7 @@ function shapeInput(user: User, c: Case, signals: Signal[], brand: BrandProfile,
     stance: c.stances.find((s) => s.authorId === user.id) ?? null,
     plan,
     siblings,
+    conversions: teamConversions,
   };
 }
 
@@ -324,7 +327,7 @@ export const backendHandlers: Handlers = {
   previewBriefImpact: ({ user, params, body }) => backend(user.id, "POST", `/briefs/${params.id}/impact`, { body: { values: body.values } }),
   extractBrief: async ({ user, params, body }) => {
     const x = await ctx(user);
-    if (!x.ws.brief) throw new ApiError(409, "The shared brief is incomplete; fill it before extracting from a document.");
+    if (!x.ws.brief) throw new ApiError(409, "The shared product specs are incomplete; fill them in before extracting from a document.");
     return saveProposals(user, extractFromDoc(body.text, x.ws.brief.values, params.id), "brief_extractor");
   },
   briefConflicts: ({ user }) => get(user, "/brief-conflicts") as Promise<any>,
@@ -397,6 +400,9 @@ export const backendHandlers: Handlers = {
   createCase: async ({ user, body }) => {
     const out = await send(user, "POST", "/cases", { vehicle: body.series, title: body.title, summary: body.summary, signal_ids: body.signalIds, scope: body.scope, rationale: body.rationale });
     return (await loadCase(user, out.id)).case;
+  },
+  addCaseEvidence: async () => {
+    throw new ApiError(501, "Adding your own evidence works on the demo data only; the backend has no endpoint for it yet.");
   },
   caseBundle: async ({ user, params }) => {
     const { page, case: c, vehicle, x } = await loadCase(user, params.id);
@@ -559,11 +565,29 @@ export const backendHandlers: Handlers = {
       brief: row.brief ? briefFromBackend(row.brief) : null,
     };
   },
+  requirementReplay: async ({ user, params }) => {
+    // Rebuilt from what the backend serves (bundle, audit, profiles, plan). The backend keeps no
+    // source snapshots, so the chain check honestly reports them as missing.
+    const b = await backendHandlers.requirementBundle({ user, params, query: {}, body: undefined } as Parameters<Handlers["requirementBundle"]>[0]);
+    const x = await ctx(user);
+    const [reqEvents, caseEvents, all, profiles, plan] = await Promise.all([
+      get<Row[]>(user, "/audit", { object_id: params.id, limit: 500 }),
+      get<Row[]>(user, "/audit", { object_id: b.case.id, limit: 500 }),
+      users(user),
+      profilesOf(user, x.ws.config_id).then((ps) => ps.map((p) => profileFromBackend(p, x.ws.config.name))),
+      get(user, `/plans/${b.requirement.series}`).then(planFromBackend).catch(() => null),
+    ]);
+    const d = mini({ requirements: [b.requirement], cases: [b.case], signals: b.signals, requirementVersions: b.versions, alerts: b.alerts, audit: [...reqEvents, ...caseEvents].map(auditFromBackend), users: all, weightProfiles: profiles, plans: plan ? [plan] : [] });
+    return buildReplay(d, b.requirement);
+  },
   patchRequirement: async ({ user, params, body }) => {
     const { row, requirement, x } = await loadRequirement(user, params.id);
     const id = encodeURIComponent(params.id);
-    const { manualRank, carArea: _carArea, ...content } = body.patch; // the car area always follows the case's topic
+    // The car area always follows the case's topic; change depth and the edited argument sheet have no backend field yet.
+    const { manualRank, carArea: _carArea, changeDepth: _changeDepth, argumentMd: _argumentMd, ...content } = body.patch;
     void _carArea;
+    void _changeDepth;
+    void _argumentMd;
     if (manualRank !== undefined) await send(user, "POST", `/requirements/${id}/rank`, { rank: manualRank, reason: body.rationale });
     if (Object.keys(content).length) {
       const prev = snapshotFromBackend(row);
@@ -877,6 +901,24 @@ export const backendHandlers: Handlers = {
   },
   alerts: async ({ user, query }) => (await get<Row[]>(user, "/alerts", { all: query.all ? true : undefined })).map((a) => alertFromBackend(a, user.id)),
   resolveAlert: async ({ user, params, body }) => alertFromBackend(await send(user, "POST", `/alerts/${params.id}/resolve`, body), user.id),
+
+  // Competitor ripple: produced by the demo agent run (Refresh), which the live backend doesn't
+  // offer yet. The conversion table is the team assumption the drafter already uses.
+  ripples: () => [],
+  ripple: ({ params }) => {
+    throw new ApiError(404, `Ripple ${params.id} not found: competitor ripples come from the demo agent run; the live backend doesn't create them yet.`);
+  },
+  decideRippleItem: ({ params }) => {
+    throw new ApiError(404, `Ripple ${params.id} not found: competitor ripples come from the demo agent run; the live backend doesn't create them yet.`);
+  },
+  conversions: () => teamConversions,
+  saveConversion: () => {
+    throw new ApiError(501, "The live backend doesn't store conversion factors yet; the team assumption stays as configured.");
+  },
+  monitorSettings: () => defaultMonitorSettings,
+  saveMonitorSettings: () => {
+    throw new ApiError(501, "The live backend doesn't store monitor settings yet; the defaults apply.");
+  },
 
   // Oversight
   audit: async ({ user, query }) => (await get<Row[]>(user, "/audit", { object_id: query.objectId, actor_type: query.actorType, limit: query.limit ?? 200 })).map(auditFromBackend),

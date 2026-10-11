@@ -175,4 +175,4 @@ export const rewriteCitations = (text: string) =>
     // PM context (brief, stance, answers, notes, feedback) is named, not linked to a signal.
     .replace(/\[context:([a-z_]+):([^\]\s]+)\]/g, (_, type: string, id: string) => `(${CONTEXT_LABEL[type] ?? "PM context"}${/^[A-Z]+-/.test(id) ? ` ${id}` : ""})`);
 
-const CONTEXT_LABEL: Record<string, string> = { series_brief: "series brief", case_stance: "PM stance", open_question: "question", meeting_note: "meeting note", requirement_feedback: "feedback", comment: "comment" };
+const CONTEXT_LABEL: Record<string, string> = { series_brief: "product specs", case_stance: "PM context", open_question: "question", meeting_note: "meeting note", requirement_feedback: "feedback", comment: "comment" };

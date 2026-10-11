@@ -18,6 +18,7 @@ import {
   ReleaseTarget,
   RequirementAction,
   RequirementStatus,
+  RippleDecisionKind,
   Series,
   ShapeKey,
   SignalKind,
@@ -35,11 +36,13 @@ import {
   ChatMessage,
   ChatSegment,
   Comment,
+  CycleConversion,
   FeedbackEntry,
   FieldChange,
   InnovationMeta,
   MeetingNote,
   Metric,
+  MonitorSettings,
   Notification,
   OpenQuestion,
   PlannedFeature,
@@ -50,10 +53,13 @@ import {
   RequirementCheck,
   RequirementVersion,
   ResolvedBrief,
+  Ripple,
+  ScoreSnapshot,
   ScoredCase,
   SeriesBrief,
   ShapeQuestion,
   Signal,
+  SourceRecord,
   SignalCluster,
   User,
   VehiclePlan,
@@ -211,12 +217,33 @@ export const CreateCaseBody = z.object({
   type: CaseType,
   changeDepth: ChangeDepth,
   summary: z.string(),
-  signalIds: z.array(z.string()).min(1),
+  /** Empty when the PM starts a case by hand and adds evidence afterwards. */
+  signalIds: z.array(z.string()),
+  rationale: Rationale,
+});
+
+/** Evidence a PM adds by hand: rows of an uploaded CSV, links, or notes. Each item becomes a signal on the case. */
+export const AddEvidenceBody = z.object({
+  items: z
+    .array(
+      z.object({
+        type: z.enum(["csv_row", "link", "note"]),
+        text: z.string().min(1),
+        title: z.string().optional(),
+        url: z.string().optional(),
+        /** File name for csv_row items. */
+        source: z.string().optional(),
+        kind: SignalKind,
+        market: Market,
+      }),
+    )
+    .min(1),
   rationale: Rationale,
 });
 
 export const EditableCaseFields = Case.pick({
   title: true,
+  shortTitle: true,
   summary: true,
   bodyMd: true,
   scope: true,
@@ -285,6 +312,7 @@ export const MeetingNoteBody = z.object({
 
 export const EditableRequirementFields = Requirement.pick({
   title: true,
+  shortTitle: true,
   description: true,
   marketScope: true,
   releaseTarget: true,
@@ -296,6 +324,7 @@ export const EditableRequirementFields = Requirement.pick({
   evidenceLevel: true,
   cost: true,
   manualRank: true,
+  argumentMd: true,
 }).partial();
 
 export const PatchRequirementBody = z.object({ patch: EditableRequirementFields, rationale: Rationale });
@@ -414,7 +443,75 @@ export const SearchResult = z.object({
 });
 export type SearchResult = z.infer<typeof SearchResult>;
 
-export const RefreshResponse = z.object({ run: AgentRun, signals: z.array(Signal), notifications: z.number() });
+export const RefreshResponse = z.object({
+  run: AgentRun,
+  signals: z.array(Signal),
+  notifications: z.number(),
+  /** Ripples created by competitor facts in this run (active and watch-only). */
+  ripples: z.array(z.object({ id: z.string(), status: z.enum(["active", "watch"]), items: z.number().int(), rows: z.number().int(), summary: z.string() })),
+});
+
+export type RefreshResponse = z.infer<typeof RefreshResponse>;
+
+// ---------- Trace replay ----------
+export const IntegrityCheck = z.object({
+  id: z.enum(["quotes_in_source", "record_hashes", "audit_sequence", "rationale_on_status"]),
+  label: z.string(),
+  ok: z.boolean(),
+  detail: z.string(),
+  failures: z.array(z.string()),
+});
+export type IntegrityCheck = z.infer<typeof IntegrityCheck>;
+
+/** One step in the life of a requirement, as shown on the replay timeline. */
+export const ReplayEvent = z.object({
+  seq: z.number().int(),
+  at: z.string(),
+  actorId: z.string(),
+  actorType: z.enum(["human", "agent"]),
+  actorName: z.string(),
+  action: z.string(),
+  label: z.string(),
+  objectType: z.string(),
+  objectId: z.string(),
+  rationale: z.string().nullable(),
+  /** Requirement version current after this event (null before the first draft). */
+  version: z.number().int().nullable(),
+  scoreSnapshot: ScoreSnapshot.nullable(),
+});
+export type ReplayEvent = z.infer<typeof ReplayEvent>;
+
+export const ReplayResponse = z.object({
+  requirement: Requirement,
+  versions: z.array(RequirementVersion),
+  case: Case,
+  /** Every signal of the case (for the diagram and the as-of counts). */
+  signals: z.array(Signal),
+  /** Sample shown in beat 1: defects first, then complaints and wishes, real BMW records before web. */
+  quoteIds: z.array(z.string()),
+  counts: z.object({ customers: z.number().int(), markets: z.array(Market), sources: z.number().int(), bmwRecords: z.number().int(), webRecords: z.number().int() }),
+  /** Raw records behind the sampled quotes. */
+  sourceRecords: z.array(SourceRecord),
+  events: z.array(ReplayEvent),
+  scoreToday: z.object({ score: z.number(), rank: z.number().int(), of: z.number().int(), profileName: z.string() }),
+  plannedFeature: PlannedFeature.nullable(),
+  alerts: z.array(Alert),
+  integrity: z.array(IntegrityCheck),
+  generatedAt: z.string(),
+});
+export type ReplayResponse = z.infer<typeof ReplayResponse>;
+
+// ---------- Competitor ripple ----------
+export const RippleBundle = z.object({ ripple: Ripple, conversions: z.array(CycleConversion), settings: MonitorSettings });
+export type RippleBundle = z.infer<typeof RippleBundle>;
+
+export const RippleDecisionBody = z.object({
+  kind: RippleDecisionKind,
+  rationale: Rationale,
+  /** raise_target / market_variant: the new value in the item's cycle (defaults to just ahead of the competitor). */
+  value: z.number().positive().optional(),
+});
+export type RippleDecisionBody = z.infer<typeof RippleDecisionBody>;
 
 export const InnovationEntry = z.object({ meta: InnovationMeta, case: Case });
 export type InnovationEntry = z.infer<typeof InnovationEntry>;
@@ -488,7 +585,8 @@ export const endpoints = {
 
   // Cases
   cases: ep({ method: "GET", path: "/cases", tag: "cases", summary: "List cases", query: CaseListQuery, response: z.array(Case) }),
-  createCase: ep({ method: "POST", path: "/cases", tag: "cases", summary: "Start a case from signals", body: CreateCaseBody, response: Case }),
+  createCase: ep({ method: "POST", path: "/cases", tag: "cases", summary: "Start a case from signals, or empty to fill by hand", body: CreateCaseBody, response: Case }),
+  addCaseEvidence: ep({ method: "POST", path: "/cases/:id/evidence", tag: "cases", summary: "Add PM evidence (CSV rows, links, notes) as signals", body: AddEvidenceBody, response: z.object({ case: Case, added: z.array(Signal) }) }),
   caseBundle: ep({ method: "GET", path: "/cases/:id", tag: "cases", summary: "Case with signals, questions, requirements, referrals", response: CaseBundle }),
   patchCase: ep({ method: "PATCH", path: "/cases/:id", tag: "cases", summary: "Edit case fields or body", body: PatchCaseBody, response: Case }),
   transitionCase: ep({ method: "POST", path: "/cases/:id/transition", tag: "cases", summary: "Move a case (state or outcome)", body: CaseTransitionBody, response: Case }),
@@ -557,6 +655,13 @@ export const endpoints = {
     summary: "Record engineering/finance feedback and the PM's response (layer 4); returns a new-version proposal",
     body: FeedbackBody,
     response: z.object({ feedback: FeedbackEntry, proposal: Proposal }),
+  }),
+  requirementReplay: ep({
+    method: "GET",
+    path: "/requirements/:id/replay",
+    tag: "requirements",
+    summary: "Whole life of a requirement for the trace replay: quotes, signals, case, score per decision, events and integrity checks",
+    response: ReplayResponse,
   }),
   runRequirementCheck: ep({
     method: "POST",
@@ -628,6 +733,36 @@ export const endpoints = {
   taxonomy: ep({ method: "GET", path: "/taxonomy", tag: "signals", summary: "Fixed taxonomy: car areas, topics, aspect groups", response: TaxonomyResponse }),
   portfolio: ep({ method: "GET", path: "/portfolio", tag: "oversight", summary: "Portfolio overview for the head of product line", response: PortfolioResponse }),
   reset: ep({ method: "POST", path: "/admin/reset", tag: "oversight", summary: "Reset the mock store to the seed", body: z.object({}), response: Ok }),
+
+  // Competitor ripple
+  ripples: ep({ method: "GET", path: "/ripples", tag: "monitor", summary: "Ripples, newest first", response: z.array(Ripple) }),
+  ripple: ep({ method: "GET", path: "/ripples/:id", tag: "monitor", summary: "One ripple with the conversion table and monitor settings", response: RippleBundle }),
+  decideRippleItem: ep({
+    method: "POST",
+    path: "/ripples/:id/items/:itemId/decision",
+    tag: "monitor",
+    summary: "Owner decision on an affected item: raise target or market variant (both proposals), keep with reason (mutes repeats), reopen the case",
+    body: RippleDecisionBody,
+    response: z.object({ ripple: Ripple, proposal: Proposal.nullable() }),
+  }),
+  conversions: ep({ method: "GET", path: "/conversions", tag: "monitor", summary: "Cycle conversion table (labelled assumptions)", response: z.array(CycleConversion) }),
+  saveConversion: ep({
+    method: "PUT",
+    path: "/conversions/:id",
+    tag: "monitor",
+    summary: "Change a conversion factor (head only); re-assesses open ripples",
+    body: z.object({ factor: z.number().positive(), rationale: Rationale }),
+    response: CycleConversion,
+  }),
+  monitorSettings: ep({ method: "GET", path: "/settings/monitor", tag: "monitor", summary: "Monitor settings (mute threshold, at-par tolerance)", response: MonitorSettings }),
+  saveMonitorSettings: ep({
+    method: "PUT",
+    path: "/settings/monitor",
+    tag: "monitor",
+    summary: "Change monitor settings (logged with a reason)",
+    body: z.object({ muteThresholdPct: z.number().min(0).max(50).optional(), atParTolerancePct: z.number().min(0).max(20).optional(), rationale: Rationale }),
+    response: MonitorSettings,
+  }),
 } as const;
 
 export type Endpoints = typeof endpoints;

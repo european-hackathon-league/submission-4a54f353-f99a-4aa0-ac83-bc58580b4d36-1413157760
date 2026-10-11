@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, CheckCircle2, Inbox, Loader2, Plus, RefreshCw, ShieldAlert, XCircle } from "lucide-react";
+import { Activity, CheckCircle2, Inbox, Loader2, Plus, RefreshCw, ShieldAlert, Waves, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import {
   CarArea as CarAreas,
   CaseType as CaseTypes,
@@ -17,6 +19,7 @@ import {
   type CarArea,
   type CaseType,
   type ChangeDepth,
+  type RefreshResponse,
   type Region,
   type Series,
 } from "@/contracts";
@@ -47,7 +50,24 @@ export function RadarView() {
   const { data: cases = [] } = useApi("cases", { query: { series: activeSeries } });
   const { data: runs = [] } = useApi("agentRuns");
   const { data: quarantine = [] } = useApi("quarantine");
-  const refresh = useApiMutation("refresh", { success: (r) => (r.signals.length ? `${r.signals.length} new signals` : "Nothing new since the last run") });
+  const [run, setRun] = useState<RefreshResponse | null>(null);
+  const refresh = useApiMutation("refresh");
+  const onRefresh = async () => {
+    const res = await refresh.mutateAsync({ body: { series: activeSeries } });
+    setRun(res);
+    // The toast comes when the steps have played (instantly with reduced motion).
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(
+      () => {
+        const active = res.ripples.find((r) => r.status === "active");
+        if (active) toast.warning(`Competitor fact: ${active.summary}`, { duration: 30000, action: { label: "View ripple", onClick: () => router.push(`/ripple/${active.id}`) } });
+        else toast.success(res.signals.length ? `${res.signals.length} new signals` : "Nothing new since the last run");
+        const watch = res.ripples.filter((r) => r.status === "watch");
+        if (watch.length) toast.info(`${watch.length} low-trust fact${watch.length > 1 ? "s" : ""} on the watch list (no alerts)`);
+      },
+      reduced ? 0 : (res.run.steps?.length ?? 0) * STEP_MS + 200,
+    );
+  };
 
   const graph = overviewSankey(signals, cases);
   const loose = signals.filter((s) => s.status !== "clustered");
@@ -74,18 +94,19 @@ export function RadarView() {
             </Select>
             <RunsPopover runs={runs} />
             <QuarantinePopover items={quarantine} />
-            <Button size="sm" onClick={() => refresh.mutate({ body: { series: activeSeries } })} disabled={refresh.isPending}>
+            <Button size="sm" onClick={onRefresh} disabled={refresh.isPending}>
               {refresh.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />} Refresh
             </Button>
           </>
         }
       >
-        <button onClick={() => setOpen({ title: "Not in a case yet", ids: loose.map((s) => s.id) })} className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm shadow-xs transition hover:border-primary/60">
+        <button onClick={() => setOpen({ title: "Not in a case yet", ids: loose.map((s) => s.id) })} className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm font-medium transition-colors duration-150 hover:border-border-strong hover:bg-recessed focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
           <Inbox className="size-4 text-muted-foreground" /> {loose.length} not in a case yet
         </button>
       </PageHeader>
-      <div className="p-6">
-        <div className="rounded-xl border bg-card p-5 shadow-xs">
+      <div className="space-y-6 px-6 pt-6 pb-10">
+        {run?.run.steps && <RunSteps key={run.run.id} res={run} onOpen={(id) => router.push(`/ripple/${id}`)} />}
+        <div className="rounded-2xl border bg-card p-6">
           <SankeyChart graph={graph} titles={["Sources", "Car area", "Cases"]} onSelect={onNode} />
         </div>
       </div>
@@ -122,7 +143,48 @@ export function RadarView() {
   );
 }
 
-function RunsPopover({ runs }: { runs: { id: string; agent: keyof typeof agentLabel; status: string; newSignals: number; rejected: number; llmCostUsd: number; startedAt: string }[] }) {
+const STEP_MS = 450;
+
+/** The agent run of the last Refresh, step by step: fetch → classify → gate → match metrics → assess impact. */
+function RunSteps({ res, onOpen }: { res: RefreshResponse; onOpen: (rippleId: string) => void }) {
+  const steps = res.run.steps ?? [];
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <p className="mb-3 flex items-center gap-2 text-[15px] font-semibold">
+        <Activity className="size-4 text-muted-foreground" /> Agent run {res.run.id}
+        <span className="text-xs font-normal text-muted-foreground">
+          {res.signals.length} new · ${res.run.llmCostUsd.toFixed(2)}
+        </span>
+      </p>
+      <ol className="grid gap-2 sm:grid-cols-5">
+        {steps.map((s, i) => (
+          <li
+            key={s.name}
+            className="animate-in fade-in slide-in-from-left-2 fill-mode-both rounded-lg border bg-recessed px-3 py-2.5 text-xs duration-300 motion-reduce:animate-none"
+            style={{ animationDelay: `${i * STEP_MS}ms` }}
+          >
+            <p className="flex items-center gap-1.5 font-medium">
+              {s.status === "ok" ? <CheckCircle2 className="size-3.5 text-positive" /> : s.status === "failed" ? <XCircle className="size-3.5 text-negative" /> : <span className="size-3.5 rounded-full border border-border-strong" />}
+              {i + 1}. {s.name}
+            </p>
+            <p className="mt-1 text-muted-foreground">{s.detail}</p>
+          </li>
+        ))}
+      </ol>
+      {res.ripples.length > 0 && (
+        <div className="animate-in fade-in fill-mode-both mt-3 flex flex-wrap gap-2 duration-300 motion-reduce:animate-none" style={{ animationDelay: `${steps.length * STEP_MS}ms` }}>
+          {res.ripples.map((r) => (
+            <Button key={r.id} size="sm" variant={r.status === "active" ? "default" : "outline"} onClick={() => onOpen(r.id)}>
+              <Waves className={r.status === "active" ? "size-3.5 text-ember" : "size-3.5"} /> {r.summary}
+            </Button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RunsPopover({ runs }: { runs: { id: string; agent: keyof typeof agentLabel; status: string; newSignals: number; rejected: number; llmCostUsd: number; startedAt: string; rippleId?: string | null }[] }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -138,6 +200,11 @@ function RunsPopover({ runs }: { runs: { id: string; agent: keyof typeof agentLa
               <span className="min-w-0 flex-1 truncate">
                 <b className="font-medium">{agentLabel[r.agent]}</b> · {r.newSignals} new · ${r.llmCostUsd.toFixed(2)}
               </span>
+              {r.rippleId && (
+                <Link href={`/ripple/${r.rippleId}`} className="inline-flex shrink-0 items-center gap-1 font-medium text-foreground underline decoration-border-strong underline-offset-2 hover:decoration-foreground">
+                  <Waves className="size-3.5 text-ember" /> View ripple
+                </Link>
+              )}
               <span className="text-muted-foreground">{fromNow(r.startedAt)}</span>
             </li>
           ))}
@@ -156,8 +223,8 @@ function QuarantinePopover({ items }: { items: { id: string; reason: string; sou
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80">
-        <p className="mb-2 text-xs text-muted-foreground">Rejected by the validation gate; never part of a case.</p>
-        <ul className="space-y-2 text-xs">
+        <p className="mb-1 text-xs text-muted-foreground">Rejected by the validation gate; never part of a case.</p>
+        <ul className="space-y-2.5 text-xs">
           {items.map((q) => (
             <li key={q.id}>
               <span className="font-medium">{q.reason}</span>

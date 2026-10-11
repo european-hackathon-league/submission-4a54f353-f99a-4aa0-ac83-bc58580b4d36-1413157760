@@ -15,9 +15,7 @@ import {
   EyeOff,
   FileText,
   GitBranch,
-  Heart,
   Info,
-  Lightbulb,
   MessageSquare,
   MoreHorizontal,
   Pencil,
@@ -31,7 +29,7 @@ import { caseStateLabel, marketLabel } from "@/contracts";
 import { api } from "@/lib/api/client";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { download, fromNow } from "@/lib/format";
-import { caseSankey, isCustomer, isFact, sayLabel, topicLabels, type SankeyNode } from "@/lib/sankey";
+import { caseSankey, isCustomer, sayLabel, topicLabels, type SankeyNode } from "@/lib/sankey";
 import { cn } from "@/lib/utils";
 import { CaseStateBadge, EvidenceBars, MarketChip, OutcomeBadge, Pill, ReqStatusDot } from "@/components/common/badges";
 import { Markdown } from "@/components/common/markdown";
@@ -41,6 +39,7 @@ import { ObjectActivity } from "@/components/common/activity";
 import { RationaleDialog } from "@/components/common/rationale-dialog";
 import { CaseActionDialog, type UiCaseAction } from "@/components/cases/case-action-dialog";
 import { CaseDetails } from "@/components/cases/case-details";
+import { AddEvidenceDialog, EditCaseDialog } from "@/components/cases/case-forms";
 import { StanceForm } from "@/components/cases/stance-form";
 import { ShapeForm } from "@/components/cases/shape-form";
 import { QuestionsPanel } from "@/components/cases/questions-panel";
@@ -81,6 +80,8 @@ export function CaseView() {
   const [selected, setSelected] = useState<string | null>(null);
   const [reqId, setReqId] = useState<string | null>(null);
   const [action, setAction] = useState<UiCaseAction | null>(null);
+  const [evidence, setEvidence] = useState(params.get("evidence") === "1");
+  const [editDetails, setEditDetails] = useState(false);
   const research = useApiMutation("postMessage", { success: "The assistant is looking for more sources" });
   const patchWatch = useApiMutation("patchCase", { silent: true });
 
@@ -92,15 +93,13 @@ export function CaseView() {
   const canDraft = canEdit || (user.role === "vehicle_pm" && user.series.includes(c.series));
   const myStance = c.stances.find((s) => s.authorId === user.id);
   const watching = c.watcherIds.includes(user.id);
-  const openAlerts = alerts.filter((a) => a.status === "open");
+  // Competitor ripples alert the requirement (its page links to the ripple), not the case.
+  const openAlerts = alerts.filter((a) => a.status === "open" && !a.rippleId);
   const pending = proposals.filter((p) => p.status === "pending").length;
   const openQuestions = questions.filter((q) => q.status === "open").length;
 
   const graph = caseSankey(c, signals, topicLabels(taxonomy.data));
   const customers = signals.filter(isCustomer).length;
-  const likes = signals.filter((s) => s.kind === "like");
-  const facts = signals.filter((s) => isFact(s) && ["A", "B", "C"].includes(s.trust));
-  const assumptions = signals.filter((s) => ["D", "E"].includes(s.trust));
   // A cited signal (?signal=) opens its quote directly.
   const cited = params.get("signal");
   const quoteSet: QuoteSet | null = quotes ?? (cited && signals.some((s) => s.id === cited) ? { title: "Cited source", signalIds: [cited] } : null);
@@ -127,13 +126,18 @@ export function CaseView() {
         </Link>
         <div className="mt-1 flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl leading-snug font-semibold tracking-tight">{c.shortTitle}</h1>
+            <h1 className="text-title font-semibold max-md:text-2xl">{c.shortTitle}</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">{c.title}</p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <IconButton label={watching ? "Stop watching" : "Watch"} onClick={() => toggleWatch()}>
               {watching ? <EyeOff /> : <Eye />}
             </IconButton>
+            {canEdit && (
+              <IconButton label="Edit details" onClick={() => setEditDetails(true)}>
+                <Pencil />
+              </IconButton>
+            )}
             <IconButton label="Details and score" onClick={() => setDrawer("details")}>
               <Info />
             </IconButton>
@@ -161,25 +165,11 @@ export function CaseView() {
           </span>
         </div>
 
-        {/* One-click facts about the evidence */}
         <div className="mt-4 flex flex-wrap gap-2">
-          <PillButton icon={<Heart />} onClick={() => setQuotes({ title: "What they like", signalIds: likes.map((s) => s.id) })} disabled={!likes.length}>
-            {likes.length} like it today
-          </PillButton>
-          <PillButton icon={<Lightbulb />} onClick={() => setQuotes({ title: "Facts and assumptions", signalIds: [...facts, ...assumptions].map((s) => s.id) })} disabled={!facts.length && !assumptions.length}>
-            {facts.length} facts, {assumptions.length} assumptions
-          </PillButton>
           <MarketsPopover c={c} />
           {canEdit && (
-            <PillButton
-              icon={<Plus />}
-              dashed
-              onClick={() => {
-                setChat(true);
-                research.mutate({ params: { type: "case", id: c.id }, body: { content: "Research what owners say" } });
-              }}
-            >
-              Add source
+            <PillButton icon={<Plus />} dashed onClick={() => setEvidence(true)}>
+              Add evidence
             </PillButton>
           )}
         </div>
@@ -194,25 +184,25 @@ export function CaseView() {
         {/* Three steps */}
         <nav className="mt-5 flex flex-wrap items-center gap-1 border-b" aria-label="Case steps">
           <StepTab n={1} active={step === "evidence"} onClick={() => go("evidence")} label="Evidence" meta={`${signals.length}`} done />
-          <StepTab n={2} active={step === "knowledge"} onClick={() => go("knowledge")} label="Your stance" meta={openQuestions ? `${openQuestions} open` : undefined} done={!!myStance} badge={pending} />
+          <StepTab n={2} active={step === "knowledge"} onClick={() => go("knowledge")} label="Your context" meta={openQuestions ? `${openQuestions} open` : undefined} done={!!myStance} badge={pending} />
           <StepTab n={3} active={step === "requirements"} onClick={() => go("requirements")} label="Requirements" meta={requirements.length ? `${requirements.length}` : undefined} done={requirements.length > 0} />
         </nav>
 
         <div className="pt-5">
           {step === "evidence" && (
             <div className="space-y-5">
-              <div className="rounded-xl border bg-card p-5 shadow-xs">
+              <div className="rounded-xl border bg-card p-5">
                 <SankeyChart graph={graph} heroValue={customers} selectedId={selected} onSelect={onNode} />
               </div>
               <Highlights c={c} canEdit={canEdit} onCite={onCite} />
-              <NextButton onClick={() => go("knowledge")}>Next: your stance</NextButton>
+              <NextButton onClick={() => go("knowledge")}>Next: your context</NextButton>
             </div>
           )}
           {step === "knowledge" && (
             <div className="space-y-6">
               <StanceForm key={myStance?.updatedAt ?? "new"} c={c} brief={me.data.brief} userId={user.id} canEdit={canDraft} onSaved={() => setChat(true)} />
               <section>
-                <h2 className="mb-2 text-sm font-semibold">Open questions</h2>
+                <h2 className="mb-3 text-lg font-semibold">Open questions</h2>
                 <QuestionsPanel caseId={c.id} questions={questions} proposals={proposals} canEdit={canEdit} />
               </section>
               <NextButton onClick={() => go("requirements")}>Next: requirements</NextButton>
@@ -225,8 +215,8 @@ export function CaseView() {
       </div>
 
       {chat && (
-        <aside className="sticky top-0 flex h-[calc(100dvh-3.5rem)] w-[360px] shrink-0 flex-col border-l bg-background 2xl:w-[420px]">
-          <div className="flex items-center gap-2 border-b px-3 py-2 text-sm font-medium">
+        <aside className="sticky top-0 flex h-[calc(100dvh-3.5rem)] w-[360px] shrink-0 flex-col border-l bg-card 2xl:w-[420px]">
+          <div className="flex items-center gap-2 border-b px-4 py-2 text-sm font-semibold">
             <Bot className="size-4 text-primary" /> AI colleague
             <span className="flex-1" />
             <Button size="icon-sm" variant="ghost" aria-label="Close" onClick={() => setChat(false)}>
@@ -260,6 +250,19 @@ export function CaseView() {
       </Sheet>
       <RequirementSheet id={reqId} onOpenChange={(o) => !o && setReqId(null)} />
       <CaseActionDialog c={c} action={action} onOpenChange={(o) => !o && setAction(null)} />
+      <EditCaseDialog c={c} open={editDetails} onOpenChange={setEditDetails} />
+      <AddEvidenceDialog
+        c={c}
+        open={evidence}
+        onOpenChange={(o) => {
+          setEvidence(o);
+          if (!o && params.get("evidence")) router.replace(`/cases/${c.id}?step=${step}`, { scroll: false });
+        }}
+        onResearch={() => {
+          setChat(true);
+          research.mutate({ params: { type: "case", id: c.id }, body: { content: "Research what owners say" } });
+        }}
+      />
     </div>
   );
 
@@ -287,8 +290,8 @@ function PillButton({ icon, children, onClick, disabled, dashed }: { icon: React
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm shadow-xs transition hover:border-primary/60 disabled:opacity-50 [&_svg]:size-4 [&_svg]:text-muted-foreground",
-        dashed && "border-dashed text-muted-foreground shadow-none",
+        "inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm transition-colors duration-150 hover:border-border-strong disabled:opacity-50 [&_svg]:size-4 [&_svg]:text-muted-foreground",
+        dashed && "border-dashed border-border-strong bg-transparent text-muted-foreground hover:border-foreground/40 hover:text-foreground",
       )}
     >
       {icon}
@@ -302,15 +305,15 @@ function StepTab({ n, label, meta, active, done, badge, onClick }: { n: number; 
     <button
       onClick={onClick}
       aria-current={active ? "step" : undefined}
-      className={cn("-mb-px flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm transition", active ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
+      className={cn("-mb-px flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm transition-colors duration-150", active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
     >
-      <span className={cn("grid size-5 place-items-center rounded-full text-[11px] font-semibold", active ? "bg-primary text-primary-foreground" : done ? "bg-positive/15 text-positive" : "bg-muted text-muted-foreground")}>
-        {done && !active ? <Check className="size-3" /> : n}
+      <span className={cn("grid size-5 place-items-center rounded-full text-xs font-semibold", active ? "bg-primary text-primary-foreground" : done ? "bg-border-strong text-foreground" : "border border-border-strong text-muted-foreground")}>
+        {done && !active ? <Check className="size-3" strokeWidth={2.5} /> : n}
       </span>
       {label}
       {meta && <span className="text-xs text-muted-foreground tabular-nums">{meta}</span>}
       {!!badge && (
-        <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground" title="AI proposals waiting">
+        <span className="rounded-full bg-ember px-1.5 text-xs leading-5 font-semibold text-obsidian tabular-nums" title="AI proposals waiting">
           {badge}
         </span>
       )}
@@ -340,7 +343,7 @@ function StateControl({ c, canEdit, onAction }: { c: Case; canEdit: boolean; onA
   if (!canEdit || !step) return <CaseStateBadge state={c.state} />;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex items-center gap-0.5 rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label={`State: ${caseStateLabel[c.state]}. Change`}>
+      <DropdownMenuTrigger className="inline-flex items-center gap-0.5 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" aria-label={`State: ${caseStateLabel[c.state]}. Change`}>
         <CaseStateBadge state={c.state} />
         <ChevronDown className="size-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>
@@ -406,7 +409,7 @@ function MarketsPopover({ c }: { c: Case }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm shadow-xs transition hover:border-primary/60">
+        <button className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm transition-colors duration-150 hover:border-border-strong">
           Markets {c.marketConflict && <AlertTriangle className="size-3.5 text-warning" />}
         </button>
       </PopoverTrigger>
@@ -440,16 +443,16 @@ function MarketsPopover({ c }: { c: Case }) {
 function Highlights({ c, canEdit, onCite }: { c: Case; canEdit: boolean; onCite: (r: string) => void }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-xs">
-      <ul className="space-y-2">
+    <div className="rounded-xl border bg-card p-6">
+      <ul className="space-y-2.5">
         {c.highlights.map((h, i) => (
-          <li key={i} className="flex gap-2.5 text-sm">
-            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+          <li key={i} className="flex gap-2.5 text-[15px] leading-6">
+            <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-foreground" />
             {h}
           </li>
         ))}
       </ul>
-      <button onClick={() => setOpen(!open)} className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+      <button onClick={() => setOpen(!open)} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-border-strong underline-offset-4 transition-colors duration-150 hover:decoration-foreground">
         <FileText className="size-3.5" /> {open ? "Hide full analysis" : "Read full analysis"}
       </button>
       {open && <CaseDocument c={c} canEdit={canEdit} onCite={onCite} />}
@@ -546,7 +549,7 @@ function RequirementsStep({
           </Button>
         )}
         {!confirmed && !canEdit && <p className="text-sm text-muted-foreground">No requirements yet.</p>}
-        {!confirmed && canEdit && <p className="text-sm text-muted-foreground">Confirm the case, then answer up to three questions; the draft uses your brief and stance.</p>}
+        {!confirmed && canEdit && <p className="text-sm text-muted-foreground">Confirm the case, then answer up to three questions; the draft uses your product specs and context.</p>}
       </div>
       {shaping && (
         <ShapeForm
@@ -559,9 +562,9 @@ function RequirementsStep({
         />
       )}
       {requirements.length > 0 && (
-        <div className="divide-y rounded-xl border bg-card shadow-xs">
+        <div className="divide-y overflow-hidden rounded-xl border bg-card">
           {requirements.map((r) => (
-            <button key={r.id} onClick={() => onOpen(r.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/50">
+            <button key={r.id} onClick={() => onOpen(r.id)} className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-muted/60">
               <UserAvatar id={r.ownerId} size="xs" />
               <span className="min-w-0 flex-1 truncate text-sm font-medium" title={r.title}>
                 {r.shortTitle}
@@ -607,8 +610,8 @@ function AlertBanner({ a, canResolve, onCite }: { a: Alert; canResolve: boolean;
   const [mode, setMode] = useState<"dismissed" | "rework" | null>(null);
   const resolve = useApiMutation("resolveAlert", { success: (r) => (r.status === "rework" ? "Sent back for rework" : "Alert dismissed") });
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 dark:border-amber-800 dark:bg-amber-950/40">
-      <AlertTriangle className="size-4 shrink-0 text-amber-500" />
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-tone-amber-bd bg-tone-amber-bg px-4 py-3">
+      <AlertTriangle className="size-4 shrink-0 text-warning" />
       <button onClick={() => a.signalIds[0] && onCite(a.signalIds[0])} className="min-w-0 flex-1 text-left text-sm">
         <span className="font-medium">{a.title}</span>
         <span className="ml-2 text-xs text-muted-foreground">{fromNow(a.createdAt)}</span>
@@ -664,7 +667,7 @@ function CaseLink({ id, prefix }: { id: string; prefix: string }) {
   return (
     <span>
       {prefix}{" "}
-      <Link className="font-mono text-primary hover:underline" href={`/cases/${id}`}>
+      <Link className="font-mono text-foreground underline decoration-border-strong underline-offset-2 transition-colors duration-150 hover:decoration-foreground" href={`/cases/${id}`}>
         {id}
       </Link>
     </span>

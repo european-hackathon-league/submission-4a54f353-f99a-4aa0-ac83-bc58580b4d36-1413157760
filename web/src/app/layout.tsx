@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const sans = Geist({ variable: "--font-sans", subsets: ["latin"] });
+const sans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
