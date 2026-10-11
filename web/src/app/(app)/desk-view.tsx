@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { AlertTriangle, AtSign, Check, CheckCircle2, CircleDot, ClipboardCheck, CornerUpLeft, Forward, GitCompare, KanbanSquare, MessageSquareReply, Radar, Scale, Waves } from "lucide-react";
-import { CaseState as CaseStates, addresseeLabel, briefFieldLabel, caseStateLabel, seriesShort, type Case, type Referral, type Requirement, type RequirementAction, type ResponseOf } from "@/contracts";
+import { CaseState as CaseStates, addresseeLabel, briefFieldLabel, caseStateLabel, seriesShort, verdictLabel, type Case, type Referral, type Requirement, type RequirementAction, type ResponseOf } from "@/contracts";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
 import { showBriefValue } from "@/lib/brief";
 import { fmtDate, fromNow } from "@/lib/format";
@@ -48,15 +48,15 @@ export function DeskView() {
   const rippleRows = Object.values(Object.groupBy(openAlerts.filter((a) => a.rippleId), (a) => a.rippleId!)).map((xs) => {
     const a = xs![0];
     const items = new Set(xs!.map((x) => x.requirementId ?? x.caseId));
-    const verdicts = xs!.map((x) => x.itemVerdict);
-    const behind = verdicts.filter((v) => v === "behind").length;
+    const counts = (["behind", "at_par", "still_ahead"] as const).map((v) => [v, xs!.filter((x) => x.itemVerdict === v).length] as const).filter(([, n]) => n > 0);
+    const summary = counts.map(([v, n]) => `${n} ${verdictLabel[v].toLowerCase()}`).join(" · ");
     return (
       <Row
         key={a.rippleId}
         icon={<Waves className="text-warning" />}
         label={a.title.split(":")[0]}
         hint={`${items.size} of ${isHead ? "the portfolio's" : "your"} items: ${[...items].join(", ")}`}
-        right={<span className="shrink-0 text-xs font-medium text-tone-amber-fg">{behind ? `${behind} behind` : "At par"}</span>}
+        right={<span className="shrink-0 text-xs font-medium text-tone-amber-fg">{summary}</span>}
         href={`/ripple/${a.rippleId}`}
       />
     );

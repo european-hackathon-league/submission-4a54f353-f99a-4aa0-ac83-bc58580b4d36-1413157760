@@ -67,7 +67,17 @@ export function RippleView() {
   const [override, setOverride] = useState<Record<string, number>>({});
   const [showAll, setShowAll] = useState(false);
   const [drawer, setDrawer] = useState<{ row?: PortfolioRow; area?: CarArea } | null>(search.get("item") ? {} : null);
-  if (!q.data || !me.data) return <div className="p-6 text-sm text-muted-foreground">{q.error ? q.error.message : "Loading the ripple…"}</div>;
+  if (q.error)
+    return (
+      <div className="space-y-2 p-6 text-sm">
+        <p className="text-muted-foreground">{q.error.message}</p>
+        <p className="text-muted-foreground">Ripples live in the demo store, so after Reset demo data an old link points to a ripple that no longer exists. Run the agents again to create it.</p>
+        <Link href="/radar" className="inline-flex items-center gap-1 font-medium underline decoration-border-strong underline-offset-2 hover:decoration-foreground">
+          Signals → Refresh <ArrowRight className="size-3.5" />
+        </Link>
+      </div>
+    );
+  if (!q.data || !me.data) return <div className="p-6 text-sm text-muted-foreground">Loading the ripple…</div>;
   const { ripple: r, conversions, settings } = q.data;
   const user = me.data.user;
   const live = new Map(r.items.map((it) => [it.id, liveOf(it, r, conversions, override)]));

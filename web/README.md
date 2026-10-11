@@ -46,7 +46,7 @@ Every part of a drafted requirement shows where it came from (evidence with sign
   5. planned: the vehicle-plan slot
 
   It ends in **Chain intact** with four checks recomputed on every call: every quote found in its source record, every record's SHA-256 matching, no gaps in the audit sequence, a rationale on every status change. A failed check shows in red with its reason. Esc closes, Space pauses, ←/→ step, 1×/2×, and a scrubber shows version, score and evidence as of any date. *Export dossier* downloads Markdown with the backend's `audit_chain.render` sections plus scores and integrity. Under `prefers-reduced-motion` the beats step without sweeps. The static Sankey with highlights is the base; the motion is layered on top.
-- **Competitor ripple** (`/ripple/[id]`, opened from the Refresh toast, the agent flag on My desk, notifications and the alert strip on an affected requirement): a competitor fact with a metric is matched on `targetSpec.key` against every target in the portfolio (all series, market variants, Baukasten) and every confirmed case on the topic. Each comparison converts into that target's cycle and market and gets a verdict: behind, at par (±3%), still ahead or not comparable, e.g. a different segment.
+- **Competitor ripple** (`/ripple/[id]`, opened from the Refresh toast, the agent flag on My desk, notifications and the alert strip on an affected requirement): a competitor fact with a metric is matched on `targetSpec.key` against every requirement target in the portfolio (all series, market variants, Baukasten). A competitor update affects requirements, not cases: a case without a requirement only carries the fact as evidence, and every competitor alert comes from a ripple. A newer fact from the same competitor on the same metric replaces the older one's open alerts. Each comparison converts into that target's cycle and market and gets a verdict: behind, at par (±3%), still ahead or not comparable, e.g. a different segment.
   - The band shows the conversion ("800 km CLTC ≈ 680 km WLTP, factor 0.85, range 0.80–0.90, assumption"); its factor is a live what-if, and only the head saves a new team value, with a reason.
   - The grid is series × car area; cells pulse from the source row, are colored by the worst target verdict, outlined for your items and show colleagues' avatars.
   - The impact drawer shows ours vs. the normalized competitor value, rank before → after with "moved because", and who was notified (owner and co-owners alert, watchers FYI, the head when a signed-off target is affected).
@@ -137,8 +137,8 @@ web/scripts/               seed, contract export, contract test
 
 ## Demo script: world changed + trace replay (about 60 seconds, after *Reset demo data*)
 
-1. **Lena → Signals → Refresh** (once): the agent run plays its five steps; the toast says *Competitor fact: Xiaomi SU7 800 km CLTC affects 5 items in 3 series* → **View ripple**. The Zeekr 900 km owner post (trust D) only lands on the watch list.
-2. **Ripple:** China is red (REQ-G60-CN-0003, 750 km CLTC, −6.2%), the 7 Series green (the battery Baukasten at 750 km WLTP, +10%), the 5 Series amber (REQ-G60-0010, 690 vs. ≈ 680 km WLTP, +1.5%) and the 1 Series grey (compact segment, not judged). CASE-G70-0006 (no target yet) moved up 17 → 13 "because Competitor gap 0.40 → 0.70".
+1. **Lena → Signals → Refresh** (once): the agent run plays its five steps; the toast says *Competitor fact: Xiaomi SU7 800 km CLTC affects 4 items in 3 series* → **View ripple**. The Zeekr 900 km owner post (trust D) only lands on the watch list.
+2. **Ripple:** China is red (REQ-G60-CN-0003, 750 km CLTC, −6.2%), the 7 Series green (the battery Baukasten at 750 km WLTP, +10%), the 5 Series amber (REQ-G60-0010, 690 vs. ≈ 680 km WLTP, +1.5%) and the 1 Series grey (compact segment, not judged). Only requirements are listed. The cases behind them are re-scored, and the impact list gives the reason (REQ-G60-0010: "Competitor gap 0.55 → 0.70", rank unchanged).
 3. **Drag the factor to 0.90:** "800 km CLTC ≈ 720 km WLTP", and the 5 Series cell turns red. The verdict hinges on an assumption, and the screen says so. *Team value 0.85* resets it.
 4. **Impact list → REQ-G60-0010 → Keep, with reason** ("At par in WLTP; we win on 10–80% charging time"). Repeats stay muted until the gap grows by more than 3 points.
 5. **Wei → the same row → Create market variant** (≥ 840 km CLTC): a proposal on his REQ-G60-CN-0003, not an edit.
@@ -158,7 +158,7 @@ web/scripts/               seed, contract export, contract test
 
 ## Demo script: the rest (about 6 minutes)
 
-1. **Lena, My desk:** four cards, one per kind of work. A competitor flag sits on top.
+1. **Lena, My desk:** four cards, one per kind of work. After *Signals → Refresh*, the competitor ripple sits on top of Agent flags as one row per fact.
 2. **CASE-G60-0003** (i5 range and charging): the Sankey shows 36 customers, where they spoke and what they say. Click *Public charging · hard to use* to read the six quotes; the competitor facts are the grey nodes.
 3. **② Your stance:** see the context-layer script above. The AI colleague opens with questions the data can't answer.
 4. **CASE-G60-0001 → Decide → Refer** to Jonas (Baukasten). **Switch to Jonas → Inbox → Accept:** a linked case appears in his workspace.

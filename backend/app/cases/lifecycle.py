@@ -40,17 +40,26 @@ class InvalidTransition(ValueError):
     pass
 
 
+OPEN_MIN_CUSTOMERS = 20   # distinct BMW customers of one line
+OPEN_MIN_DEFECTS = 10     # distinct BMW customers of one line who report a defect
+
+
 def open_reason(vehicle_figures: dict, thresholds: dict) -> str | None:
-    """The rule that opens an observed case, or None."""
+    """The rule that opens a case for a line, or None. A handful of comments is no
+    reason to change a car: a case needs enough distinct customers who complain or
+    wish for something (praise alone is a strength to protect, not a problem), or
+    enough customers reporting a defect, a competitor gap or a removed feature."""
     markets = vehicle_figures.get("markets", {})
     customers = vehicle_figures.get("distinct_customers", 0)
-    defects = sum(m["defects"] for m in markets.values())
+    negative = sum(m["complaints"] + m["wishes"] for m in markets.values())
+    likes = sum(m["likes"] for m in markets.values())
+    defects = vehicle_figures.get("defect_customers", 0)
     equipment = vehicle_figures.get("equipment", {})
     competitor = vehicle_figures.get("competitor_evidence", {})
-    if customers >= thresholds.get("open_min_customers", 10):
+    if customers >= thresholds.get("open_min_customers", OPEN_MIN_CUSTOMERS) and negative >= likes:
         return f"rule:min_customers ({customers} distinct customers)"
-    if defects >= thresholds.get("open_min_defects", 3):
-        return f"rule:defect ({defects} defect reports)"
+    if defects >= thresholds.get("open_min_defects", OPEN_MIN_DEFECTS):
+        return f"rule:defect ({defects} customers report a defect)"
     if equipment.get("removed"):
         return "rule:removed_feature (removed vs predecessor)"
     if competitor.get("likes_or_facts", 0) >= thresholds.get("competitor_gap_min_rivals", 1) and (

@@ -104,7 +104,7 @@ export function RequirementView() {
             </div>
           )}
           {b.alerts
-            .filter((a) => a.status === "open")
+            .filter((a) => a.status === "open" && !a.rippleId)
             .map((a) => (
               <div key={a.id} className="flex gap-2 rounded-lg border border-tone-amber-bd bg-tone-amber-bg px-4 py-2.5 text-sm">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />

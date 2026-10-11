@@ -153,7 +153,10 @@ async function main() {
   // 7. Refresh run + alert resolution + misc mutations.
   await call("refresh", { body: { series: "G60" } });
   await call("refresh", { body: { series: "G60" } }); // second run: dedupe, no new signals
-  await call("resolveAlert", { params: { id: "AL-0001" }, body: { status: "rework", rationale: "Range options need the new benchmark" } });
+  const lenaAlerts = (await call("alerts")) as { id: string; status: string; rippleId?: string; requirementId: string | null }[];
+  const rippleAlert = lenaAlerts.find((a) => a.status === "open" && a.rippleId);
+  expectTrue(!!rippleAlert && !!rippleAlert.requirementId, "the competitor alert from the run sits on a requirement");
+  await call("resolveAlert", { params: { id: rippleAlert!.id }, body: { status: "rework", rationale: "Range options need the new benchmark" } });
   await call("createQuestion", { params: { id: "CASE-G60-0006" }, body: { addressee: "engineering", question: "Space for a compact spare in the US?", why: "US-only option" } });
   await call("patchQuestion", { params: { id: "Q-0002" }, body: { answer: "About €14 per car" } });
   await call("patchCase", { params: { id: "CASE-G60-0011" }, body: { patch: { watcherIds: ["u-wei"] } }, as: "u-wei" });
@@ -263,7 +266,7 @@ type Replay = {
 type RippleT = {
   id: string;
   status: string;
-  items: { id: string; objectId: string; row: string; alsoRows: string[]; verdict: string; gapPct: number | null; muted: boolean; notified: { userId: string; kind: string }[]; rankBefore: number | null; rankAfter: number | null; movedBecause: string | null }[];
+  items: { id: string; kind: string; objectId: string; row: string; alsoRows: string[]; verdict: string; gapPct: number | null; muted: boolean; notified: { userId: string; kind: string }[]; rankBefore: number | null; rankAfter: number | null; movedBecause: string | null }[];
 };
 
 /** Trace replay of the hero + the competitor ripple across the portfolio, and the decision showing up in the replay. */
@@ -288,7 +291,9 @@ async function traceAndRippleStory() {
   expectTrue(new Set([...rows].map((r) => (r === "G60_CN" ? "G60" : r))).size >= 3, `the ripple spans ${rows.size} rows in 3+ series`);
   expectTrue(item(hero).verdict === "at_par" && item("REQ-G60-CN-0003").verdict === "behind" && item("REQ-G70-0002").verdict === "still_ahead" && item("REQ-F70-0002").verdict === "not_comparable", "verdicts: hero at par, China behind, Baukasten ahead, F70 not comparable");
   expectTrue(item(hero).notified.some((n) => n.userId === "u-katrin" && n.kind === "head"), "the head is notified because the hero is signed off");
-  expectTrue(items.some((i) => i.movedBecause && i.rankAfter !== null && i.rankBefore !== null && i.rankAfter < i.rankBefore), "a confirmed case without a target re-ranks with a reason");
+  expectTrue(items.every((i) => i.kind === "requirement"), "a competitor update affects requirements only, not target-less cases");
+  const seeded = (await call("alerts", { query: { all: "true" }, as: "u-katrin" })) as { status: string; rippleId?: string }[];
+  expectTrue(seeded.filter((a) => a.status === "open").every((a) => a.rippleId), "every open competitor alert comes from a ripple");
 
   const raise = (await call("decideRippleItem", { params: { id: active.id, itemId: item("REQ-G60-CN-0003").id }, body: { kind: "raise_target", rationale: "Beat Xiaomi" }, as: "u-wei" })) as { proposal: { kind: string; status: string } };
   const cn = (await call("requirementBundle", { params: { id: "REQ-G60-CN-0003" } })) as { requirement: { metrics: { target: string }[] } };
@@ -305,6 +310,8 @@ async function traceAndRippleStory() {
   const second = (await call("ripple", { params: { id: run2.ripples[0].id } })) as { ripple: RippleT };
   const h2 = second.ripple.items.find((i) => i.objectId === hero)!;
   expectTrue(h2.muted && h2.notified.length === 0, `a repeat fact stays muted for the kept target (gap ${h2.gapPct}%)`);
+  const weiAlerts = ((await call("alerts", { as: "u-wei" })) as { status: string; rippleId?: string; requirementId: string | null }[]).filter((a) => a.status === "open" && a.requirementId === "REQ-G60-CN-0003" && a.rippleId);
+  expectTrue(weiAlerts.length === 1 && weiAlerts[0].rippleId === second.ripple.id, `a newer fact from the same competitor replaces the older alert (${weiAlerts.map((a) => a.rippleId).join(", ")})`);
 
   await call("saveConversion", { params: { id: "CONV-CLTC-WLTP" }, body: { factor: 0.9, rationale: "x" }, expect: 403 });
   await call("saveConversion", { params: { id: "CONV-CLTC-WLTP" }, body: { factor: 0.9, rationale: "Long-range trims read closer to 0.9" }, as: "u-katrin" });

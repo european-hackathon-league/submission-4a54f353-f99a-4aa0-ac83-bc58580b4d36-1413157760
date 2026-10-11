@@ -17655,7 +17655,7 @@
    "type": "performance_target",
    "changeDepth": "platform_powertrain",
    "featureName": "Real-world range and charging time",
-   "bodyMd": "## Problem\n\ni5 owners lose noticeable range in cold weather and struggle with public charging (finding chargers, slow sessions). New competitors set the bar at 700+ km WLTP and 10–80% in about 20 minutes.\n\n## Who is affected\n\nBEV owners, mostly US (G60 BEV verbatims: electric range 43 pain, public charging 28). Nordic owners in the web signals. Europe is the biggest i5 market by volume but has few verbatims.\n\n## Evidence summary\n\n- Range 'not OK' and public charging 'not user-friendly' verbatims\n- Competitor facts: Mercedes CLA, Audi A6 e-tron, Volvo ES90 (illustrative values)\n- Monitor alert: a competitor raises the bar (see Alerts)\n\n## Today's car\n\ni5 eDrive40: 81.2 kWh, WLTP 513–627 km, DC up to 205 kW.\n\n## Competitors\n\nBenchmarks collected by the competitor agent; announcements are trust E and treated as assumptions.\n\n## Brand fit\n\nEfficiency pillar. AI proposal 0.8, not yet confirmed.\n\n## Options considered\n\n1. Real-world highway range target at 120 km/h\n2. Charging-time target 10–80%\n3. Winter package: heat pump + preconditioning by default\n\n## Decision log\n\n_No decisions yet._",
+   "bodyMd": "## Problem\n\ni5 owners lose noticeable range in cold weather and struggle with public charging (finding chargers, slow sessions). New competitors set the bar at 700+ km WLTP and 10–80% in about 20 minutes.\n\n## Who is affected\n\nBEV owners, mostly US (G60 BEV verbatims: electric range 43 pain, public charging 28). Nordic owners in the web signals. Europe is the biggest i5 market by volume but has few verbatims.\n\n## Evidence summary\n\n- Range 'not OK' and public charging 'not user-friendly' verbatims\n- Competitor facts: Mercedes CLA, Audi A6 e-tron, Volvo ES90 (illustrative values); they become benchmarks once the case has a requirement\n\n## Today's car\n\ni5 eDrive40: 81.2 kWh, WLTP 513–627 km, DC up to 205 kW.\n\n## Competitors\n\nBenchmarks collected by the competitor agent; announcements are trust E and treated as assumptions.\n\n## Brand fit\n\nEfficiency pillar. AI proposal 0.8, not yet confirmed.\n\n## Options considered\n\n1. Real-world highway range target at 120 km/h\n2. Charging-time target 10–80%\n3. Winter package: heat pump + preconditioning by default\n\n## Decision log\n\n_No decisions yet._",
    "bodyVersion": 1,
    "signalIds": [
     "G60-0034",
@@ -23595,17 +23595,6 @@
  ],
  "notifications": [
   {
-   "id": "N-0001",
-   "userId": "u-lena",
-   "kind": "alert",
-   "title": "Competitor raises the bar",
-   "body": "Mercedes CLA ~790 km WLTP vs your range case",
-   "link": "/cases/CASE-G60-0003",
-   "actorId": "agent:monitor",
-   "read": false,
-   "createdAt": "2026-10-10T21:04:00Z"
-  },
-  {
    "id": "N-0002",
    "userId": "u-lena",
    "kind": "mention",
@@ -23728,34 +23717,6 @@
   }
  ],
  "alerts": [
-  {
-   "id": "AL-0001",
-   "ownerId": "u-lena",
-   "caseId": "CASE-G60-0003",
-   "requirementId": null,
-   "verdict": "raises_the_bar",
-   "title": "Mercedes CLA: ~790 km WLTP and 320 kW raise the bar for the i5 successor",
-   "detail": "The competitor agent found a trust-B competitor fact that beats today's i5 (WLTP 513–627 km, 205 kW). Your range options in CASE-G60-0003 may be outdated.",
-   "signalIds": [
-    "SIG-CASE-G60-0003-W0"
-   ],
-   "status": "open",
-   "createdAt": "2026-10-10T21:04:00Z"
-  },
-  {
-   "id": "AL-0002",
-   "ownerId": "u-wei",
-   "caseId": "CASE-G60-CN-0003",
-   "requirementId": "REQ-G60-CN-0003",
-   "verdict": "raises_the_bar",
-   "title": "Watch list: NIO announces ~850 km CLTC for the next ET7",
-   "detail": "An announcement (trust E, not on sale) is above your 750 km CLTC draft. Kept on the watch list: no change is proposed until an on-sale fact confirms it.",
-   "signalIds": [
-    "SIG-CASE-G60-CN-0003-W1"
-   ],
-   "status": "open",
-   "createdAt": "2026-10-10T22:30:00Z"
-  },
   {
    "id": "AL-0003",
    "ownerId": "u-lena",
@@ -33158,32 +33119,6 @@
     ]
    },
    "rationale": "Climate is a top-3 complaint in the US; Controlling already accepted €18–25 per car."
-  },
-  {
-   "seq": 199,
-   "at": "2026-10-10T21:04:00Z",
-   "actorId": "agent:monitor",
-   "actorType": "ai",
-   "action": "alert.raised",
-   "objectType": "case",
-   "objectId": "CASE-G60-0003",
-   "after": {
-    "verdict": "raises_the_bar",
-    "title": "Mercedes CLA: ~790 km WLTP and 320 kW raise the bar for the i5 successor"
-   }
-  },
-  {
-   "seq": 200,
-   "at": "2026-10-10T22:30:00Z",
-   "actorId": "agent:monitor",
-   "actorType": "ai",
-   "action": "alert.raised",
-   "objectType": "requirement",
-   "objectId": "REQ-G60-CN-0003",
-   "after": {
-    "verdict": "raises_the_bar",
-    "title": "Watch list: NIO announces ~850 km CLTC for the next ET7"
-   }
   }
  ]
 }
