@@ -1,0 +1,742 @@
+Read HANDOFF.md (section “Next: wire the UI”), CLAUDE.md and backend/API.md. The UI is in Web folder.
+
+<pasted_content id="fe2f">
+I wrote the integration guide: INTEGRATION-GUIDE.md at the repo root, about 460 lines, ready to send. I didn't commit it.
+
+The backend changed while we were working, and that shaped the whole guide. In the last hour Ghassen finished phases 7 to 10 on main. The backend now has a real FastAPI API with about 50 endpoints (backend/API.md), its own auth and demo users. That API doesn't match what the frontend calls:
+
+Different shapes and names: paths, field names, IDs and vocabularies all differ. For example, markets are USA vs US, requirement statuses are approved vs pm_approved, and cases are CASE-0012 vs CASE-G60-0001.
+Different concepts:
+A case has a separate state for each vehicle line.
+Weight profiles belong to a vehicle × market combination, not to a user.
+Requirements are stored as markdown pages rather than structured fields.
+Brand fit is a multiplier on the score, not one of the factors.
+Features with no backend counterpart: about half the UI features: open questions, meeting notes, referrals, innovation pool, vehicle plan, comments, alerts, head sign-off, the quality check, segments and the deck. There's also no endpoint that lists users.
+What the guide covers:
+
+How to use it: reading order, so an AI agent can work from it directly.
+The product: the concepts, the non-negotiable rules ("AI proposes, PM decides", reasons and audit trail, fixed taxonomy) and the personas.
+The frontend: how the contract, client, mock and seed work, and how to run it.
+Each screen: what the PM does there and which endpoints it calls.
+All 56 frontend endpoints: each mapped to its closest backend call, or marked "none".
+The frontend's business rules, so nothing gets lost when the mock is replaced: lifecycles, permissions, scoring, AI flows, quality check, segments, deck.
+The backend as it really is: how to run it, auth, demo user IDs and core concepts.
+Mapping tables: the vocabulary and feature-coverage translations between the two sides.
+A step-by-step integration plan, plus eight decisions the team has to make, each with a recommendation.
+Gotchas: scale (1,206 cases and about 13,000 signals versus the mock's 28 and 500), save conflicts, per-vehicle actions, market labels.
+Recommended approach: an adapter layer inside Next.js. The UI stays exactly as it is. The mock handlers are replaced one endpoint at a time by handlers that call FastAPI and translate the shapes. Features the backend lacks keep running on a small side store keyed by the real IDs. The demo can switch back to the mock at any point.
+</pasted_content id="fe2f">
+
+Check for inconsistencies and plan the UI wiring by understanding how it work and match every functionality of the frontend to the backend
+
+---
+
+<task-notification>
+<task-id>a17e2c18f3df98818</task-id>
+<tool-use-id>toolu_01NXYEnDVFJJ929L2JE6hLH2</tool-use-id>
+<output-file>C:\Users\Zaara\AppData\Local\Temp\claude\C--TU-Projects-BMW-Product-Management-Challenge\16cd701a-6473-48a5-9bdf-df2c81c4ba01\tasks\a17e2c18f3df98818.output</output-file>
+<status>completed</status>
+<summary>Agent "Verify guide claims vs repo" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I checked all 13 claims. Five are wrong or unsupported: #2, #3, #4, #5 and #13. The rest hold, though #1 should be reworded.
+
+**1. PR #5 / `feature/frontend-demo` merged: TRUE, but the wording needs fixing**
+- The latest commit on `main` is `918ece1 Merge pull request #5 from ghassenzaara/feature/frontend-demo`.
+- `git merge-base --is-ancestor origin/feature/frontend-demo main` says the branch is part of main. `git log main..origin/feature/frontend-demo` is empty.
+- Only `origin/feature/frontend-demo` exists (no local branch). Any wording that calls the frontend a separate, unmerged branch is out of date. The guide's line "the frontend branch still has `docs/`" is one example.
+
+**2. `docs/` vs `All-context/`: both are tracked; partly duplicated (similar, not identical)**
+- `docs/` has 57 tracked files and `All-context/` has 60.
+- `CLAUDE.md:32-37,153` only references `All-context/...`.
+- `web/scripts/seed.ts:6,55` reads `../../docs/02-data/processed`.
+- `diff -rq` shows the same structure under different names and some differing files:
+  - `docs/02-data` vs `All-context/02-data-provided-by-pm`
+  - `03-meetings` vs `03-meetings-with-pm`
+  - `05-solution` vs `05-web-sources` + `06-solution-concept`
+  - `README.md`, `GLOSSARY.md` and several `01-challenge/*.md` files differ.
+  - `04-team-notes` contents differ.
+- Guide line 441 says `docs/` exists only on the frontend branch. That is FALSE: `main` has both folders, and `docs/` came in with the PR #5 merge.
+
+**3. OpenAI key: it is set, so the guide is FALSE here**
+- `backend/.env` exists, and `OPENAI_API_KEY` at line 18 is non-empty (I did not print the value).
+- `OPENAI_CHAT_MODEL`, `OPENAI_STRONG_MODEL` and `EMBEDDING_PROVIDER=openai` are also set.
+- This matches `HANDOFF.md:16` ("OpenAI is set").
+- The guide is wrong in two places: §7 line ~297 ("key still missing → offline fallbacks") and line 440 ("2,557 signals still unclassified" / needs the key).
+- `REDDIT_CLIENT_ID/SECRET` and `AUTH_MODE` are empty.
+
+**4. Numbers: mostly NOT backed by `backend/reports/`**
+- **1,206 cases:** partly supported. `backend/reports/clustering_thresholds.md:8` gives 1206 cases at threshold 0.15. But that report used the `local:hash1536` embeddings and 11,091 signals, not OpenAI, and it says 153 cases "would open", not 376.
+- **376 opened by rule:** not found anywhere in the repo.
+- **~13,000 signals:** not found. The report says 11,091 signals. The 13xxx values in `e2e_G60_USA.md` are audit-event ids, not counts.
+- **2,557 unclassified:** not found.
+- **Scores for 10 configs:** not found in reports.
+- The only other place these figures appear is the session prompt file `.entire/metadata/.../prompt.txt:26`. For the doc, treat them as unsupported.
+
+**5. Export: "top N" is the more accurate wording**
+- `backend/app/api/routers/requirements.py:58-59`: `GET /requirements/export`, with params `profile_id`, `format: "json"|"csv" = "json"` and `top_n: int = 10`.
+- Line 68 filters to `statuses=("approved",)` and keeps the first `top_n`.
+- So it is "approved top N, default 10". Both the guide and API.md are compatible with that.
+- One nit: the guide's mapping says `format=csv|json` but doesn't mention the `top_n` param or that the default format is json.
+
+**6. CORS allows http://localhost:3000: TRUE**
+- `backend/app/main.py:20-22` reads the allowed origins from `cors_origins`.
+- The default is `"http://localhost:3000,http://localhost:5173"` (`backend/app/config.py:34`), and `backend/.env:12` sets the same value.
+
+**7. Demo users: TRUE**
+- `backend/app/demo.py:30-36` defines:
+  - `...0001` Demo PM 5 Series, pm, `[G60]`
+  - `...0002` PM 7 Series, pm, `[G70]`
+  - `...0003` PM 1 Series, pm, `[F70]`
+  - `...0004` engineer, `[]`
+  - `...0005` admin, `[]`
+- This matches guide line 310.
+
+**8. Enums and multipliers: TRUE**
+- `0005_signals_cases_requirements.sql`:
+  - line 19: `brand_fit in ('fits','neutral','off_brand')`
+  - line 42: `release_fit in ('current_car','next_gen','ota')`
+  - line 149: `release_target` has the same three values
+  - line 150: `evidence_level in ('bmw_data','web','assumption')`
+  - line 153: `cost_source in ('option_price','ai_estimate','pm','engineering')`
+  - line 156: `status in ('draft','in_discussion','approved','rejected','deleted')`
+- Multipliers: `0003_records_and_config.sql:137` defaults to `{"fits":1.0,"neutral":0.8,"off_brand":0.5}`, and `app/scoring/score.py:115-116` uses the same values.
+- There are also cost multipliers S/M/L = 1.0/0.85/0.7 if the guide wants to mention them.
+
+**9. Models: TRUE**
+- `backend/app/config.py:40-41` sets `openai_chat_model="gpt-6-luna"` and `openai_strong_model="gpt-6.1-sol"`.
+- `.env:19-20` uses the same names, and `CLAUDE.md:118` matches.
+- Embeddings use `text-embedding-3-small`, dim 1536 (`config.py:52-53`).
+
+**10. npm scripts: TRUE**
+- `web/package.json:11-13` defines `seed`, `export-contract` and `contract-test`, all via `tsx scripts/*.ts`.
+- `typecheck` and `lint` also exist.
+
+**11. Web env: there is no env file**
+- `web/` has no `.env.local` and no `.env.example`.
+- `NEXT_PUBLIC_API_BASE_URL` defaults to `"/api"`, the mock route (`web/src/lib/api/client.ts:8`), which matches guide line 76.
+
+**12. `landing/`: exists and is tracked**
+- It is a standalone static `landing/index.html` loading page (page title "Loading") with a BMW headlight intro.
+- Assets: `assets/eyes.png`, `assets/frames/f*.jpg`, `assets/lights.mp4`.
+- Added in commit `3af14ec Add loading page with BMW headlight intro`. It is not part of the Next app.
+
+**13. Endpoint counts**
+- `web/src/contracts/api.ts`: 56 `ep({ method: ... })` declarations. TRUE.
+- Backend: 53 `@router` routes plus `/health` in `main.py`, so 54 in total. The guide's "~50" is low.
+  - `cases.py`: 12
+  - `collab.py`: 9
+  - `config.py`: 15
+  - `requirements.py`: 10
+  - `signals.py`: 7</result>
+<usage><subagent_tokens>79302</subagent_tokens><tool_uses>12</tool_uses><duration_ms>86432</duration_ms></usage>
+</task-notification>
+
+---
+
+can you check for inconsistencies with what we have in our md file can you check if the integration md file is coherent with the latext claude md and md files updates
+
+---
+
+<task-notification>
+<task-id>a5016ec5631763c20</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>C:\Users\Zaara\AppData\Local\Temp\claude\C--TU-Projects-BMW-Product-Management-Challenge\16cd701a-6473-48a5-9bdf-df2c81c4ba01\tasks\a5016ec5631763c20.output</output-file>
+<status>completed</status>
+<summary>Agent "Map frontend contract and usage" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I found 56 endpoints. The UI calls 53 of them; `clusters`, `saveWeightProfile` and `portfolio` are only used in `scripts/contract-test.ts`. There are no UI calls to undeclared endpoints. All paths below are relative to `C:\TU\Projects\BMW-Product-Management-Challenge\web\`.
+
+## 1. Endpoints in `src/contracts/api.ts` (`endpoints`, lines 346-479)
+
+There are exactly **56**. Request and response schemas are defined at lines 86-343. `Rationale` means a string of at least 1 character (line 82). `Ok` means `{ok: true}` (line 83).
+
+| # | name | method | path | query | body | response |
+|---|---|---|---|---|---|---|
+| 1 | me | GET | /me | – | – | `{user: User, workspace: Workspace, weightProfile: WeightProfile}` |
+| 2 | users | GET | /users | – | – | `User[]` |
+| 3 | updateWorkspace | PUT | /workspace | – | Workspace without `id`, `userId`, all fields optional (series, region, projectType, weightProfileId, sourceFilter, watchlist) | `Workspace` |
+| 4 | search | GET | /search | `q` (required) | – | `SearchResult[]`: `{type: case/requirement/signal/user, id, title, subtitle, href}` |
+| 5 | signals | GET | /signals | series?, caseId?, agent?, market?, kind?, status?, q?, limit? (int) | – | `Signal[]` |
+| 6 | clusters | GET | /clusters | series? | – | `SignalCluster[]` |
+| 7 | agentRuns | GET | /agent-runs | – | – | `AgentRun[]` |
+| 8 | refresh | POST | /agent-runs/refresh | – | `{series}` | `{run: AgentRun, signals: Signal[], notifications: number}` |
+| 9 | quarantine | GET | /quarantine | – | – | `QuarantineItem[]` |
+| 10 | cases | GET | /cases | series?, ownerId?, state?, scope? (Region) | – | `Case[]` |
+| 11 | createCase | POST | /cases | – | title (min 3), series, scope, carArea, type, changeDepth, summary, signalIds (min 1), rationale | `Case` |
+| 12 | caseBundle | GET | /cases/:id | – | – | `{case, signals[], questions: OpenQuestion[], requirements[], referrals[], alerts[], meetingNotes[], proposals[], linkedCases: Case[]}` |
+| 13 | patchCase | PATCH | /cases/:id | – | `{patch, rationale?}`. `patch` is partial: title, summary, bodyMd, scope, markets, carArea, type, changeDepth, featureName, coOwnerIds, watcherIds, manualRank, manualRankReason, brandFit | `Case` |
+| 14 | transitionCase | POST | /cases/:id/transition | – | action (CaseAction), rationale, toUserId?, mergeIntoId?, horizon?, escalate? | `Case` |
+| 15 | createQuestion | POST | /cases/:id/questions | – | addressee, contact?, question (min 3), why, dueDate?, fieldsAffected? | `OpenQuestion` |
+| 16 | addMeetingNote | POST | /cases/:id/meeting-notes | – | title, date, attendees[], text (min 10) | `{note: MeetingNote, proposals: Proposal[]}` |
+| 17 | savePmContext | PUT | /cases/:id/pm-context | – | PmContext without updatedAt/updatedBy: marketFocus, costSensitivity, positioning, timing (each nullable), note | `{case: Case, message: ChatMessage}` |
+| 18 | generateRequirements | POST | /cases/:id/requirements/generate | – | `{}` | `Requirement[]` |
+| 19 | exportCaseMd | GET | /cases/:id/export.md | – | – | `{filename, content}` |
+| 20 | caseSegments | GET | /cases/:id/segments | – | – | `ChatSegment[]`: `{key, label, market, powertrain (nullable), verbatims}` |
+| 21 | questions | GET | /questions | all? (bool) | – | `OpenQuestion[]` |
+| 22 | patchQuestion | PATCH | /questions/:id | – | partial: addressee, contact, question, why, status, answer, dueDate | `OpenQuestion` |
+| 23 | requirements | GET | /requirements | series?, caseId? | – | `Requirement[]` |
+| 24 | requirementBundle | GET | /requirements/:id | – | – | `{requirement, case, signals[], questions[], variants: Requirement[], alerts[], proposals[], plannedFeature (nullable), check: RequirementCheck (nullable)}` |
+| 25 | patchRequirement | PATCH | /requirements/:id | – | `{patch, rationale}` (rationale required). `patch` is partial: title, description, marketScope, releaseTarget, carArea, changeDepth, metrics, acceptanceCriteria, assumptions, evidenceLevel, cost, manualRank | `Requirement` |
+| 26 | transitionRequirement | POST | /requirements/:id/transition | – | `{action: RequirementAction, rationale}` | `Requirement` |
+| 27 | runRequirementCheck | POST | /requirements/:id/check | – | `{}` | `RequirementCheck` |
+| 28 | scores | GET | /scores | profileId?, series? | – | `ScoresResponse` |
+| 29 | previewScores | POST | /scores/preview | – | `{weights: partial record of FactorKey→number, series?}` | `ScoresResponse` |
+| 30 | weightProfiles | GET | /weight-profiles | – | – | `WeightProfile[]` |
+| 31 | saveWeightProfile | PUT | /weight-profiles/:id | – | WeightProfile without `id`, all fields optional | `WeightProfile` |
+| 32 | createWeightProfile | POST | /weight-profiles | – | WeightProfile without id, ownerId, isDefault: name, description, weights, costMultiplier | `WeightProfile` |
+| 33 | brandProfile | GET | /brand-profile | – | – | `BrandProfile` |
+| 34 | saveBrandProfile | PUT | /brand-profile | – | pillars, doNot, notesMd | `BrandProfile` |
+| 35 | referrals | GET | /referrals | – | – | `Referral[]` |
+| 36 | decideReferral | POST | /referrals/:id/decide | – | decision (accept/decline/escalate/resolve), rationale, resolution? (one_market/variant/keep_both/take_over/return) | `Referral` |
+| 37 | innovation | GET | /innovation | – | – | `{meta: InnovationMeta, case: Case}[]` |
+| 38 | voteInnovation | POST | /innovation/:caseId/vote | – | `{}` | `InnovationMeta` |
+| 39 | pullInnovation | POST | /innovation/:caseId/pull | – | `{series, rationale}` | `Case` |
+| 40 | plan | GET | /plans/:series | – | – | `VehiclePlan` |
+| 41 | patchPlanFeature | PATCH | /plans/:series/features/:featureId | – | `{patch, rationale}`. `patch` is partial: action, note, release, protected | `VehiclePlan` |
+| 42 | exportRequirements | POST | /exports | – | series, format (codebeamer_csv/json), requirementIds? | `{filename, mime, content, count}` |
+| 43 | requirementDeck | POST | /plans/:series/deck | – | `{}` | `DeckResponse`: `{filename, series, successorName, generatedAt, slides: DeckSlide[]}` (DeckSlide at lines 259-278) |
+| 44 | messages | GET | /threads/:type/:id/messages | – | – | `ChatMessage[]` |
+| 45 | postMessage | POST | /threads/:type/:id/messages | – | content (min 1), segment? | `{messages: ChatMessage[], proposals: Proposal[]}` |
+| 46 | decideProposal | POST | /proposals/:id/decide | – | decision (accept/reject), rationale? | `Proposal` |
+| 47 | comments | GET | /comments | objectType (case/requirement), objectId | – | `Comment[]` |
+| 48 | addComment | POST | /comments | – | objectType, objectId, body | `Comment` |
+| 49 | notifications | GET | /notifications | – | – | `Notification[]` |
+| 50 | readNotifications | POST | /notifications/read | – | ids? | `Ok` |
+| 51 | alerts | GET | /alerts | all? | – | `Alert[]` |
+| 52 | resolveAlert | POST | /alerts/:id/resolve | – | status (dismissed/rework), rationale | `Alert` |
+| 53 | audit | GET | /audit | objectId?, actorType? (human/ai), limit? | – | `AuditEvent[]` |
+| 54 | taxonomy | GET | /taxonomy | – | – | `TaxonomyResponse` |
+| 55 | portfolio | GET | /portfolio | – | – | `PortfolioResponse` (lines 303-328) |
+| 56 | reset | POST | /admin/reset | – | `{}` | `Ok` |
+
+No endpoint uses DELETE, although the route file exports a DELETE handler.
+
+## 2. Entities (`src/contracts/entities.ts`) and enums (`src/contracts/enums.ts`)
+
+**Enums:**
+- **Series** (`enums.ts:8`): G60, F70, G70
+- **Market** (`:12`): EU, US, CN, RoW, unknown
+- **Region** (`:16`): global, RoW, CN
+- **Role** (`:19`): vehicle_pm, attribute_pm, head
+- **ProjectType** (`:22`): new_gen, lci
+- **SignalKind** (`:26`): complaint, wish, like, competitor_fact, trend, innovation
+- **Severity** (`:29`): defect, difficult_to_use, wish, none
+- **Agent** (`:33`): bmw_data, competitor, customer_public, trends, innovation_scout
+- **SourceType** (`:36-49`): bmw_feedback, bmw_study, bmw_sales, option_list, review, video, forum, social, news, competitor_official, trend_report, trade_fair
+- **Trust** (`:53`): A–E
+- **Audience** (`:56`): owner, reviewer, public
+- **Powertrain** (`:59`): ICE, PHEV, BEV, unknown
+- **SignalStatus** (`:62`): new, clustered, unclustered, quarantined
+- **CarArea** (`:66-78`): 11 values (exterior_design … quality_materials)
+- **AspectGroup** (`:82-94`): 11 values
+- **CaseType** (`:97`): new_feature, fix_improve, performance_target, quality_perception, market_variant, brand_differentiator, regression
+- **ChangeDepth** (`:108`): trim_option, part_module, platform_powertrain, software_ota
+- **CaseState** (`:112`): observed, new, investigating, awaiting_answers, ready, decided
+- **CaseOutcome** (`:115`): confirmed, referred, innovation_pool, parked, merged, rejected
+- **CaseAction** (`:118-130`): open, start, await, ready, reopen, confirm, refer, innovation, park, merge, reject
+- **EvidenceLevel** (`:133`): high, medium, low, assumption
+- **FactorKey** (`:137-146`): customers, severity, satisfaction_gap, competitor_gap, market_volume, regression, trend, brand_fit
+- **RequirementStatus** (`:150-158`): draft, in_discussion, pm_approved, signed_off, planned, exported, rejected
+- **RequirementAction** (`:161`): discuss, approve, send_back, sign_off, plan, export, reject, restore
+- **ReleaseTarget** (`:173`): next_gen, lci, ota
+- **CostSize** (`:176`): S, M, L
+- **CostSensitivity**: low, medium, high
+- **MarketFocus**: global, US, EU, CN
+- **Positioning**: base, premium, luxury
+- **CostSource** (`:185`): option_price, ai_estimate, pm, finance
+- **MetricBasis** (`:188`): evidence, assumption
+- Other enums at lines 192-250: CheckKind, CheckSeverity, Addressee, QuestionStatus, AnswerSource, ReferralStatus, ObjectType, ProposalKind/Source/Status, NotificationKind, AlertVerdict/Status, ActorType, PlanAction, Availability, InnovationHorizon.
+
+**Entities:**
+- **User** (`entities.ts:62`): id, name, initials, role, title, series[], region, attributeScope?, color, synthetic
+- **Workspace** (`:91`): id, userId, series, region, projectType, weightProfileId, sourceFilter `{excludeSocial, ownersOnly, minTrust}`, watchlist `{competitors, topics, domains, languages}`
+- **WeightProfile** (`:103`): id, name, description, ownerId (nullable), isDefault, weights (FactorKey→0..1), costMultiplier (CostSize→number)
+- **Signal** (`:129-166`):
+  - Identity and source: id, kind, severity, agent, sourceType, sourceName, trust, url?, recordRef?, publishedAt, fetchedAt
+  - Vehicle and market: series, vehicleRole (current/predecessor/competitor/unknown), competitor?, powertrain, market, marketBasis (stated/inferred/unknown), country?, carArea
+  - Taxonomy: topicId (nullable), aspectGroup (nullable), featureHint
+  - Content: summary, quote, quoteEn?, language, audience, reach?, reachUnit?, metric? `{name, value, unit, cycle?}`
+  - State: caseId (nullable), status, synthetic
+- **Case** (`:242-292`):
+  - Identity: id, title, shortTitle, summary, highlights[], topicId (nullable), pmContext (nullable PmContext, `:231`)
+  - Series and ownership: series, relatedSeries[], scope, ownerId, coOwnerIds, watcherIds
+  - Lifecycle: state, outcome (nullable), outcomeNote?, markets[]
+  - Classification: carArea, type, changeDepth, featureName
+  - Body: bodyMd, bodyVersion, signalIds
+  - figures: `{perMarket: MarketFigure[], equipmentToday, competitorOffer[], trend}`. MarketFigure (`:208`) is market, customers, complaints, wishes, likes, studyLabel?, studyScore?, salesShare2030?, sentiment.
+  - Assessment: marketConflict (nullable `{note, markets}`), brandFit `{value, reason, confirmedBy (nullable)}`, factors, evidenceLevel
+  - context: `{preset: ContextItem[], pmInputs: ContextItem[]}`
+  - Links and ranking: originCaseId (nullable), mergedInto (nullable), requirementIds, manualRank (nullable), manualRankReason?, newSignalCount
+  - Metadata: createdAt, createdBy, updatedAt, synthetic
+- **ScoredCase** (`:295`): caseId, profileId, score, rank, contributions (FactorKey→0..1)
+- **ScoresResponse** (`api.ts:118`): profileId, weights, cases: ScoredCase[], requirements: `{requirementId, score, rank}[]`
+- **Requirement** (`:368-394`):
+  - Identity and scope: id, caseId, series, title, shortTitle, description, marketScope (Region), variantOf (nullable)
+  - State: status, releaseTarget, carArea, changeDepth
+  - metrics: Metric[], where Metric (`:358`) is `{id, question, target, unit?, basis, benchmark?}`
+  - Content: acceptanceCriteria[], assumptions[], evidenceLevel
+  - cost: `{size: S/M/L, eurBand, source: CostSource, note}`
+  - Other: ownerId, manualRank (nullable), plannedFeatureId (nullable), sentBackReason?, createdAt, updatedAt, synthetic
+- **Proposal** (`:340`): id, objectType, objectId, source, kind, summary, changes `{field, before, after}[]`, questionId?, citations[], status, createdAt, decidedBy?, decidedAt?
+- **ChatMessage** (`:475`): id, objectType, objectId, role (user/assistant), authorId?, content, citations `{ref, label}[]`, proposalIds[], createdAt
+- **Notification** (`:509`): id, userId, kind, title, body, link, actorId?, read, createdAt
+- **AuditEvent** (`:537`): seq, at, actorId (a user id or `"agent:&lt;name&gt;"`), actorType, action, objectType, objectId, before?, after?, rationale?
+- **PlannedFeature** (`:447`): id, carArea, name, today (Availability), todayDetail, action (PlanAction), requirementIds, release, protected, note
+- **VehiclePlan** (`:461`): series, successorName, projectType, sop, ownerIds, features[]
+- **TaxonomyResponse** (`api.ts:295`): version, carAreas `{id, label, description}[]`, topics `{id, label, shortLabel, carArea, hint (nullable)}[]`, aspectGroups `{id, description}[]`
+
+## 3. Endpoint calls per screen and component
+
+`src/app/(app)/`:
+- `page.tsx` → `desk-view.tsx`: me, cases (no query), questions, referrals, alerts, notifications, requirements (lines 24-30); decideReferral (263)
+- `inbox/inbox-view.tsx`: me, referrals, notifications, cases, readNotifications (21-25); decideReferral (113)
+- `cases/cases-view.tsx`:
+  - me (46); cases with no query (59); weightProfiles (263)
+  - `api("scores", {query:{profileId}})` once per default profile, through `useQueries` (265-266)
+  - plus useScores, WeightPanel and CaseActionDialog
+- `cases/[id]/case-view.tsx`:
+  - Page: caseBundle (71), me (72), taxonomy (73), postMessage (83)
+  - patchCase: for watching (84) and for saving the page body (458)
+  - `api("exportCaseMd")` (382), generateRequirements (516), resolveAlert (582)
+  - Child components: ChatPanel, CaseDetails, KnowledgeForm, QuestionsPanel, ObjectActivity, RequirementSheet, CaseActionDialog, useScores
+- `radar/radar-view.tsx`: me (40), signals `{series}` (46), cases `{series}` (47), agentRuns (48), quarantine (49), refresh (50), createCase (176)
+- `requirements/[id]/requirement-view.tsx`: requirementBundle, me (30-31)
+- `requirements/requirements-redirect.tsx`: me (10)
+- `plan/[series]/plan-view.tsx`: me, plan, requirements `{series}` (50-52); `api("exportRequirements")` (67); `api("requirementDeck")` (76); patchPlanFeature (206)
+- `innovation/innovation-view.tsx`: innovation, me, voteInnovation, pullInnovation (19-36)
+- `settings/settings-view.tsx`: me, weightProfiles, brandProfile, updateWorkspace (19-22); saveBrandProfile (155)
+- `audit/audit-view.tsx`: audit `{actorType, objectId}` (16)
+- `src/app/login/login-view.tsx`: users (28)
+
+`src/components/`:
+- `cases/case-action-dialog.tsx`: me, cases (only fetched when merging), transitionCase (41-46)
+- `cases/case-details.tsx`: me, patchCase (42-44)
+- `cases/knowledge-form.tsx`: savePmContext (49)
+- `cases/questions-panel.tsx`: patchQuestion (67), createQuestion (117), addMeetingNote (175)
+- `cases/use-scores.ts`: scores (9); previewScores (10). previewScores is a POST, but it is called through `useApi`, i.e. as a query, with `enabled: !!whatIf`.
+- `cases/weight-panel.tsx`: me, weightProfiles, updateWorkspace, createWeightProfile (23-26)
+- `chat/chat-panel.tsx`: messages, caseSegments, postMessage (31-33)
+- `common/activity.tsx`: comments (55), addComment (56), audit `{objectId}` (103)
+- `common/people.tsx`: users (10)
+- `common/proposal-card.tsx`: decideProposal (49)
+- `requirements/quality-check.tsx`: runRequirementCheck (15)
+- `requirements/requirement-action-dialog.tsx`: transitionRequirement (32)
+- `requirements/requirement-parts.tsx`: patchRequirement (86)
+- `requirements/requirement-sheet.tsx`: requirementBundle, me (30-31)
+- `shell/app-shell.tsx`: me, referrals, alerts, notifications (33-36)
+- `shell/notification-bell.tsx`: notifications, readNotifications (24-25)
+- `shell/persona-menu.tsx`: `api("reset")` (63)
+- `shell/search-command.tsx`: search (16)
+
+**Declared but never called by the UI:** `clusters` (api.ts:362), `saveWeightProfile` (:429), `portfolio` (:477). All three are called only in `scripts/contract-test.ts` (lines 60, 167, 105).
+
+**UI calls to undeclared endpoints:** none. Every call goes through `api()` with a typed endpoint name, and the only raw `fetch` is `src/lib/api/client.ts:42`.
+
+## 4. Plumbing
+
+**`src/app/api/[...path]/route.ts`:**
+- Lines 14-26 compile every endpoint path into a regex, turning each `:param` into `([^/]+)`.
+- `match()` (lines 28-35) returns the first endpoint whose method and regex both match.
+- No match returns 404 with `{error}` (line 40).
+- Acting user (line 43): `x-user-id` header, then the `rs_user` cookie, then the default `"u-lena"`. A user not in the store gets a 401 (line 45).
+- The query is parsed from the search params with the endpoint's Zod schema; the body is parsed from JSON, with an empty body treated as `{}` (lines 48-53).
+- It then calls `handlers[name]({params, query, body, user})` from `src/mock/handlers.ts`.
+- Outside production, the response is checked against the contract and only logged if it doesn't match (lines 58-61).
+- Errors: a ZodError becomes 400 `{error: "Invalid request", issues}`; an `ApiError` becomes `{error}` with its own status; anything else is 500 `{error}` (lines 63-68).
+- GET, POST, PUT, PATCH and DELETE are all exported (line 71).
+
+**`src/lib/api/client.ts`:**
+- Base URL is `process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api"` (line 8).
+- `buildPath` (lines 26-35): replaces `:params` (URL-encoded) and throws if one is missing. It drops query values that are undefined or `""` and stringifies the rest with URLSearchParams.
+- `api()` (lines 37-50):
+  - Always sends `content-type: application/json`, plus `x-user-id` when the cookie is set.
+  - Sends a body whenever the endpoint declares one; if the caller passes none, it sends `{}`.
+  - On a non-2xx response it throws `ApiRequestError(status, json.error ?? "Request failed (N)", json.issues)`. The backend error shape the UI expects is therefore `{error: string, issues?}`.
+
+**`src/lib/api/hooks.ts`:**
+- `useApi` (lines 9-19) uses the query key `[name, params, query, body]`.
+- `useApiMutation` (lines 25-37) calls `qc.invalidateQueries()` with no filter on success, so every query refetches. It shows a success toast if configured, and on error shows `toast.error(e.message)` unless `silent` is set.
+- Query defaults (`src/components/providers.tsx:12`): staleTime 15s, no refetch on window focus, retry 1.
+
+**`src/lib/session.ts`:**
+- The cookie is `rs_user` (line 5).
+- `getUserId` reads `document.cookie` and returns null during SSR (lines 7-11).
+- `setUserId` writes the cookie with path `/`, a 30-day max-age and samesite=lax, or clears it when given null (lines 13-16).
+- `src/components/shell/app-shell.tsx:24-36`: redirects to `/login` when there is no cookie and only enables the shell queries once the user is set.
+- Persona switching and login call `setUserId` and then `qc.clear()` (`persona-menu.tsx:26`, `login-view.tsx:33`).
+- There is no middleware or proxy file.
+
+## 5. Case and Signal fields the UI actually reads
+
+**Cases board** (`cases-view.tsx`, `case-card.tsx`): `/cases` is fetched with no query and filtered on the client.
+- Filters read id, ownerId, coOwnerIds, series, relatedSeries, markets, carArea and state (cases-view 65-71, 124, 179).
+- The card reads (case-card 12-47):
+  - id, title, shortTitle, outcome, newSignalCount, state, ownerId, evidenceLevel
+  - `marketConflict` (only checked for being truthy) and `originCaseId`
+  - `figures.perMarket[].customers`, summed to give the customer count
+- The ranked view also reads `manualRank` and `factors[f]` (334, 363), plus ScoredCase `caseId`, `score`, `contributions`.
+
+**Case page** (`cases/[id]/case-view.tsx` with `lib/sankey.ts` `caseSankey`):
+- **Case fields read:**
+  - Header: id, shortTitle, title, ownerId, coOwnerIds, watcherIds, state, outcome, evidenceLevel, markets
+  - Market details: `marketConflict.note`, `figures.perMarket[]` (market, customers, studyScore, salesShare2030)
+  - Body: highlights, bodyMd, bodyVersion, pmContext (truthy check)
+  - Links: originCaseId, mergedInto
+- **Sankey uses of Signal:** id, sourceType (picks the source column, sankey.ts:47-61), kind and severity (sayOf, 63-70), topicId (grouping, 96), competitor, featureHint, `metric{value, unit, cycle}` and summary (fact nodes, 79-82). The case node uses `c.shortTitle`.
+- **Other Signal fields on the page:** trust (98-99), kind === "like" (97).
+- **SignalCard** (`signal-card.tsx`, used in the quotes sheet) reads id, kind, sourceType, market, powertrain, `publishedAt.slice(0,4)`, `metric.name/value/unit/cycle`, competitor, quote, quoteEn, synthetic, trust, agent, recordRef, url.
+- **Details drawer** (`case-details.tsx`) additionally reads:
+  - brandFit (value, reason, confirmedBy), factors, manualRank, manualRankReason, marketConflict
+  - `figures.perMarket[]` (sentiment, complaints, wishes, likes, studyLabel), `figures.equipmentToday`, `figures.competitorOffer`, `figures.trend`
+  - scope, series, carArea, type, changeDepth, featureName, relatedSeries
+  - `context.preset`, `context.pmInputs`, and `signal.agent`
+- **Knowledge form:** `pmContext.*` including updatedAt and updatedBy.
+- **Topic labels:** come from `taxonomy.topics[].shortLabel` (sankey.ts:77).
+
+**Radar page** (`radar-view.tsx` with `overviewSankey`, sankey.ts:171-212):
+- Signal fields: id, sourceType, carArea, caseId, status (line 53, `!== "clustered"`).
+- Case fields: id, shortTitle.
+- The signal list uses SignalCard, so it reads the same Signal fields as on the case page.
+
+## 6. Scripts, env files and hardcoded IDs
+
+- `package.json` scripts: dev, build, start, lint, typecheck (`tsc --noEmit`), `seed` (`tsx scripts/seed.ts`), `export-contract`, `contract-test`.
+- **No `web/.env*` files exist.** `.gitignore` ignores `.env*`.
+- Env vars used:
+  - `NEXT_PUBLIC_API_BASE_URL` (client.ts:8)
+  - `API_BASE`, defaulting to `http://localhost:3000/api` (contract-test.ts:13)
+  - `ANTHROPIC_API_KEY`, `LIVE_CHAT`, `LLM_MODEL` (only in `src/mock/ai/live.ts`)
+- **Hardcoded IDs in `scripts/contract-test.ts`:**
+  - Users: `x-user-id` defaults to `u-lena` (line 23); u-wei, u-katrin and u-jonas are also used.
+  - Cases: CASE-G60-0001 (64, 65, 100, 101, 104, 108, 110, 114, 158, 164), CASE-G60-0002 (170), -0003 (68, 71, 139), -0005 (122, 136, 137), -0006 (154), -0011 (156), -0012 (81-92), CASE-G60-CN-0001 (141), CASE-INNO-0001 (159), CASE-INNO-0002 (160).
+  - Requirements: REQ-G60-0004 (74, 109, 145, 146, 148), REQ-G60-0019 (76), REQ-G60-CN-0003 (78, 157).
+  - Signals: G60-0209 and G60-0576 (162). Planned feature: `pf-g60-hud` (169).
+  - The test calls `reset` at the start and the end (lines 53, 175).
+- **Other hardcoded IDs:**
+  - `route.ts:43`: fallback user `"u-lena"`
+  - `login-view.tsx:19-22`: u-lena, u-wei, u-jonas, u-katrin
+  - `lib/demo.ts:6`: CASE-G60-0005
+  - Placeholder text only: `audit-view.tsx:39`, `search-command.tsx:40`
+
+## 7. Where `scripts/seed.ts` reads data from
+
+- CSVs come from `resolve(here, "../../docs/02-data/processed")` (seed.ts:55): `feedback_verbatims.csv`, `study_cn_eu_2025.csv`, `study_us_2025.csv`, `sales_volumes.csv` (lines 64-68).
+- The taxonomy comes from `../../taxonomy/taxonomy.json` (line 57).
+- It also imports authored content from `src/mock/authored/*`.
+- Output goes to `src/mock/fixtures/seed.json` and `taxonomy.json` (lines 56, 58, 624, 633).
+- **That path exists and is tracked in git:** `docs/02-data/processed/` holds all four CSVs plus `feedback_rows.csv`, `feedback_topic_counts.csv` and `option-lists/`.
+- `All-context/02-data-provided-by-pm/processed/` holds similar files, but the seed script does not read from it.
+- `export-contract.ts:22` writes to the repo-root `contracts/`.</result>
+<usage><subagent_tokens>162090</subagent_tokens><tool_uses>23</tool_uses><duration_ms>170792</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a374d531f53f4a2d2</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>C:\Users\Zaara\AppData\Local\Temp\claude\C--TU-Projects-BMW-Product-Management-Challenge\16cd701a-6473-48a5-9bdf-df2c81c4ba01\tasks\a374d531f53f4a2d2.output</output-file>
+<status>completed</status>
+<summary>Agent "Map backend API routers" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I found **54 HTTP routes**: 53 in the five routers plus `GET /health`. All paths are relative to `C:\TU\Projects\BMW-Product-Management-Challenge\backend\app\`. FastAPI's `/docs`, `/redoc` and `/openapi.json` are also served.
+
+Read this first:
+- **Your local `.env` makes the API use Supabase tokens, not `X-User-Id`.** `backend/.env` has `AUTH_MODE=` (empty) and a real `SUPABASE_URL`. Empty means `auto`, and `auto` picks `supabase` when `SUPABASE_URL` is set (`config.py:80-81`). The `X-User-Id` header only works with `AUTH_MODE=dev` set explicitly.
+- **An admin cannot approve a requirement.** The router allows it, but the service only accepts `pm:` actors, so an admin gets 409 "only a PM approves requirements" (`requirements/service.py:52-53`).
+- **The board endpoints have no pagination.** `/cases` and `/requirements` return the full ranked list.
+
+## 0. Routers registered
+`main.py:25-26` registers `config`, `signals`, `cases`, `requirements` and `collab`, with no global prefix. `/health` is defined at `main.py:29` and returns `{"status":"ok"}`. Every route below needs a user (`Depends(current_user)`), except `/health`.
+
+## 1. Route inventory
+
+Roles in the "Auth" column:
+- **`require_pm(user, v)`** (`api/auth.py:89`): role must be `pm` or `admin`, and the user must own line `v`. Owning means an admin, an empty `vehicles` list, `v` is None, or `v` is in the list (`auth.py:37-39`).
+- **`require_editor(user, v)`** (`auth.py:96`): `pm`, `engineer` or `admin`. Only PMs get the line check.
+- **`_require_pm_of_case`** (`cases.py:31`): `pm`/`admin`, and the user must own at least one of the case's lines.
+- **"any"**: any known user. No role check.
+
+Abbreviations in the "Side effects" column:
+- **audit**: an `audit_event` row. Every `audit.insert` or `audit.update` writes one.
+- **decision**: a `decision` row.
+- **access log**: `audit.log_access`, an `audit_event` with `action='view'` or `'export'`.
+
+### config.py (15 routes)
+| # | Method, path | Inputs | Response | Auth | Side effects |
+|---|---|---|---|---|---|
+| 1 | GET `/me` :18 | none | `{id, name, role, vehicles[], actor}` | any | none |
+| 2 | GET `/vehicles` :24 | none | `[{code, series, segment, generation, on_sale_since, predecessor_code, is_current, markets_sold[], variants[]}]` | any | none |
+| 3 | GET `/taxonomy` :30 | none | `{car_areas:[{code,name,description}], aspect_groups:[{code,description}], topics:[{id,topic_id,name,car_area,hint,taxonomy_version}]}` | any | none |
+| 4 | GET `/competitors` :41 | `vehicle: str?` | `[{id, bmw_vehicle, brand, model, generation, since, markets[], status, origin, confirmed}]` | any | none |
+| 5 | POST `/competitors/{competitor_id}/confirm` :53 | body `{confirmed: bool, rationale: str}` | full competitor row | require_pm(competitor.bmw_vehicle) | audit |
+| 6 | GET `/sources` :63 | none | `[{source_id, name, categories[], country, level, access, check_status, fetch_step, enabled, backfill_done_at}]` | any | none |
+| 7 | GET `/configs` :70 | none | `[config.* + sales_2030 + profiles:[{id,name,is_default}]]` | any | none |
+| 8 | GET `/configs/{config_id}` :88 | none | `config.* + profiles:[weight_profile.*] + competitors:[{id,brand,model,generation,confirmed}]` | any | none |
+| 9 | PATCH `/configs/{config_id}` :106 | body `{source_filter?: {str:[str]}, thresholds?: dict, competitor_ids?: [str], active?: bool, rationale?}` | config row | require_pm(config.vehicle) | audit. Rescores the config if `source_filter` or `thresholds` changed (`scoring/profiles.py:75`). `thresholds` are merged into the existing ones; filter keys are limited to `exclude_sources`, `exclude_categories`, `exclude_content_types` |
+| 10 | POST `/configs/{config_id}/profiles` (201) :121 | body `{name, case_weights: {str:float}, brand_multipliers?, cost_multipliers?, rationale?}` | weight_profile row | require_pm | audit, then scores the new profile |
+| 11 | PATCH `/profiles/{profile_id}` :138 | body `{name?, case_weights?, brand_multipliers?, cost_multipliers?, is_default?, rationale?}` | weight_profile row | require_pm(config.vehicle) | audit. Setting a new default unsets the other default. Rescores if weights or brand multipliers changed |
+| 12 | GET `/configs/{config_id}/compare` :149 | `top_n: int = 10` | `{top_n, profiles: {profile_name: [case_id]}, in_top_under_every_profile: [case_id], titles: {case_id: title}}` | any | none |
+| 13 | POST `/configs/{config_id}/rescore` :160 | none | `{scores: int}` | require_pm | inserts `case_score` rows (audited) |
+| 14 | GET `/brand-profile` :166 | none | latest `brand_profile` row `{id, version, body_md, created_by, created_at}` | any | none |
+| 15 | POST `/brand-profile` (201) :179 | body `{body_md, rationale}` | new brand_profile row | require_pm(None) | audit. Moves configs on the previous version to the new one |
+
+### signals.py (7 routes)
+| # | Method, path | Inputs | Response | Auth | Side effects |
+|---|---|---|---|---|---|
+| 16 | GET `/signals` :19 | `case_id, vehicle, market, kind, evidence_role, source_id, content_type, car_area, topic_id` (all `str?`), `limit=50` (capped at 500), `offset=0` | `{total, items:[…]}` (see §5) | any | none. Valid signals only |
+| 17 | GET `/signals/{signal_id}` :29 | none | `signal.*` (without embedding) `+ topic_id, topic, source_record: {source_record.*}, data_record?` | any | access log `view` |
+| 18 | GET `/quarantine` :47 | `limit=100` (capped at 500), `offset=0` | `{summary:[{agent,reason,signals}], total, items:[{id,record_id,reject_reason,kind,summary,quote,vehicle,market,agent,created_at}]}` | any | none |
+| 19 | POST `/quarantine/{signal_id}/delete` :61 | body `{rationale}` | `{id, validation, deleted_at}` | require_pm(None) | tombstone audit |
+| 20 | POST `/quarantine/{signal_id}/release` :75 | body `{changes: dict = {}, rationale}` | signal row | require_pm(None) | audit `release`. Re-runs the gate; 422 if it still fails |
+| 21 | GET `/taxonomy/review` :85 | none | `[{id, reason, suggested_name, topic_id, aspect_group, classification_confidence, summary, quote, vehicle, market, record_id, created_at}]`, max 500 | any | none |
+| 22 | POST `/taxonomy/review/{proposal_id}` :97 | body `{action: "map"|"dismiss", topic_id?, aspect_group?, rationale}` | taxonomy_proposal row | require_pm(None) | audit |
+
+### cases.py (12 routes, prefix `/cases`)
+| # | Method, path | Inputs | Response | Auth | Side effects |
+|---|---|---|---|---|---|
+| 23 | GET `/cases` :39 | `profile_id: str` (**required**), `state: list[str]` (**repeatable**, default `["open","confirmed"]`), `car_area, release_fit, market, source_type, source_id, aspect_group, q` (`str?`), `conflict_only: bool=false` | list of board rows (§5) | any | none. 422 for an unknown state, 404 for an unknown profile |
+| 24 | GET `/cases/overview` :56 | `vehicle: str` (required) | `[{car_area, states: {state: count}, customers}]`, sorted by customers descending | any | none |
+| 25 | GET `/cases/{case_id}` :62 | none | case page (§5) | any | access log `view` |
+| 26 | GET `/cases/{case_id}/versions` :72 | none | `[{version, body_md, author, created_at}]` | any | none |
+| 27 | PUT `/cases/{case_id}/page` :84 | body `{body_md, expected_version: int, title?}` | `{id, title, body_version}` | _require_pm_of_case | audit, `page_version`, decision `edit`. 409 on a stale version. Re-indexes RAG |
+| 28 | POST `/cases/{case_id}/vehicles/{vehicle}/transition` :99 | body `{action: "open"|"confirm"|"reject"|"reopen", rationale?}` | `{case_id, vehicle, state, requirements:[rid]}` | require_pm(vehicle) | audit `state_change`, decision. `confirm` generates requirements, each with an audit row, a `page_version` and a `requirement_generated` notification |
+| 29 | POST `/cases/{case_id}/vehicles/{vehicle}/rank` :120 | body `{rank: int\|null, reason?}` | `{case_id, vehicle, manual_rank, manual_rank_reason}` | require_pm(vehicle) | audit, decision `reorder`. A rank without a reason gives 422 |
+| 30 | POST `/cases/{case_id}/tags` :140 | body `{field: "brand_fit"|"segment"|"release_fit", value, rationale, vehicle?}` | the updated `case_item` or `case_vehicle` row | require_pm(vehicle) if `vehicle` is given, else _require_pm_of_case | audit, decision `override`. `release_fit` needs `vehicle` |
+| 31 | POST `/cases/{case_id}/merge` :160 | body `{target_id, rationale}` | `{merged, into}` | _require_pm_of_case | `case_lineage`, decision `merge`, recompute and rescore. 422 if the topics differ |
+| 32 | POST `/cases/{case_id}/split` (201) :182 | body `{signal_ids: [str], rationale}` | `{from, new_case, title}` | _require_pm_of_case | `case_lineage`, decision `split`, rescore |
+| 33 | POST `/cases/{case_id}/vehicles/{vehicle}/requirements` (201) :206 | none | `{requirements:[rid]}` | require_pm(vehicle) | same as the confirm generation. 422 if the case is not confirmed |
+| 34 | POST `/cases/{case_id}/vehicles/{vehicle}/predecessor-research` (202) :221 | body `{rationale}` | `{case_id, vehicle, predecessor, research: "scheduled"\|"no predecessor known"}` | require_pm(vehicle) | adds the `removed_vs_predecessor` tag to `case_item.tags` (audited), then a background fetch |
+
+### requirements.py (10 routes, prefix `/requirements`)
+| # | Method, path | Inputs | Response | Auth | Side effects |
+|---|---|---|---|---|---|
+| 35 | GET `/requirements` :31 | `profile_id` (required), `status: list[str]` (**repeatable**, default `draft, in_discussion, approved`), `release_target, car_area, market` (`str?`) | `[{id, case_id, market, title, status, cost_size, cost_source, release_target, evidence_level, manual_rank, manual_rank_reason, case_score: float\|null, rank_score: float\|null, rank: int, car_area, topic}]` | any | none |
+| 36 | GET `/requirements/export` :58 | `profile_id` (required), `format: "json"|"csv" = "json"`, `top_n=10` | JSON `{vehicle, market, profile, items:[{rank,id,title,case_id,release_target,evidence_level,complaints,wishes,customers,defects,competition(str),cost_size,cost_source,metric_target,acceptance_criteria,rank_score}]}` or `text/csv` | any (no role check) | decision `export` per item, plus access log `export` on the weight profile |
+| 37 | GET `/requirements/{rid}` :104 | none | §5 | any | access log `view` |
+| 38 | GET `/requirements/{rid}/versions` :122 | none | `[{version, body_md, author, created_at}]` | any | none |
+| 39 | PUT `/requirements/{rid}/page` :133 | body `{body_md, expected_version}` | `{id, body_version}` | require_editor(vehicle) | audit, `page_version`, decision `edit`. 409 on a stale version |
+| 40 | POST `/requirements/{rid}/status` :146 | body `{status: draft\|in_discussion\|approved\|rejected, rationale?}` | `{id, status}` | `approved`: require_pm, plus a `pm:` actor in the service. Others: require_editor | audit `state_change`, decision `approve`/`reject`/`edit` |
+| 41 | POST `/requirements/{rid}/retarget` :163 | body `{release_target: next_gen\|current_car\|ota, rationale}` | `{id, release_target}` | require_editor | audit, decision `retarget` |
+| 42 | POST `/requirements/{rid}/cost` :176 | body `{cost_size: S\|M\|L, rationale}` | `{id, cost_size, cost_source}` | require_editor | audit, decision `edit`. `cost_source` becomes `engineering` for `engineer:` actors, else `pm` (`service.py:71`) |
+| 43 | POST `/requirements/{rid}/rank` :189 | body `{rank: int\|null, reason?}` | `{id, manual_rank, manual_rank_reason}` | require_pm | audit, decision `reorder` |
+| 44 | POST `/requirements/{rid}/delete` :200 | body `{rationale}` | `{id, status:"deleted", deleted_at}` | require_editor | tombstone (title and body nulled), decision `delete` |
+
+### collab.py (9 routes, no prefix)
+| # | Method, path | Inputs | Response | Auth | Side effects |
+|---|---|---|---|---|---|
+| 45 | GET `/chat/{object_type}/{object_id}` :30 | `object_type: "case"|"requirement"` | list of `chat_message` rows (§5) | any | none |
+| 46 | POST `/chat/{object_type}/{object_id}` :41 | body `{question}` | the agent's `chat_message` row | any | inserts 2 `chat_message` rows (pm and agent), audited |
+| 47 | POST `/chat/messages/{message_id}/decision` :54 | body `{accept: bool}` | `{id, diff_status}` | case: require_pm(None). Requirement: require_editor(vehicle) | on accept, saves the page (stale check, `page_version`, decision); audits `chat_message` |
+| 48 | GET `/audit/{object_type}/{object_id}` :70 | `object_type: str` (free text), `limit=200` (capped at 1000) | §5 | any | none |
+| 49 | GET `/audit-chain/{requirement_id}` :81 | none | `{requirement, case, case_vehicle, evidence_counts, signals[], scores[], decisions[], events:{source_record, signal, case, case_vehicle, requirement}}` (`reports/audit_chain.py:66-83`) | any | none |
+| 50 | GET `/notifications` :90 | `vehicle: str?`, `unread: bool=false`, `limit=50` (capped at 500) | §5 | any. Defaults to the user's lines; empty lines mean all | none |
+| 51 | POST `/notifications/{notification_id}/read` :103 | none | `{id, updated: bool}` | any | audit update of `read_by` |
+| 52 | GET `/runs` :115 | `limit=50` (capped at 500) | `[{id, agent, mode, status, started_at, ended_at, records_fetched, signals_valid, signals_quarantined, llm_tokens, llm_cost_usd, error, params}]` | any | none |
+| 53 | POST `/admin/rag/rebuild` :122 | none | `{object_type: chunk_count}` | role == admin | audit `reindex` on `rag_chunk/all` |
+
+Plus #54, `GET /health`.
+
+## 2. Auth, CORS, errors
+- **`current_user`** (`api/auth.py:77-86`):
+  - `AUTH_MODE=dev`: needs the `X-User-Id: &lt;uuid&gt;` header. A missing header gives 401.
+  - Otherwise: needs `Authorization: Bearer &lt;token&gt;`.
+  - Tokens are verified with HS256 and `SUPABASE_JWT_SECRET`, or with JWKS (RS256/ES256), audience `authenticated`. The `sub` claim is the user id (`:47-62`).
+  - The user must exist in `app_user`: a non-uuid id gives 401, an unknown user gives 403 (`:65-74`).
+  - The actor string is `"{role}:{id}"`.
+- **Mode selection**: `auth_mode` defaults to `"auto"`, which becomes `supabase` if `SUPABASE_URL` is set, else `dev` (`config.py:31,80-81`).
+- **CORS**: `CORS_ORIGINS`, default exactly `http://localhost:3000,http://localhost:5173` (`config.py:34`). `.env` and `.env.example` hold the same value. Credentials are allowed, methods and headers are `*`, and `x-request-id` is exposed (`main.py:19-23`).
+- **Request id**: the `x-request-id` header is echoed back, or generated if missing (`deps.py:31-40`).
+- **Error format**: `{"detail": "&lt;string&gt;"}` for `HTTPException` and the mapped exceptions (`deps.py:42-51`):
+  - `NotFound` → 404
+  - `StaleVersion`, `InvalidTransition`, `InvalidAction` → 409
+  - any other `ValueError` → 422
+  - Pydantic validation errors use FastAPI's default `{"detail": [{loc, msg, type, …}]}`.
+  - Unmapped DB errors return a 500.
+- **Transactions**: one per request, so audit rows commit together with the change (`deps.py:23-27`).
+
+## 3. Demo users and configs
+- **Users** (`demo.py:33-39`):
+  - `…0001` "Demo PM 5 Series", pm, `[G60]`
+  - `…0002` "Demo PM 7 Series", pm, `[G70]`
+  - `…0003` "Demo PM 1 Series", pm, `[F70]`
+  - `…0004` "Demo engineer", engineer, `[]`
+  - `…0005` "Demo admin", admin, `[]`
+  - The full id prefix is `00000000-0000-4000-8000-00000000000N`.
+- **Configs**: one per current vehicle × market with 2030 sales above 0, named `"{code} / {market}"` (`seed/run.py:114-130`; markets_sold set in `seed/loaders.py:76-83`). From the sales README that gives 10 configs, which matches plan.md:
+  - F70: Europe, Rest of World
+  - G60: USA, China, Europe, Rest of World
+  - G70: USA, China, Europe, Rest of World
+  - I took this list from the docs and reports, not by querying the database.
+- **Weight profiles**: 4 per config (`seed/run.py:18-29`). Base weights:
+
+  | Factor | Weight |
+  |---|---|
+  | distinct_customers | 0.25 |
+  | severity | 0.20 |
+  | satisfaction_gap | 0.15 |
+  | competitor_gap | 0.15 |
+  | market_volume | 0.10 |
+  | removed_vs_predecessor | 0.05 |
+  | reach | 0.05 |
+  | trend | 0.05 |
+
+  | Profile | Weights | Cost multipliers S / M / L | Default |
+  |---|---|---|---|
+  | `balanced` | base weights | 1.0 / 0.85 / 0.7 | yes |
+  | `customer voice` | base, with distinct_customers .35, severity .25, competitor_gap .05, market_volume .05, trend 0 | 1.0 / 0.85 / 0.7 | no |
+  | `competition` | base, with competitor_gap .30, distinct_customers .15, severity .15, trend .10 | 1.0 / 0.85 / 0.7 | no |
+  | `budget` | base weights | 1.0 / 0.7 / 0.4 | no |
+
+  - Brand multipliers are `{fits 1.0, neutral 0.8, off_brand 0.5}` for every profile.
+  - Weights are normalised by their sum when scoring, so `customer voice` and `competition` do not sum to 1 as stored.
+- **Thresholds** (`run.py:30-34`):
+  - `open_min_customers`: 10
+  - `conflict_min_customers`: 5
+  - `conflict_negative_share`: 0.6
+  - `similarity_case`: `{openai: 0.55, local: 0.15}`
+  - `case_split_min_signals`: 50
+  - `reach_cap`: 100000
+  - `competitor_gap_min_rivals`: 1
+
+## 4. Vocabularies
+- **Case per-line state** (`case_vehicle.state`): `observed, open, confirmed, rejected`.
+  - Allowed transitions (`cases/lifecycle.py:13-19`):
+
+    | Action | Allowed from | Result |
+    |---|---|---|
+    | `open` | observed | open |
+    | `confirm` | open | confirmed |
+    | `reject` | observed, open | rejected |
+    | `reopen` | rejected, confirmed | open |
+
+  - `reject` and `reopen` need a rationale (`:68`).
+  - The automatic rules only move observed → open (`:26-60`).
+- **Requirement status**: `draft, in_discussion, approved, rejected, deleted`.
+  - Allowed moves, target ← sources (`requirements/service.py:9-14`):
+    - in_discussion ← draft
+    - approved ← draft, in_discussion
+    - rejected ← draft, in_discussion, approved
+    - draft ← rejected, in_discussion
+  - `rejected` needs a rationale. `approved` needs a `pm:` actor.
+  - `deleted` is only reachable through `/delete`, and a deleted requirement blocks every other action (409).
+- **release_target / release_fit**: `next_gen, current_car, ota`. Generated requirements fall back to `next_gen` (`generator.py:175`).
+- **evidence_level**: `bmw_data, web, assumption` (`generator.py:68-75`).
+- **cost_size**: `S, M, L`. Option-price bands: under 500 EUR = S, under 2000 EUR = M, otherwise L (`generator.py:46-52`).
+- **cost_source**: `option_price, ai_estimate, pm, engineering`.
+- **brand_fit**: `fits, neutral, off_brand`. **segment**: `base, premium, luxury` (`cases.py:136-137`).
+- **Markets**: `USA, China, Europe, Rest of World, unknown` (migration 0001 `market_t`). Requirement id market codes: USA, CN, EU, RoW. Ids look like `REQ-{vehicle}-{number}` or `REQ-{vehicle}-{code}-{number}` (`generator.py:26,55-57`).
+- **Score factors** (`scoring/score.py:16-17`): `distinct_customers, severity, satisfaction_gap, competitor_gap, market_volume, removed_vs_predecessor, reach, trend`.
+  - Formula: brand multiplier × Σ(normalised weight × factor).
+  - A missing brand fit counts as `neutral`, so ×0.8 (`:114-118`).
+  - Each factor in `scores[].factors` is `{raw, normalized, weight, contribution}` (`:112-113`).
+- **Car areas** (11): `exterior_design, interior_comfort, seats, climate, infotainment_hmi, connectivity_digital, driver_assistance, dynamics_powertrain, range_charging, practicality, quality_materials`.
+- **Aspect groups** (11): `function, usability, reliability, performance, efficiency_range, design, comfort, space, quality, sound, price`. Source: `taxonomy/aspects.csv`.
+- **Signal vocabularies** (migration 0005):
+  - kind: `complaint, wish, like, competitor_fact, trend, innovation`
+  - severity: `defect, difficult_to_use, wish, none`
+  - evidence_role: `bmw_customer, competitor, market`
+  - content_type: `owner, expert, press, news, bmw_internal, reference`
+- **Decision actions**: `open, confirm, reject, edit, reorder, merge, split, approve, delete, export, override, retarget, reopen`.
+- **Notification types**: `case_opened, new_evidence, market_conflict, run_failed, candidate_feature, new_competitor, requirement_generated` (migration 0006).
+
+## 5. Shapes
+- **GET /cases board row** (`cases/queries.py:47-58`):
+  - `rank, id, title, vehicle, state, score, rationale, previous_score, score_moved, manual_rank, manual_rank_reason, release_fit, market_conflict, flag_new_evidence, brand_fit, segment`
+  - `topic_id, topic, car_area, aspect_group, scope_tag, distinct_customers`
+  - `markets: {market: {customers, negative_share}}`
+  - `competitor_signals, source_types: {content_type: count}`
+  - `rank` is the board rank before filters. `score_moved` is set when a manually ranked case's score moved by 0.1 or more (`scoring/rank.py:54`).
+- **GET /cases/{id}** (`queries.py:77-100`): there is no separate `page` key; the page text is `body_md` and `body_version`.
+  - All `case_item` columns except `embedding`: `id, feature_id, title, body_md, body_version, figures, scope_tag, brand_fit, brand_fit_source, segment, segment_source, tags[], aspect_group, created_by, created_at, updated_at`, plus `topic_id, topic, car_area`.
+  - `vehicles[]`: full `case_vehicle` rows (`case_id, vehicle, state, state_reason, opened_by, market_conflict, release_fit, release_fit_reason, release_fit_source, manual_rank, manual_rank_reason, flag_new_evidence, confirmed_at, created_at, updated_at`).
+  - `lineage[]`: `{from_case, to_case, op, actor, rationale, created_at}`.
+  - `scores[]`: `{weight_profile_id, profile, config_id, vehicle, market, score, brand_multiplier, factors, rationale, computed_at}`.
+  - `requirements[]`: `{id, vehicle, market, title, status}`.
+  - `decisions[]` (last 50): `{vehicle, actor, action, rationale, created_at}`.
+- **`figures`** (`cases/figures.py:94-101`): `{computed_at, signals, distinct_customers, by_vehicle, sources: {source_id: n}, source_types}`.
+  - `by_vehicle[v]` holds:
+    - `distinct_customers`
+    - `markets`: per market `{customers, complaints, wishes, likes, defects, difficult_to_use, negative_share, powertrain: {p: n}, reach_capped}`
+    - `predecessor_signals`
+    - `competitor_evidence`: `{signals, complaints, likes_or_facts}`
+    - `trend_signals`
+    - `study`: `[{market, sheet, attribute, method, normalized, dissatisfied_share}]`
+    - `equipment`: `{listed, market:"DE", standard[], optional[], absent[], removed, option_prices_eur[], items:[{item, sa_code, package}]}` (max 20 items)
+    - `competitor_offers`: `[{record_id, brand, model, metric, value, value_text, unit, period}]`
+  - Source lines: `figures.py:76-88, 114-150`.
+- **GET /signals item** (`queries.py:121-128`): `id, record_id, case_id, kind, severity, summary, quote, quote_en, market, vehicle, chassis_code, vehicle_role, evidence_role, powertrain, reach, reach_unit, aspect_group, car_area[], classified_by, scope_tag, published_at, topic_id, topic, source_id, content_type, category, url, record_title`. The response is wrapped as `{total, items}`.
+- **GET /requirements/{id}** (`requirements.py:104-119`):
+  - All `requirement` columns: `id, case_id, vehicle, market, title, body_md, body_version, metric_target, acceptance_criteria, release_target, evidence_level, assumptions, cost_size, cost_source, cost_price_eur, status, rank_score, manual_rank, manual_rank_reason, model, prompt_version, deleted_at, created_at, updated_at`.
+  - `metric_target` is a JSON object `{metric, today, target, competitor_reference}`. `acceptance_criteria` and `assumptions` are JSON lists.
+  - `case`: `{id, title, aspect_group, topic_id, topic, car_area}`.
+  - `decisions[]`: `{actor, action, rationale, created_at}`.
+  - `ranks[]`: `{weight_profile_id, rank_score, cost_missing}`, read from the `requirement_rank` view.
+- **chat_message row** (migration 0006:19-33):
+  - `id, object_type, object_id, role (pm|agent), author, content`
+  - `cited_signals`, `retrieved_signals`: arrays of signal UUIDs only, not signal objects
+  - `proposed_diff`: null or `{base_version, body_md, diff, reason}` (`rag/agent.py:113`)
+  - `diff_status`: `none|proposed|accepted|rejected`
+  - `model, prompt_version, created_at`
+- **Notification row**: `{id, type, object_type, object_id, vehicle, market, message, created_at, read: bool}`.
+- **Audit row**: `{seq, at, actor, actor_type (ai|human|system), action, object_type, object_id, before, after, rationale, run_id, request_id}`. For a case it also includes `case_vehicle` events whose ids match `"{case}/%"`.
+- **/taxonomy, /configs, /me, /runs, /quarantine**: see §1 rows 1, 3, 7, 18 and 52.
+
+## 6. Missing endpoints
+| Endpoint | Exists? |
+|---|---|
+| List users | **No**. Only `/me` |
+| Global audit list | **No**. Only per object (`/audit/{type}/{id}`) and `/audit-chain/{rid}` |
+| Search | **No dedicated endpoint**. Board `q` is a substring match on title or topic (`queries.py:45`). Chat runs hybrid RAG internally |
+| Sankey aggregates (source × car area × case) | **No**. Closest: `/cases/overview` (car area × state counts) and the per-case `source_types` and `figures.sources` |
+| vehicle_feature / equipment | **No endpoint**. Only embedded in `figures.by_vehicle[v].equipment` |
+| Trigger a fetch run | **No**. Only `POST /cases/{id}/vehicles/{v}/predecessor-research` schedules a predecessor fetch; `/runs` is read-only |
+| Score preview with unsaved weights | **No**. `what_if_weights` exists only as an internal RAG agent tool (`rag/agent.py:95`). `/configs/{id}/compare` uses saved profiles only |
+
+## 7. Pagination
+- `/signals`: `limit` default 50, capped at 500, plus `offset`; returns `total`.
+- `/cases`: no limit or offset; the full ranked list.
+- `/requirements`: no limit or offset.
+- Others:
+  - `/quarantine`: 100, max 500, with offset
+  - `/notifications`: 50, max 500
+  - `/runs`: 50, max 500
+  - `/audit`: 200, max 1000
+  - `/taxonomy/review`: fixed 500
+  - `/cases/{id}` decisions: last 50
+
+## 8. Migrations (`backend/supabase/migrations/`)
+| File | Creates |
+|---|---|
+| 0001_extensions_and_types | domains `market_t, powertrain_t, vehicle_role_t, actor_type_t` |
+| 0002_reference | `vehicle, competitor, source_registry, site_slug, search_term, car_area, brand_profile, app_user` |
+| 0003_records_and_config | `agent_run, source_record, data_record`, view `sales_volume`, `config` (needs 2030 sales above 0), `weight_profile` |
+| 0004_baseline | `feature, feature_mapping, vehicle_feature, study_score` |
+| 0005_signals_cases_requirements | `case_item, case_vehicle, case_lineage, signal, case_score`, view `case_score_current`, `requirement, page_version` |
+| 0006_collaboration_and_audit | `decision, chat_message, notification, rag_chunk, audit_event` (append-only) |
+| 0007_security_realtime_storage | RLS on all tables; `authenticated` can only read `notification`; Realtime on `notification`; storage bucket `raw-records` |
+| 0008_quarantine_views | views `signal_quarantine, signal_quarantine_summary` |
+| 0009_review_fixes | view `requirement_rank`; weight check; new case id format |
+| 0010_rag_search | function `rag_search` |
+| 0011_taxonomy | `aspect_group, taxonomy_proposal`, view `taxonomy_review`; adds taxonomy columns to `feature`, `signal`, `case_item` |
+| 0012_fetch_cadence | adds `source_registry.refresh_days, disabled_reason` |
+| 0013_function_search_path | function search_path fix |
+
+- `vehicle_feature` **exists** (0004:31).
+- There are **no tables** for referral, question or comment. The nearest are `chat_message` (Q&amp;A per case or requirement), `decision` and `notification`.</result>
+<usage><subagent_tokens>179008</subagent_tokens><tool_uses>48</tool_uses><duration_ms>204537</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b8n6hkoa8</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>C:\Users\Zaara\AppData\Local\Temp\claude\C--TU-Projects-BMW-Product-Management-Challenge\16cd701a-6473-48a5-9bdf-df2c81c4ba01\tasks\b8n6hkoa8.output</output-file>
+<status>completed</status>
+<summary>Background command "Fix type error, typecheck and lint adapter" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+commit and push teh new changes
