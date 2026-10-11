@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loading</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; color: #e9edf3; }
+
+  /* ---- The loading screen: a full-screen black stage that sits on top of the website ---- */
+  .stage {
+    position: fixed; inset: 0; z-index: 10;
+    background: #000; overflow: hidden; cursor: pointer;
+    transition: opacity .8s ease;
+  }
+  .stage.done { opacity: 0; pointer-events: none; }
+
+  /* The eyes, centred. Two layers in exactly the same place:
+     - the canvas draws the light travelling around the eyes, using the frames of the video
+     - the image is the video's last frame at double resolution; it takes over once the eyes are fully lit */
+  .eyes {
+    position: absolute; left: 50%; top: 50%;
+    width: min(900px, 72vw); aspect-ratio: 1540 / 310;
+    transform: translate(-50%, -50%);
+  }
+  .eyes canvas, .eyes img {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+    user-select: none; -webkit-user-drag: none;
+  }
+  .eyes img { opacity: .001; }   /* invisible, but already painted, so showing it later costs nothing */
+
+  /* ---- The website underneath. Placeholder until the team's frontend is connected ---- */
+  .site {
+    position: fixed; inset: 0; display: grid; place-items: center; text-align: center;
+    background: radial-gradient(120% 90% at 50% 0%, #10151f 0%, #05070b 60%, #000 100%);
+  }
+  .site p { margin: 0; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: #5d6676; }
+  .site button {
+    margin-top: 22px; padding: 10px 22px; border-radius: 999px; cursor: pointer;
+    background: none; color: #9aa4b5; border: 1px solid #2a3140; font: inherit; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+  }
+  .site button:hover { color: #fff; border-color: #5b79b8; }
+</style>
+</head>
+<body>
+
+<!-- The website (placeholder). The loading screen above fades away to show it. -->
+<div class="site" id="site">
+  <div>
+    <p>The website starts here</p>
+    <button id="replay" type="button">Replay</button>
+  </div>
+</div>
+
+<!-- The loading screen -->
+<div class="stage" id="stage" title="Click to skip">
+  <div class="eyes" id="eyes" aria-hidden="true">
+    <canvas id="reveal" width="1540" height="310"></canvas>
+    <img id="still" src="assets/eyes.png" alt="">
+  </div>
+</div>
+
+<script>
+  /* ------------------------------------------------------------------
+     Settings. Times are in milliseconds.
+     ------------------------------------------------------------------ */
+  const APP_URL     = "";     // address of the team's website. Empty = show the placeholder underneath.
+  const DARK_PAUSE  = 600;    // black screen before the lights start
+  const REVEAL_TIME = 1150;   // the light travelling around the eyes. The video takes about 600; higher = slower
+  const HOLD_TIME   = 1200;   // the fully lit eyes stay on screen
+  const FADE_OUT    = 800;    // the eyes fade back into the dark
+  const DARK_END    = 300;    // black screen before the website opens
+  const EYES_WIDTH  = 0.71;   // how much of the screen width the eyes span (0.71 = the same as in the video)
+
+  const stage  = document.getElementById("stage");
+  const eyes   = document.getElementById("eyes");
+  const still  = document.getElementById("still");
+  const canvas = document.getElementById("reveal");
+  const ctx    = canvas.getContext("2d");
+
+  // The 19 frames of the video, cleaned to pure black. Everything is loaded and unpacked before the lights
+  // start, so nothing has to be prepared in the middle of the animation.
+  const FRAME_COUNT = 19;
+  const frames = Array.from({ length: FRAME_COUNT }, (_, i) => {
+    const img = new Image(); img.src = `assets/frames/f${String(i).padStart(2, "0")}.jpg`; return img;
+  });
+  const loaded  = (img) => (img.complete && img.naturalWidth) ? Promise.resolve() : new Promise((r) => { img.onload = img.onerror = r; });
+  const decoded = (img) => loaded(img).then(() => (img.decode ? img.decode().catch(() => {}) : null));
+  const ready   = Promise.all([...frames, still].map(decoded));
+
+  let run = 0;                                   // lets a replay or a skip cancel a running intro
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function reset() {
+    stage.classList.remove("done");
+    for (const el of [still, canvas, eyes]) el.getAnimations().forEach((a) => a.cancel());
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // one fixed size, the same share of the screen as in the video; the eyes never move
+    const size = EYES_WIDTH * innerWidth / (eyes.offsetWidth * 0.883);      // 0.883 = share of the image the eyes actually cover
+    eyes.style.transform = `translate(-50%, -50%) scale(${size})`;
+  }
+
+  // The light. The video draws it in 19 steps, two of them repeated, so played as it is the light advances in
+  // small jumps, and slowing it down would make the jumps obvious. Here the light front travels continuously
+  // at an even speed: on every screen refresh the page shows the video frame that is lit just beyond the
+  // front and hides what lies ahead of it with a soft edge. The shapes and the order are the video's.
+  const SEQ    = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18];                            // the video's distinct frames
+  const FRONTS = [167, 248, 353, 467, 555, 662, 736, 874, 963, 1066, 1131, 1188, 1248, 1365, 1502];    // how far each one is lit, in pixels
+  const FROM = 70, TO = 1600, EDGE = 46;                                                              // travel of the light front, and how soft its edge is
+  function drawLight(alive) {
+    return new Promise((resolve) => {
+      const t0 = performance.now();
+      (function draw(now) {
+        if (!alive()) return resolve();
+        const p = Math.max(0, Math.min(1, (now - t0) / REVEAL_TIME));
+        const x = FROM + (TO - FROM) * p;                                   // where the light front is now
+        let k = SEQ.length - 1;
+        for (let i = 0; i < SEQ.length; i++) { if (FRONTS[i] >= x) { k = i; break; } }
+        const img = frames[SEQ[k]];
+        ctx.globalCompositeOperation = "source-over";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (img.naturalWidth) ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        if (p < 1) {                                                        // hide everything ahead of the front
+          const g = ctx.createLinearGradient(x - EDGE, 0, x, 0);
+          g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.globalCompositeOperation = "destination-in"; ctx.fillStyle = g;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.globalCompositeOperation = "source-over";
+          return requestAnimationFrame(draw);
+        }
+        resolve();
+      })(t0);
+    });
+  }
+
+  function finish() {
+    run++;
+    if (APP_URL) { window.location.href = APP_URL; return; }
+    stage.classList.add("done");
+  }
+
+  async function play() {
+    const me = ++run;
+    const alive = () => me === run;
+    reset();
+
+    // 1. Darkness
+    await wait(DARK_PAUSE); if (!alive()) return;
+
+    // 2. The light travels around the eyes until they are fully lit
+    await drawLight(alive); if (!alive()) return;
+    // the sharp, double-resolution image takes over from the video frames without a visible change
+    still.animate([{ opacity: .001 }, { opacity: 1 }], { duration: 120, fill: "forwards" });
+    canvas.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, delay: 120, fill: "forwards" });
+
+    // 3. The eyes stay lit, then fade back into the dark
+    eyes.animate([{ opacity: 1 }, { opacity: 0 }],
+                 { duration: FADE_OUT, delay: HOLD_TIME, easing: "cubic-bezier(.4,0,.6,1)", fill: "forwards" });
+    await wait(HOLD_TIME + FADE_OUT + DARK_END); if (!alive()) return;
+
+    // 4. Out of the dark, the website
+    finish();
+  }
+
+  stage.addEventListener("click", finish);                       // click the loading screen to skip it
+  document.getElementById("replay").addEventListener("click", play);
+  ready.then(play);
+</script>
+</body>
+</html>

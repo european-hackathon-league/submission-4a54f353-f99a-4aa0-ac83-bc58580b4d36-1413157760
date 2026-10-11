@@ -1,0 +1,53 @@
+# Site slugs written as prose in fetching-sources.md section 3.4 / 3.9 (not in the
+# 3.10 slug table that registry.py parses). Transcribed by hand; loaded by the seed
+# step seed:slugs_extra (idempotent). Competitors are keyed by BMW line + brand + model.
+vehicles:
+  F70:
+    motor-talk: [bmw-1er-f70-b1196]
+    pistonheads: ["72"]
+    autoscout24: [bmw/bmw-1er]
+    ams: [bmw/1er]
+    autobild: [bmw/1er]
+    adac-autotest: [bmw/1er-reihe]
+    auto-data: [bmw-1-series-model-948]
+  G60:
+    motor-talk: [bmw-5er-g60-g61-g90-g99-b1172, bmw-i5-b1188]
+    pistonheads: ["72"]
+    carcomplaints: [BMW/530, BMW/530E, BMW/540, BMW/540i, BMW/550, BMW/M550, BMW/M5]
+    autoscout24: [bmw/bmw-5er]
+    ams: [bmw/5er]
+    autobild: [bmw/5er]
+    adac-autotest: [bmw/5er-reihe]
+    auto-data: [bmw-5-series-model-944, bmw-i5-model-3260]
+    ev-database: [1906/BMW-i5-eDrive40-Sedan, 2096/BMW-i5-xDrive40-Sedan, 1907/BMW-i5-M60-xDrive-Sedan,
+                  2114/BMW-i5-eDrive40-Touring, 2115/BMW-i5-M60-xDrive-Touring]
+    goodcarbadcar: [bmw-5-series]
+  G70:
+    motor-talk: [bmw-6er-7er-8er-b167]
+    pistonheads: ["72"]
+    carcomplaints: [BMW/740, BMW/740i, BMW/750, BMW/760, BMW/760i, BMW/i7]
+    autoscout24: [bmw/bmw-7er]
+    ams: [bmw/7er]
+    autobild: [bmw/7er]
+    adac-autotest: [bmw/7er-reihe]
+    auto-data: [bmw-7-series-model-945, bmw-i7-model-3105]
+    ev-database: [1905/BMW-i7-eDrive50, 1676/BMW-i7-xDrive60, 1838/BMW-i7-M70-xDrive]
+    goodcarbadcar: [bmw-7-series]
+competitors:
+  - {bmw_vehicle: F70, brand: Audi, model: A3, carcomplaints: [Audi/A3]}
+  - {bmw_vehicle: F70, brand: Mercedes-Benz, model: A-Class, carcomplaints: [Mercedes-Benz/A220]}
+  - {bmw_vehicle: F70, brand: Volkswagen, model: Golf, carcomplaints: [Volkswagen/Golf]}
+  - {bmw_vehicle: G60, brand: Mercedes-Benz, model: E-Class, carcomplaints: [Mercedes-Benz/E350, Mercedes-Benz/E450],
+     autoscout24: [mercedes-benz/mercedes-benz-e-klasse], ams: [mercedes/e-klasse], autobild: [mercedes-benz/e-klasse],
+     adac-autotest: [mercedes-benz/e-klasse], goodcarbadcar: [mercedes-benz-e-class]}
+  - {bmw_vehicle: G60, brand: Audi, model: A6, carcomplaints: [Audi/A6]}
+  - {bmw_vehicle: G60, brand: Tesla, model: Model S, carcomplaints: [Tesla/Model_S]}
+  - {bmw_vehicle: G60, brand: Genesis, model: G80, carcomplaints: [Genesis/G80]}
+  - {bmw_vehicle: G60, brand: Lexus, model: ES, carcomplaints: [Lexus/ES_350, Lexus/ES_300h]}
+  - {bmw_vehicle: G70, brand: Mercedes-Benz, model: S-Class, carcomplaints: [Mercedes-Benz/S-Class, Mercedes-Benz/S560]}
+  - {bmw_vehicle: G70, brand: Mercedes-Benz, model: EQS, carcomplaints: [Mercedes-Benz/EQS_450]}
+  - {bmw_vehicle: G70, brand: Audi, model: A8, carcomplaints: [Audi/A8]}
+  - {bmw_vehicle: G70, brand: Lexus, model: LS, carcomplaints: [Lexus/LS_500, Lexus/LS_500h]}
+  - {bmw_vehicle: G70, brand: Genesis, model: G90, carcomplaints: [Genesis/G90]}
+  - {bmw_vehicle: G70, brand: Porsche, model: Panamera, carcomplaints: [Porsche/Panamera]}
+  - {bmw_vehicle: G70, brand: Lucid, model: Air, carcomplaints: [Lucid/AIR]}

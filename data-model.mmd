@@ -1,38 +1,133 @@
 erDiagram
-    %% Core data model in Supabase Postgres (+ pgvector)
+    %% Data model in Supabase Postgres (+ pgvector). Diagram of database-design.md (full columns and rules there)
     %% Field names and market values follow All-context/05-web-sources/fetching-sources.md section 7
-    %% Chain: SOURCE -> FINDING -> CASE (problem) -> REQUIREMENT (solution) -> DECISION, all logged in AUDIT_EVENT
+    %% Chain: SOURCE_RECORD -> SIGNAL -> CASE_ITEM (problem) -> CASE_VEHICLE confirmed -> REQUIREMENT (solution) -> DECISION, all logged in AUDIT_EVENT
 
+    %% ---------- Reference and configuration ----------
+    VEHICLE {
+        text code PK "G60, F70, G70, G68, predecessors G30 F40 G11"
+        text series "5 Series"
+        text segment "entry, business, luxury"
+        text generation
+        date on_sale_since "earlier records = predecessor"
+        text predecessor_code FK
+        bool is_current
+        text_array markets_sold "2030 sales > 0"
+    }
+    COMPETITOR {
+        uuid id PK
+        text bmw_vehicle FK
+        text brand
+        text model
+        text generation
+        jsonb names "de, fr, zh"
+        text wikipedia_page
+        text_array markets
+        text origin "registry, agent:competitor"
+        bool confirmed
+    }
+    SOURCE_REGISTRY {
+        text source_id PK "reddit, kbb, bmw_feedback"
+        text url_pattern
+        text_array categories "A..J"
+        text country
+        text level "model, brand, market"
+        text access "API, RSS, Scraping, Download, Library"
+        int fetch_step "1..13, v1 = 1..9"
+        bool enabled
+        jsonb last_cursor "incremental runs"
+        timestamptz backfill_done_at
+    }
+    SITE_SLUG {
+        text subject_type PK "vehicle, competitor"
+        text subject_id PK
+        text source_id PK
+        text slug PK
+    }
+    SEARCH_TERM {
+        uuid id PK
+        text subject_type
+        text subject_id
+        text term "BMW i5, 宝马5系"
+        text language
+        bool collision_safe
+    }
+    CAR_AREA {
+        text code PK "11 areas of the fixed taxonomy"
+        text name
+        text description
+    }
+    ASPECT_GROUP {
+        text code PK "function ... price (11)"
+        text description
+    }
+    TAXONOMY_PROPOSAL {
+        uuid id PK
+        uuid signal_id FK
+        text suggested_name
+        text reason "other, low_confidence"
+        text status "open, mapped_to_existing, accepted_new_topic, dismissed"
+        uuid resolved_feature_id FK
+        text decided_by
+    }
+    BRAND_PROFILE {
+        uuid id PK
+        int version
+        text body_md "versioned assumption"
+    }
     CONFIG {
         uuid id PK
-        text vehicle "e.g. G60"
+        text vehicle FK
         text market "USA, China, Europe, Rest of World"
-        jsonb competitor_set
-        jsonb brand_profile "versioned assumption"
-        jsonb source_filter
+        uuid_array competitor_ids
+        uuid brand_profile_id FK
+        jsonb source_filter "exclude sources, categories, content types; applied when scoring"
+        jsonb thresholds "open minimum, conflict minimum 5, similarity"
     }
     WEIGHT_PROFILE {
         uuid id PK
         uuid config_id FK
-        text name "e.g. focus speed, focus budget"
-        jsonb case_weights "factor -> weight"
-        jsonb cost_adjustment "S, M, L -> multiplier"
-        text created_by
+        text name "balanced, focus comfort"
+        jsonb case_weights "8 factors"
+        jsonb brand_multipliers "1.0, 0.8, 0.5"
+        jsonb cost_multipliers "S 1.0, M 0.85, L 0.7"
     }
-    VEHICLE {
-        text code PK "G60"
-        text series "5 Series"
-        text segment "entry, business, luxury"
-        text generation
-        text predecessor_code
-        text_array markets_sold
+    APP_USER {
+        uuid id PK "Supabase auth uid"
+        text name
+        text role "pm, engineer, admin"
+        text_array vehicles "lines the PM owns, empty = all"
     }
-    SALES_VOLUME {
+
+    %% ---------- Baseline ----------
+    FEATURE {
+        uuid id PK
+        text topic_id "taxonomy slug: seat_massage, other"
+        text name "BMW VFC level 2 label"
+        text car_area FK
+        text hint
+        text_array vfc_level2 "label + aliases"
+        text taxonomy_version
+        text status "confirmed"
+        vector embedding
+    }
+    FEATURE_MAPPING {
+        uuid id PK
+        uuid feature_id FK
+        text kind "vfc_topic, option_code, study_attribute"
+        text value
+        text vehicle FK "nullable"
+    }
+    VEHICLE_FEATURE {
+        uuid id PK
         text vehicle FK
-        text market
-        int year "2024, 2025, 2030"
-        int units
-        bool suspect "e.g. RoW placeholder"
+        uuid feature_id FK
+        text variant "i5 eDrive40"
+        text market "DE"
+        text availability "standard, optional, absent, removed"
+        text sa_code
+        numeric price_eur
+        text record_id FK "option-list page"
     }
     STUDY_SCORE {
         uuid id PK
@@ -45,162 +140,193 @@ erDiagram
         float dissatisfied_share "US only"
         uuid feature_id FK
     }
-    FEATURE {
+    DATA_RECORD {
+        text record_id PK "fetching-sources 7.3"
+        text source_id FK "bmw_sales, kba, auto-data"
+        text chassis_code
+        uuid competitor_id FK
+        text powertrain
+        text market
+        text period "2025, 2030 forecast"
+        text metric
+        numeric value
+        text unit
+        text source_location
+        bool suspect
+    }
+
+    %% ---------- Evidence ----------
+    AGENT_RUN {
         uuid id PK
-        text name "canonical, e.g. Seat ventilation"
-        text car_area "Exterior, Interior, Powertrain, ..."
-        text_array vfc_topics
-        text_array option_codes
-        text_array study_attributes
-        text status "confirmed, candidate"
+        text agent "seed:feedback, fetch:reddit, agent:competitor"
+        text mode "seed, backfill, incremental"
+        int signals_valid
+        int signals_quarantined
+        numeric llm_cost_usd
+        text status
     }
-    VEHICLE_FEATURE {
-        text vehicle FK
-        uuid feature_id FK
-        text variant "e.g. i5 eDrive40"
-        text market "DE for option lists"
-        text availability "standard, optional, absent, removed"
-        text sa_code
-        numeric price_eur
-        text record_id FK "PDF + page"
-    }
-    SOURCE {
-        text record_id PK "source_id + own ID, see fetching-sources.md 7.2"
-        text source_id "site, e.g. reddit, or bmw_feedback, option_list"
-        text category "A..J from fetching-sources.md"
-        text content_type "owner, expert, press, news"
-        text level "model, brand"
-        text url "or file + row / page"
+    SOURCE_RECORD {
+        text record_id PK "fetching-sources 7.2"
+        text source_id FK
+        text category "A..J"
+        text content_type "owner, expert, press, news, bmw_internal"
+        text url
         text raw_ref "untouched raw response"
-        text content_hash
-        timestamptz fetched_at
+        text content_hash "indexed, not unique"
         timestamptz published_at
-        text search_term
-        text thread_id
         text author_hash
         text chassis_code
-        text model_year
-        text vehicle_role "current, predecessor, competitor, unknown"
-        text powertrain "ICE, PHEV, BEV, unknown"
-        text country "ISO code"
-        text market "USA, China, Europe, Rest of World, unknown"
+        text vehicle_role
+        text powertrain
+        text market
         text language
         text text_original
         text text_en
-        jsonb engagement "upvotes, likes, views, replies"
+        jsonb engagement
+        uuid run_id FK
     }
-    DATA_RECORD {
-        text record_id PK "fetching-sources.md 7.3"
-        text source_id
-        text chassis_code
-        text powertrain
-        text market
-        text period "2026-09, 2025, 2030 forecast"
-        text metric "e.g. range, registrations"
-        numeric value
-        text unit
-        text source_location "sheet + cell, table, PDF page"
-        text raw_ref
-    }
-    AGENT_RUN {
-        uuid id PK
-        text agent
-        timestamptz started_at
-        timestamptz ended_at
-        int findings_valid
-        int findings_rejected
-        numeric llm_cost
-        text status
-    }
-    FINDING {
+    SIGNAL {
         uuid id PK
         text record_id FK
         uuid run_id FK
         text schema_version
         text prompt_version
-        text customer_ref "BMW verbatim ID or author_hash"
-        text market "USA, China, Europe, Rest of World, unknown"
+        text customer_ref "verbatim ID or author_hash"
+        text market
         text market_basis "stated, inferred, unknown"
-        text vehicle
+        text vehicle FK "BMW line, null = brand level"
+        uuid competitor_id FK
         text vehicle_role "current, predecessor, competitor, unknown"
-        text powertrain
+        text evidence_role "bmw_customer, competitor, market"
         text kind "complaint, wish, like, competitor_fact, trend, innovation"
         text severity "defect, difficult_to_use, wish, none"
-        text_array car_area
+        uuid feature_id FK "the topic"
+        text aspect_group FK
+        text_array car_area "derived from the topic"
+        text classified_by "bmw_label, llm, pm"
+        text classification_confidence "high, medium, low"
+        text taxonomy_version
         text feature_hint
+        text case_id FK
         text summary "max 20 words EN"
         text quote "exact excerpt of text_original"
         text quote_en
-        int reach "from engagement"
-        text reach_unit "views, upvotes, likes, none"
-        text competitor_fact_ref "DATA_RECORD id, if a competitor fact"
+        int reach
+        text data_record_id FK "competitor fact"
         jsonb extra
         text validation "valid, quarantined, deleted"
         text reject_reason
         vector embedding
     }
-    CASE {
-        text id PK "CASE-G60-0012"
-        uuid feature_id FK
+
+    %% ---------- Cases and requirements ----------
+    CASE_ITEM {
+        text id PK "CASE-0012, not tied to one vehicle"
+        uuid feature_id FK "the topic"
+        text aspect_group FK
         text title "the problem"
-        text state "observed, open, confirmed, rejected"
-        text body_md "Notion-like page, markdown"
+        text body_md "Notion-like page"
         int body_version
-        jsonb figures "customers per market, opinions, reach, study, equipment, competitors"
-        bool market_conflict
+        jsonb figures "per vehicle x market x powertrain"
         text scope_tag
-        text brand_fit
-        text segment
-        int manual_rank "PM override, null = by score"
-        text manual_rank_reason
+        text brand_fit "fits, neutral, off_brand"
+        text segment "base, premium, luxury"
+        text_array tags
+        vector embedding
+    }
+    CASE_VEHICLE {
+        text case_id PK
+        text vehicle PK
+        text state "observed, open, confirmed, rejected"
+        text opened_by "rule or PM"
+        bool market_conflict
+        text release_fit "current_car, next_gen, ota"
+        text release_fit_source "ai, pm"
+        int manual_rank
+        int flag_new_evidence
+    }
+    CASE_LINEAGE {
+        uuid id PK
+        text from_case FK
+        text to_case FK
+        text op "merge, split"
+        text actor
     }
     CASE_SCORE {
         uuid id PK
         text case_id FK
         uuid weight_profile_id FK
-        jsonb factors "value per factor"
+        jsonb factors "raw, normalized, weight, contribution"
         float score
+        text rationale
         timestamptz computed_at
     }
     REQUIREMENT {
-        text id PK "REQ-G60-US-0012"
+        text id PK "REQ-G60-0012, REQ-G60-USA-0012 if split"
         text case_id FK
-        text market "set only when split per market"
-        text body_md "Notion-like page, markdown"
+        text vehicle FK
+        text market "only when split per market"
+        text body_md
         int body_version
-        text metric_target
-        text acceptance_criteria
+        jsonb metric_target
+        jsonb acceptance_criteria
         text release_target "next_gen, current_car, ota"
         text evidence_level "bmw_data, web, assumption"
-        text assumptions
+        jsonb assumptions
         text cost_size "S, M, L"
         text cost_source "option_price, ai_estimate, pm, engineering"
-        text status "draft, in_discussion, approved, rejected, exported, deleted"
-        float rank_score "case score adjusted by cost"
+        text status "draft, in_discussion, approved, rejected, deleted"
+        float rank_score "cache for the default weight profile; per profile see view requirement_rank"
         int manual_rank
     }
+    PAGE_VERSION {
+        text object_type PK
+        text object_id PK
+        int version PK
+        text body_md
+        text author
+    }
+
+    %% ---------- Collaboration and audit ----------
     DECISION {
         uuid id PK
         text object_type "case, requirement"
         text object_id
-        text actor "PM user id"
-        text action "open, confirm, reject, edit, reorder, approve, delete, export"
+        text actor
+        text action "open, confirm, reject, edit, reorder, approve, delete"
         text rationale
     }
     CHAT_MESSAGE {
         uuid id PK
-        text object_type "case, requirement"
+        text object_type
         text object_id
         text role "pm, agent"
         text content
-        uuid_array cited_findings
-        jsonb proposed_diff "accepted by PM or not"
+        uuid_array cited_signals
+        jsonb proposed_diff
+        text diff_status "proposed, accepted, rejected"
+    }
+    NOTIFICATION {
+        uuid id PK
+        text type "case_opened, new_evidence, market_conflict, run_failed"
+        text object_type
+        text object_id
+        text message
+        uuid_array read_by
+    }
+    RAG_CHUNK {
+        uuid id PK
+        text object_type
+        text object_id
+        text text
+        vector embedding
+        tsvector tsv
     }
     AUDIT_EVENT {
         bigint seq PK
         timestamptz at
-        text actor "agent name or PM id"
-        text actor_type "ai, human"
+        text actor "seed, agent, pm, engineer, system"
+        text actor_type "ai, human, system"
         text action
         text object_type
         text object_id
@@ -209,21 +335,43 @@ erDiagram
         text rationale
     }
 
+    VEHICLE ||--o{ VEHICLE : "predecessor of"
+    VEHICLE ||--o{ COMPETITOR : "rivalled by"
+    VEHICLE ||--o{ CONFIG : "configured as"
     CONFIG ||--o{ WEIGHT_PROFILE : has
-    VEHICLE ||--o{ SALES_VOLUME : sells
+    BRAND_PROFILE ||--o{ CONFIG : "used by"
+    SOURCE_REGISTRY ||--o{ SITE_SLUG : "addresses"
+    SOURCE_REGISTRY ||--o{ SOURCE_RECORD : "fetched from"
+    SOURCE_REGISTRY ||--o{ DATA_RECORD : "fetched from"
     VEHICLE ||--o{ STUDY_SCORE : rated
     VEHICLE ||--o{ VEHICLE_FEATURE : offers
+    CAR_AREA ||--o{ FEATURE : groups
+    FEATURE ||--o{ FEATURE_MAPPING : "mapped to"
     FEATURE ||--o{ VEHICLE_FEATURE : "offered as"
     FEATURE ||--o{ STUDY_SCORE : measures
-    SOURCE ||--o{ FINDING : yields
-    DATA_RECORD ||--o{ FINDING : "backs competitor facts"
-    AGENT_RUN ||--o{ FINDING : produced
-    FEATURE ||--o{ CASE : groups
-    CASE ||--o{ FINDING : contains
-    CASE ||--o{ CASE_SCORE : "scored as"
+    SOURCE_RECORD ||--o{ VEHICLE_FEATURE : "option-list page"
+    AGENT_RUN ||--o{ SOURCE_RECORD : fetched
+    SOURCE_RECORD ||--o{ SIGNAL : yields
+    AGENT_RUN ||--o{ SIGNAL : produced
+    DATA_RECORD ||--o{ SIGNAL : "backs competitor facts"
+    COMPETITOR ||--o{ SIGNAL : "competitor evidence"
+    COMPETITOR ||--o{ DATA_RECORD : "specs of"
+    FEATURE ||--o{ SIGNAL : about
+    ASPECT_GROUP ||--o{ SIGNAL : "aspect of"
+    ASPECT_GROUP ||--o{ CASE_ITEM : "aspect of"
+    SIGNAL ||--o| TAXONOMY_PROPOSAL : "review queue"
+    FEATURE ||--o{ CASE_ITEM : groups
+    CASE_ITEM ||--o{ SIGNAL : "composed of"
+    CASE_ITEM ||--|{ CASE_VEHICLE : "applies to"
+    VEHICLE ||--o{ CASE_VEHICLE : "worked by its PM"
+    CASE_ITEM ||--o{ CASE_LINEAGE : "merged or split"
+    CASE_ITEM ||--o{ CASE_SCORE : "scored as"
     WEIGHT_PROFILE ||--o{ CASE_SCORE : weights
-    CASE ||--|{ REQUIREMENT : "generates (1, or 1 per market)"
-    CASE ||--o{ CHAT_MESSAGE : discussed
+    CASE_VEHICLE ||--o{ REQUIREMENT : "generates once confirmed (1, or 1 per market)"
+    CASE_ITEM ||--o{ PAGE_VERSION : "page history"
+    REQUIREMENT ||--o{ PAGE_VERSION : "page history"
+    CASE_ITEM ||--o{ CHAT_MESSAGE : discussed
     REQUIREMENT ||--o{ CHAT_MESSAGE : discussed
-    CASE ||--o{ DECISION : receives
+    CASE_ITEM ||--o{ DECISION : receives
     REQUIREMENT ||--o{ DECISION : receives
+    APP_USER ||--o{ DECISION : makes
