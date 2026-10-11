@@ -22,18 +22,18 @@ import { movedBecauseFactor } from "@/lib/rank-reasons";
 import { ApiError, audit, must, nextId, notify, now } from "./store";
 import { computeScores } from "./scoring";
 import { scoreSnapshotNow } from "./snapshot";
-import { segments, todayValues } from "./authored/hints";
+import { segments } from "./authored/hints";
 import { snapshotOf } from "./ai/drafting";
 
 /**
  * The competitor ripple (mock of the monitor's impact service). A new competitor fact is
- * matched by metric key against every target in the portfolio, converted into each target's
- * cycle with the labelled conversion table, judged (behind / at par / still ahead / not
- * comparable), and the matched cases are re-scored. Owners get alerts; nothing is edited:
- * every follow-up is a proposal or an audited decision by a person.
+ * matched by metric key against every requirement target in the portfolio, converted into each
+ * target's cycle with the labelled conversion table, judged (behind / at par / still ahead / not
+ * comparable), and the cases behind those requirements are re-scored. A competitor update affects
+ * requirements, not cases: a case without a target only carries the fact as evidence. Owners get
+ * alerts; nothing is edited: every follow-up is a proposal or an audited decision by a person.
  */
 
-const TOPICS: Record<MetricKey, string[]> = { ev_range: ["electric_range"], dc_10_80_min: ["public_charging", "charge_high_voltage_battery"] };
 const GAP_BUMP = { behind: 0.3, at_par: 0.15, still_ahead: 0, not_comparable: 0 } as const;
 const LIVE = (r: Requirement) => !["rejected"].includes(r.status);
 const SIGNED = ["signed_off", "planned", "exported"];
@@ -141,37 +141,6 @@ export function assessFact(d: Dataset, s: Signal, runId: string): Ripple | null 
       variant: null,
     });
   }
-  // Confirmed cases on the same topic that have no target yet: compared with today's car.
-  for (const c of d.cases.filter((x) => x.outcome === "confirmed" && x.topicId && TOPICS[key].includes(x.topicId))) {
-    if (d.requirements.some((r) => r.caseId === c.id && LIVE(r) && specOf(r, key))) continue;
-    const today = todayValues[c.id];
-    const cmp = today
-      ? compareWith(d, fact, { value: today.value, unit: today.unit, cycle: today.cycle, comparator: "gte", market: "global" }, c.series)
-      : { theirsNormalized: null, conversionId: null, gapPct: null, verdict: "not_comparable" as const, reason: "No target and no known value for today's car." };
-    items.push({
-      id: `${id}-${items.length + 1}`,
-      kind: "case",
-      objectId: c.id,
-      title: c.title,
-      caseId: c.id,
-      row: rowOf(c.series, c.scope),
-      alsoRows: [],
-      carArea: c.carArea,
-      ownerId: c.ownerId,
-      coOwnerIds: c.coOwnerIds,
-      status: `${c.state} · ${c.outcome}`,
-      ours: null,
-      ...cmp,
-      reason: today ? `${today.text}. ${cmp.reason}` : cmp.reason,
-      rankBefore: null,
-      rankAfter: null,
-      movedBecause: null,
-      notified: [],
-      muted: false,
-      decision: null,
-      variant: null,
-    });
-  }
   if (!items.length) return null;
 
   // Mute: a kept target stays quiet until the gap grows by more than the threshold.
@@ -201,6 +170,17 @@ export function assessFact(d: Dataset, s: Signal, runId: string): Ripple | null 
   d.ripples.unshift(ripple);
   audit({ actorId: "agent:monitor", action: "ripple.created", objectType: "ripple", objectId: id, after: { fact: `${fact.competitor} ${fmt(fact.value, fact.unit, fact.cycle)}`, trust: fact.trust, status: ripple.status, items: items.length }, rationale: ripple.statusReason });
   if (watch) return ripple;
+
+  // A newer fact from the same competitor on the same metric replaces the older one: its open alerts
+  // on the requirements assessed again here are closed, so each requirement carries one current alert.
+  const reassessed = new Set(items.map((i) => i.objectId));
+  for (const old of d.ripples.filter((r) => r.id !== id && r.status === "active" && r.fact.competitor === fact.competitor && r.fact.key === key)) {
+    for (const a of d.alerts.filter((x) => x.rippleId === old.id && x.status === "open" && x.requirementId && reassessed.has(x.requirementId))) {
+      a.status = "dismissed";
+      a.resolution = `Superseded by ${id}: ${fact.competitor} ${fmt(fact.value, fact.unit, fact.cycle)}`;
+      audit({ actorId: "agent:monitor", action: "alert.dismissed", objectType: "requirement", objectId: a.requirementId!, before: { status: "open" }, after: { status: "dismissed", rippleId: id }, rationale: a.resolution });
+    }
+  }
 
   // Re-score: the competitor-gap factor of every matched case grows with how far behind we are.
   const allSeries = [...new Set(items.flatMap((i) => [i.row === "G60_CN" ? "G60" : i.row, ...i.alsoRows.map((r) => (r === "G60_CN" ? "G60" : r))]))] as Series[];
@@ -299,13 +279,10 @@ export function assessFact(d: Dataset, s: Signal, runId: string): Ripple | null 
 export function reassess(d: Dataset) {
   for (const rp of d.ripples) {
     for (const it of rp.items) {
-      if (!it.ours && it.kind === "requirement") continue;
-      const today = it.kind === "case" ? todayValues[it.objectId] : undefined;
-      const ours = it.ours ?? (today ? { value: today.value, unit: today.unit, cycle: today.cycle, comparator: "gte" as const, market: "global" } : null);
-      if (!ours) continue;
+      if (!it.ours) continue;
       const series = (it.row === "G60_CN" ? "G60" : it.row) as Series;
-      const cmp = compareWith(d, rp.fact, ours, series);
-      Object.assign(it, { theirsNormalized: cmp.theirsNormalized, conversionId: cmp.conversionId, gapPct: cmp.gapPct, verdict: cmp.verdict, reason: today ? `${today.text}. ${cmp.reason}` : cmp.reason });
+      const cmp = compareWith(d, rp.fact, it.ours, series);
+      Object.assign(it, { theirsNormalized: cmp.theirsNormalized, conversionId: cmp.conversionId, gapPct: cmp.gapPct, verdict: cmp.verdict, reason: cmp.reason });
     }
   }
 }

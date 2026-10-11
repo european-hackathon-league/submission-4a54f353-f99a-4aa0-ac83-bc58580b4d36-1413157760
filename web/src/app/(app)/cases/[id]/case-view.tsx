@@ -92,7 +92,8 @@ export function CaseView() {
   const canDraft = canEdit || (user.role === "vehicle_pm" && user.series.includes(c.series));
   const myStance = c.stances.find((s) => s.authorId === user.id);
   const watching = c.watcherIds.includes(user.id);
-  const openAlerts = alerts.filter((a) => a.status === "open");
+  // Competitor ripples alert the requirement (its page links to the ripple), not the case.
+  const openAlerts = alerts.filter((a) => a.status === "open" && !a.rippleId);
   const pending = proposals.filter((p) => p.status === "pending").length;
   const openQuestions = questions.filter((q) => q.status === "open").length;
 

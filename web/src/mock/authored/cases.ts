@@ -262,7 +262,7 @@ export const caseSpecs: CaseSpec[] = [
     bodyMd: body({
       problem: "i5 owners lose noticeable range in cold weather and struggle with public charging (finding chargers, slow sessions). New competitors set the bar at 700+ km WLTP and 10–80% in about 20 minutes.",
       affected: "BEV owners, mostly US (G60 BEV verbatims: electric range 43 pain, public charging 28). Nordic owners in the web signals. Europe is the biggest i5 market by volume but has few verbatims.",
-      evidence: "- Range 'not OK' and public charging 'not user-friendly' verbatims\n- Competitor facts: Mercedes CLA, Audi A6 e-tron, Volvo ES90 (illustrative values)\n- Monitor alert: a competitor raises the bar (see Alerts)",
+      evidence: "- Range 'not OK' and public charging 'not user-friendly' verbatims\n- Competitor facts: Mercedes CLA, Audi A6 e-tron, Volvo ES90 (illustrative values); they become benchmarks once the case has a requirement",
       today: "i5 eDrive40: 81.2 kWh, WLTP 513–627 km, DC up to 205 kW.",
       competitors: "Benchmarks collected by the competitor agent; announcements are trust E and treated as assumptions.",
       brand: "Efficiency pillar. AI proposal 0.8, not yet confirmed.",
