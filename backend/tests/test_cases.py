@@ -3,7 +3,7 @@
 import pytest
 
 from app import audit
-from app.cases import cluster, figures, lifecycle, pipeline
+from app.cases import cluster, figures, lifecycle, pipeline, rewrite, writer
 from app.llm.embeddings import get_embedder
 from app.llm import client as llm_client
 from app.signals import reclassify, service
@@ -239,3 +239,43 @@ def test_merge_and_split_keep_ids(world):
     assert ops == ["split", "merge"]
     assert conn.execute("select count(*) n from signal where case_id = %s", (new["id"],)).fetchone()["n"] == 0
     assert conn.execute("select count(*) n from case_item where id = %s", (new["id"],)).fetchone()["n"] == 1
+
+
+def test_case_texts_take_their_counts_from_the_whole_case(world):
+    conn = world["conn"]
+    _run_cases(conn)
+    case_id = conn.execute("select c.id from case_item c join signal s on s.case_id = c.id group by c.id"
+                           " order by count(*) desc limit 1").fetchone()["id"]
+    members = rewrite._members(conn, case_id)
+    counts = writer._counts(members)
+    # The writer only reads a sample; the counts it is given describe every signal of the case.
+    assert len(writer._sample(members)) < len(members) == counts["signals"]
+    assert counts["bmw_customers"]["customers"] == len({m["customer_ref"] for m in members
+                                                        if m["evidence_role"] == "bmw_customer"})
+    assert sum(m["customers"] for m in counts["by_market"].values()) >= counts["bmw_customers"]["customers"]
+
+    seen = {}
+
+    def page(v):
+        seen.update(v)
+        return {"title": "Seat ventilation too weak", "short_title": "Weak ventilation", "summary": "s",
+                "highlights": ["a", "b", "c"], "body_md": "## Problem\nnew text"}
+
+    # A case a person decided on keeps its texts; the others get the next page version.
+    kept = conn.execute("select id from case_item where id <> %s limit 1", (case_id,)).fetchone()["id"]
+    audit.insert(conn, "decision", {"object_type": "case", "object_id": kept, "actor": "pm:test",
+                                    "action": "edit", "rationale": "mine"}, actor="pm:test")
+    cases = rewrite.todo(conn)
+    assert kept not in [c["id"] for c, _ in cases] and case_id in [c["id"] for c, _ in cases]
+    llm_client.set_llm(None)
+    assert rewrite.write(conn, cases)["rewritten"] == []  # no LLM answer: the template replaces nothing
+    llm_client.set_llm(llm_client.FakeLLM({"case_writer": page}))
+    try:
+        out = rewrite.write(conn, [c for c in cases if c[0]["id"] == case_id])
+    finally:
+        llm_client.set_llm(None)
+    assert out["rewritten"] == [case_id] and '"signals": %d' % len(members) in seen["counts"]
+    row = conn.execute("select title, body_md, body_version from case_item where id = %s", (case_id,)).fetchone()
+    assert row["title"] == "Seat ventilation too weak" and row["body_version"] == 2
+    assert conn.execute("select body_md from page_version where object_type = 'case' and object_id = %s"
+                        " and version = 2", (case_id,)).fetchone()["body_md"] == row["body_md"]

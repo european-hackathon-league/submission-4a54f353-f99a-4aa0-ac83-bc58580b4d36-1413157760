@@ -127,6 +127,8 @@ def find_quote(quote: str, text: str) -> str | None:
 def _quarantine(row: dict, reason: str) -> GateResult:
     row["validation"] = "quarantined"
     row["reject_reason"] = reason
+    # Stored in one batch with valid signals of the same record, which carry a scope tag.
+    row.setdefault("scope_tag", "in_scope")
     return GateResult(row, False, reason)
 
 
