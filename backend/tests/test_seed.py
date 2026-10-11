@@ -109,7 +109,7 @@ def test_seed_counts(sconn):
         assert (got["Likes"], got["Difficult to Use"], got["Defect"], got["Wants"]) == (likes, dtu, defect, wants)
     assert q("select count(*) n from source_registry") == 134
     assert q("select count(*) n from competitor") == 27
-    assert q("select count(*) n from site_slug") == 231
+    assert q("select count(*) n from site_slug") == 231 + 71  # 3.10 table + seed/slugs_extra.yaml (3.4, 3.9)
     assert q("select count(*) n from config") == 10
     assert q("select count(*) n from weight_profile where is_default") == 10
     assert q("select count(*) n from vehicle_feature") > 3000

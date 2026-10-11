@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 
 from selectolax.lexbor import LexborHTMLParser
 
-from app.fetch.adapters.base import FetchContext, FetchResult, NotConfigured, adapter, cursor_key
+from app.fetch.adapters.base import FetchContext, FetchResult, adapter, cursor_key
 from app.fetch.records import text_record
 from app.fetch.subjects import Subject, author_hash
 
@@ -204,9 +204,3 @@ def kbb(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) -> Fetc
                     author_hash=author_hash("kbb", rev.get("author") or rev.get("nickname")),
                     model_year=year, run_id=ctx.run_id))
     return out
-
-
-@adapter("motor-talk", "pistonheads", "carcomplaints", "autoscout24", "ams", "autobild", "adac-autotest",
-         "automobile-magazine", "teknikens-varld")
-def pending(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) -> FetchResult:
-    raise NotConfigured(f"{source['source_id']}: page parser not built yet (plan.md open issues)")

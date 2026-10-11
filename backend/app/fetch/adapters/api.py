@@ -204,16 +204,21 @@ def reddit(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) -> F
     return out
 
 
+def youtube_channels() -> list[str]:
+    """Channel IDs of fetching-sources.md 3.5 (read from each channel page on 2026-10-10)."""
+    return ["UCcftUjNsimynCrKGFolLRKQ", "UCG72WbiCvdB6JKU-3YRP8Kg", "UCyXiDU5qjfOPxgOPeFWGwKw",
+            "UCgUvk6jVaf-1uKOqG8XNcaQ", "UCyIzTVZNIAMY9JhzKc-rriQ", "UCoNMyBdrXe8ueYEXhusMyIw",
+            "UC9QHoTXvd3xwgUK991aP4RA", "UCZTkJpxZkNEuTnDqU12-kiQ", "UCjWs7BxyjO5SLqevxSmp4vQ",
+            "UC-4H50_RIqgXol2GlEdhxQQ"]
+
+
 @adapter("youtube-comments")
 def youtube_comments(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) -> FetchResult:
     key = get_settings().youtube_api_key
     if not key:
         raise NotConfigured("youtube-comments needs YOUTUBE_API_KEY (YouTube Data API v3)")
     out = FetchResult()
-    channels = ["UCcftUjNsimynCrKGFolLRKQ", "UCG72WbiCvdB6JKU-3YRP8Kg", "UCyXiDU5qjfOPxgOPeFWGwKw",
-                "UCgUvk6jVaf-1uKOqG8XNcaQ", "UCyIzTVZNIAMY9JhzKc-rriQ", "UCoNMyBdrXe8ueYEXhusMyIw",
-                "UC9QHoTXvd3xwgUK991aP4RA", "UCZTkJpxZkNEuTnDqU12-kiQ", "UCjWs7BxyjO5SLqevxSmp4vQ",
-                "UC-4H50_RIqgXol2GlEdhxQQ"]
+    channels = youtube_channels()
     term = (subject.safe_terms("en") or [subject.label])[0]
     seen = set(cursor.get(cursor_key(subject), []))
     for channel in channels:

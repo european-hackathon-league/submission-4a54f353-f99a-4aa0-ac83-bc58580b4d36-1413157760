@@ -23,6 +23,7 @@ class Subject:
     slugs: dict[str, list[str]] = field(default_factory=dict)
     wikipedia_page: str | None = None
     priority: int = 0  # open cases first
+    on_sale_since: object = None  # date; BMW lines only
 
     def safe_terms(self, language: str | None = None, single_brand: bool = False) -> list[str]:
         out = []
@@ -48,7 +49,8 @@ def load(conn, vehicles: list[str] | None = None) -> list[Subject]:
     """Current BMW lines (optionally filtered) and their confirmed competitors."""
     open_cases = {r["vehicle"]: r["n"] for r in conn.execute(
         "select vehicle, count(*) n from case_vehicle where state in ('open', 'confirmed') group by vehicle").fetchall()}
-    rows = conn.execute("select code, brand, series, markets_sold::text[] as markets from vehicle where is_current"
+    rows = conn.execute("select code, brand, series, on_sale_since, markets_sold::text[] as markets from vehicle"
+                        " where is_current"
                         + (" and code = any(%s)" if vehicles else ""), (vehicles,) if vehicles else ()).fetchall()
     subjects = []
     for v in rows:
@@ -56,6 +58,7 @@ def load(conn, vehicles: list[str] | None = None) -> list[Subject]:
             kind="vehicle", id=v["code"], brand=v["brand"], model=v["series"], bmw_vehicle=v["code"],
             chassis_code=v["code"], vehicle_role="current", markets=v["markets"],
             wikipedia_page=WIKIPEDIA_PAGES.get(v["code"]), priority=open_cases.get(v["code"], 0) + 1000,
+            on_sale_since=v["on_sale_since"],
         ))
         for c in conn.execute("select id, brand, model, names, wikipedia_page, markets::text[] as markets"
                               " from competitor where bmw_vehicle = %s and confirmed and status <> 'ended'",

@@ -20,18 +20,24 @@ import traceback
 from app import audit, db
 from app.config import BACKEND_DIR
 from app.fetch import agents, subjects as subjects_mod
-from app.fetch.adapters import api, downloads, feeds, scrape  # noqa: F401  (registers adapters)
+from app.fetch.adapters import api, downloads, feeds, libraries, scrape, sites  # noqa: F401  (registers adapters)
 from app.fetch.adapters.base import ADAPTERS, FetchContext, FetchResult, NotConfigured
 from app.fetch.http import BudgetExhausted, PoliteClient
 
 PLAN_REPORT = BACKEND_DIR / "reports" / "fetch_plan.md"
+# Sources fetched once per run for all subjects (feeds, newsrooms, market pages, app stores).
+SHARED = feeds.SHARED | sites.SHARED | libraries.SHARED
 
 # Rough requests per subject (incremental, backfill) for the dry-run estimate.
 ESTIMATE = {
     "wikipedia": (1, 1), "wikidata": (1, 1), "nhtsa-vpic": (4, 4), "fueleconomy": (4, 4),
     "nhtsa-complaints": (12, 12), "nhtsa-recalls": (12, 12), "reddit": (16, 160), "youtube-comments": (20, 200),
     "tmc": (10, 2000), "genesis-owners": (10, 2000), "lucid-owners": (10, 400), "kbb": (2, 2),
+    "motor-talk": (100, 4000), "pistonheads": (10, 1000), "carcomplaints": (10, 60),
+    "ams": (1 + 15, 1 + 200), "autobild": (1 + 15, 1 + 200), "adac-autotest": (1 + 15, 1 + 200),
+    "autoscout24": (1 + 15, 1 + 200), "youtube-transcripts": (20, 20),
 }
+SLUG_SOURCES = {"kbb", "motor-talk", "pistonheads", "carcomplaints"}
 
 
 def parse_steps(text: str) -> list[int]:
@@ -86,8 +92,8 @@ def fetch_source(conn_factory, client: PoliteClient, source: dict, subjects: lis
     status, error = "ok", None
     try:
         results: list[FetchResult] = []
-        if sid in feeds.SHARED:
-            results.append(feeds.SHARED[sid](ctx, source, subjects, cursor))
+        if sid in SHARED:
+            results.append(SHARED[sid](ctx, source, subjects, cursor))
         elif (source["access"] or "").startswith("Download"):
             results.append(downloads.fetch_downloads(ctx, source, subjects, cursor))
         elif sid in ADAPTERS:
@@ -151,21 +157,24 @@ def dry_run(steps: list[int], vehicles: list[str] | None, only: list[str] | None
     tot_i = tot_b = 0
     for s in sources:
         sid = s["source_id"]
-        if sid in feeds.SHARED:
-            inc, back = (1, 1) if sid != "app-store" else (17, 170)
-            adapter_name = "feed"
+        if sid in SHARED:
+            inc, back = {"app-store": (17, 170), "google-play": (10, 100)}.get(
+                sid, (1 + sites.MAX_ARTICLES, 1 + 200) if sid in sites.NEWSROOMS else (1, 1))
+            adapter_name = SHARED[sid].__name__
         elif (s["access"] or "").startswith("Download"):
             inc = back = 0
             adapter_name = "download folder"
-        elif sid in ADAPTERS and ADAPTERS[sid] is not scrape.pending:
+        elif sid in ADAPTERS:
             per = ESTIMATE.get(sid, (1, 1))
-            n = len([x for x in subjects if sid not in scrape.MAGAZINES and sid != "kbb" or x.slugs.get(sid)])
+            slug_based = sid in scrape.MAGAZINES or sid in sites.MODEL_PAGES or sid in SLUG_SOURCES
+            n = len([x for x in subjects if not slug_based or x.slugs.get(sid)])
             inc, back = per[0] * n, per[1] * n
             adapter_name = ADAPTERS[sid].__name__
         else:
             inc = back = 0
             adapter_name = "not built yet"
-        needs = {"reddit": "Reddit OAuth app", "youtube-comments": "YouTube Data API key"}.get(sid, "")
+        needs = {"reddit": "Reddit OAuth app", "youtube-comments": "YouTube Data API key",
+                 "youtube-transcripts": "YouTube Data API key"}.get(sid, "")
         tot_i += inc
         tot_b += back
         lines.append(f"| {s['fetch_step']} | `{sid}` | {s['access']} | {adapter_name} | {inc} | {back} | {needs} |")

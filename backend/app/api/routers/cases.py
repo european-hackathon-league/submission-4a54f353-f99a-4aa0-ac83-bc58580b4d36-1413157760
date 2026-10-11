@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app import audit
@@ -212,3 +212,22 @@ def generate_requirements(case_id: str, vehicle: str, c=Depends(conn), user: Use
     for r in created:
         index.refresh_page(c, "requirement", r["id"])
     return {"requirements": [r["id"] for r in created]}
+
+
+class Research(BaseModel):
+    rationale: str
+
+
+@router.post("/{case_id}/vehicles/{vehicle}/predecessor-research", status_code=202)
+def predecessor_research(case_id: str, vehicle: str, body: Research, background: BackgroundTasks, c=Depends(conn),
+                         user: User = Depends(current_user)) -> dict:
+    """PM flags "removed vs predecessor": the case is tagged (score factor) now, and the
+    predecessor's pages are fetched in the background (agent_run mode on_demand)."""
+    from app.fetch import predecessor
+
+    require_pm(user, vehicle)
+    _vehicles(c, case_id)
+    out = predecessor.flag(c, case_id, vehicle, actor=user.actor, rationale=body.rationale, request_id=request_id())
+    if out["predecessor"]:
+        background.add_task(predecessor.research, case_id, vehicle, actor=user.actor)
+    return {**out, "research": "scheduled" if out["predecessor"] else "no predecessor known"}

@@ -297,6 +297,34 @@ def load(conn, data: dict | None = None) -> dict[str, int]:
     return counts
 
 
+EXTRA_SLUGS = REGISTRY_YAML.parent / "slugs_extra.yaml"
+
+
+def load_extra_slugs(conn) -> int:
+    """Slugs written as prose in fetching-sources 3.4 / 3.9 (seed/slugs_extra.yaml). Idempotent."""
+    data = yaml.safe_load(EXTRA_SLUGS.read_text(encoding="utf-8"))
+    rows = []
+    for code, sites in data["vehicles"].items():
+        for source_id, slugs in sites.items():
+            rows += [{"subject_type": "vehicle", "subject_id": code, "source_id": source_id, "slug": str(sl)}
+                     for sl in slugs]
+    for c in data["competitors"]:
+        found = conn.execute("select id from competitor where bmw_vehicle = %s and brand = %s and model = %s",
+                             (c["bmw_vehicle"], c["brand"], c["model"])).fetchone()
+        if not found:
+            continue
+        for source_id, slugs in c.items():
+            if source_id in ("bmw_vehicle", "brand", "model"):
+                continue
+            rows += [{"subject_type": "competitor", "subject_id": str(found["id"]), "source_id": source_id,
+                      "slug": str(sl)} for sl in slugs]
+    known = {r["source_id"] for r in conn.execute("select source_id from source_registry").fetchall()}
+    rows = [r for r in rows if r["source_id"] in known]
+    return audit.insert_many(conn, "site_slug", rows, actor=ACTOR, key=("subject_type", "subject_id", "source_id", "slug"),
+                             rationale="slugs from fetching-sources 3.4 / 3.9 (seed/slugs_extra.yaml)",
+                             on_conflict_do_nothing=True)
+
+
 if __name__ == "__main__":
     d = build()
     print(f"{len(d['sources'])} sources, {len(d['competitors'])} competitors, {len(d['slugs'])} slugs -> {REGISTRY_YAML}")
