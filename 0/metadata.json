@@ -1,0 +1,93 @@
+{
+  "cli_version": "0.10.2",
+  "checkpoint_id": "01M4M6017S81S3MQPPC22AHD3V",
+  "session_id": "dc01fb1e-9d43-40d6-a987-a626018ae662",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-11T00:32:30.152212Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "save_step_count": 2,
+  "files_touched": [
+    "CLAUDE.md",
+    "HANDOFF.md",
+    "backend/.env.example",
+    "backend/app/config.py",
+    "backend/app/fetch/adapters/api.py",
+    "backend/app/fetch/adapters/libraries.py",
+    "backend/app/fetch/adapters/sites.py",
+    "backend/app/fetch/worker.py",
+    "backend/app/seed/catalog.py",
+    "backend/app/seed/option_load.py",
+    "backend/app/seed/registry.py",
+    "backend/app/seed/run.py",
+    "backend/reports/fetch_plan.md",
+    "backend/seed/review/option_features.csv",
+    "backend/seed/review/option_list_F70.csv",
+    "backend/seed/review/option_list_G60.csv",
+    "backend/seed/review/option_list_G70.csv",
+    "backend/seed/review/study_attributes.csv",
+    "backend/seed/review/tech_data_F70.csv",
+    "backend/seed/review/tech_data_G60.csv",
+    "backend/seed/review/tech_data_G70.csv",
+    "backend/seed/source_decisions.yaml",
+    "backend/supabase/migrations/0012_fetch_cadence.sql",
+    "backend/tests/test_fetch.py",
+    "changes.md",
+    "data-model.mmd",
+    "database-design.md",
+    "plan.md"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "3a54dadf602d",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 368,
+    "cache_creation_tokens": 414575,
+    "cache_read_tokens": 57308414,
+    "output_tokens": 165673,
+    "api_call_count": 184
+  },
+  "session_metrics": {
+    "turn_count": 4
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-11T00:32:29.8772813Z",
+    "agent_lines": 0,
+    "agent_removed": 3953,
+    "human_added": 21,
+    "human_modified": 7762,
+    "human_removed": 0,
+    "total_committed": 7678,
+    "total_lines_changed": 11739,
+    "agent_percentage": 33.67407786012437,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 96,
+      "user_lines_removed": 86,
+      "agent_lines_added": 7750,
+      "agent_lines_removed": 7564,
+      "user_added_per_file": {
+        "backend/.env.example": 2,
+        "backend/app/config.py": 91,
+        "backend/app/llm/client.py": 1,
+        "backend/app/rag/agent.py": 2
+      },
+      "user_removed_per_file": {
+        "backend/app/config.py": 83,
+        "backend/app/llm/client.py": 1,
+        "backend/app/rag/agent.py": 2
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "cli_version": "0.10.2",
+  "checkpoint_id": "01M4M6017S81S3MQPPC22AHD3V",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "CLAUDE.md",
+    "HANDOFF.md",
+    "backend/.env.example",
+    "backend/app/config.py",
+    "backend/app/fetch/adapters/api.py",
+    "backend/app/fetch/adapters/libraries.py",
+    "backend/app/fetch/adapters/sites.py",
+    "backend/app/fetch/worker.py",
+    "backend/app/seed/catalog.py",
+    "backend/app/seed/option_load.py",
+    "backend/app/seed/registry.py",
+    "backend/app/seed/run.py",
+    "backend/reports/fetch_plan.md",
+    "backend/seed/review/option_features.csv",
+    "backend/seed/review/option_list_F70.csv",
+    "backend/seed/review/option_list_G60.csv",
+    "backend/seed/review/option_list_G70.csv",
+    "backend/seed/review/study_attributes.csv",
+    "backend/seed/review/tech_data_F70.csv",
+    "backend/seed/review/tech_data_G60.csv",
+    "backend/seed/review/tech_data_G70.csv",
+    "backend/seed/source_decisions.yaml",
+    "backend/supabase/migrations/0012_fetch_cadence.sql",
+    "backend/tests/test_fetch.py",
+    "changes.md",
+    "data-model.mmd",
+    "database-design.md",
+    "plan.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 368,
+    "cache_creation_tokens": 414575,
+    "cache_read_tokens": 57308414,
+    "output_tokens": 165673,
+    "api_call_count": 184
+  }
+}
