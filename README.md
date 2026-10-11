@@ -51,6 +51,103 @@ Everything is written to an **append-only audit trail** (actor, timestamp, befor
 - **Daily web loop.** Competitor, customer, trend and innovation agents fetch from a curated source list within a daily budget; page content is treated as data, and agents can only write signals, never cases.
 - **Collaboration built in.** Case ownership per line, series briefs, stances, open questions, referrals, an innovation pool, the vehicle plan and Codebeamer-style export.
 
+## How signals become cases
+
+AI agents propose, a validation gate checks, the case agent groups and the PM decides. Blue: AI · orange: PM · green: storage · red: gate. The full pipeline is in [`architecture.mmd`](architecture.mmd).
+
+```mermaid
+flowchart LR
+    %% Argon: how signals are made and how cases are created
+
+    subgraph SRC ["Sources"]
+        direction TB
+        BMW["BMW data, seeded once<br>~10k feedback verbatims · study · sales · option lists"]
+        WEB["Web sources, daily fetch loop<br>forums · reviews · apps · news · competitors · trends<br>daily budget, open cases first"]
+    end
+
+    RAW[("Source records<br>raw response stored first, SHA-256")]
+    BMW --> RAW
+    WEB --> RAW
+
+    subgraph AG ["AI agents propose signals (page text is data, never instructions)"]
+        direction TB
+        A0["Seed classifier<br>BMW rows: topic by lookup from VFC labels,<br>LLM only for unlabelled rows"]
+        A1["Competitor agent<br>launches · competitor equipment"]
+        A2["Feedback agent<br>complaints · reviews · community · video · apps"]
+        A3["Trends agent<br>market data · studies · trends"]
+        A4["Innovation scout<br>CES · IAA · other industries"]
+    end
+
+    RAW --> A0 & A1 & A2 & A3 & A4
+
+    SIG["Proposed signal<br>one statement · one topic · one source<br>exact quote + EN summary ≤ 20 words<br>market · kind · severity · vehicle role · author hash<br>topic + aspect group picked from the fixed taxonomy"]
+    A0 & A1 & A2 & A3 & A4 --> SIG
+
+    TAX[["Fixed taxonomy<br>219 topics · 11 aspect groups · 11 car areas<br>car area derived from topic in code"]]
+    TAX -. "closed lists" .-> SIG
+
+    GATE{"Validation gate<br>schema · record stored · quote found in record ·<br>known topic · duplicate · source filter · dated fact"}
+    SIG --> GATE
+    GATE -- "rejected" --> QUAR[("Quarantine<br>visible, with reason")]
+    GATE -- "topic = other" --> TQ[("Taxonomy review queue<br>a human maps or dismisses")]
+    GATE -- "valid" --> SDB[("Signals<br>+ embeddings")]
+
+    subgraph CA ["Case agent (agent:cases): signals become a case = a problem"]
+        direction TB
+        G1["Group by topic + aspect group<br>e.g. Seats + comfort ≠ Seats + reliability"]
+        G2["Split only large groups ≥ 50 signals<br>by summary similarity, never across a topic"]
+        G3{"Above the bar, per BMW line?<br>≥ 20 distinct customers, complaints + wishes ≥ likes<br>or ≥ 10 customers report a defect<br>or competitor gap · removed feature"}
+        WAIT["No case yet<br>signals wait and keep counting"]
+        G4["Case figures per line<br>distinct customers per market + powertrain · reach capped ·<br>study score · equipment today · competitor offer · trend<br>competitor signals are evidence, never BMW customers"]
+        G5["Conflict detector<br>one market negative, another positive,<br>≥ 5 customers each → flag"]
+        G1 --> G2 --> G3
+        G3 -- "no" --> WAIT
+        G3 -- "yes" --> G4 --> G5
+    end
+    SDB --> G1
+    WAIT -. "next daily run" .-> G1
+
+    subgraph LLM ["Writer and tagger agents"]
+        direction TB
+        W1["Case writer<br>title · summary · 3 highlights<br>every claim cites a signal ID"]
+        W2["Case tagger<br>scope · brand fit · segment · release fit<br>case type · change depth"]
+    end
+    G5 --> W1 --> W2
+
+    SCORE["Case score, per weight profile<br>customers 0.25 · severity 0.20 · satisfaction gap 0.15 ·<br>competitor gap 0.15 · market volume 0.10 · removed 0.05 ·<br>reach 0.05 · trend 0.05 × brand fit 1.0 / 0.8 / 0.5"]
+    W2 --> SCORE
+
+    CASE["Open case on the PM's board<br>ranked, with score breakdown and quotes"]
+    SCORE --> CASE
+
+    ARGUS["Argus, RAG assistant<br>answers with citations,<br>proposes edits as diffs"]
+    CASE <--> ARGUS
+
+    PM{"PM decides<br>confirm · reject · merge · refer · park"}
+    CASE --> PM
+    PM -- "confirmed" --> REQ["Requirement agent<br>drafts the requirement:<br>target · criteria · release · cost S/M/L"]
+    PM -- "rejected" --> KEPT["Kept with reason"]
+
+    NEW["New signals after confirmation<br>flag '+40 complaints', never auto-edit"]
+    SDB -. "daily" .-> NEW -.-> CASE
+
+    AUDIT[("Append-only audit trail<br>actor · timestamp · before / after · rationale")]
+    GATE -.-> AUDIT
+    CA -.-> AUDIT
+    LLM -.-> AUDIT
+    SCORE -.-> AUDIT
+    PM -.-> AUDIT
+
+    classDef ai fill:#e8f0fe,stroke:#1c69d4,color:#000
+    classDef human fill:#fff4e5,stroke:#e08a00,color:#000
+    classDef store fill:#eef7ee,stroke:#2e7d32,color:#000
+    classDef gate fill:#fdecea,stroke:#c62828,color:#000
+    class A0,A1,A2,A3,A4,SIG,G1,G2,G4,G5,W1,W2,SCORE,ARGUS,REQ,NEW ai
+    class PM,CASE,KEPT,WAIT human
+    class RAW,SDB,QUAR,TQ,AUDIT,TAX store
+    class GATE,G3 gate
+```
+
 ## Run it
 
 **Demo UI (offline, synthetic data on top of real BMW verbatims):**
