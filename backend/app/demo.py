@@ -36,6 +36,10 @@ DEMO_USERS = [
     ("00000000-0000-4000-8000-000000000003", "Demo PM 1 Series", "pm", ["F70"]),
     ("00000000-0000-4000-8000-000000000004", "Demo engineer", "engineer", []),
     ("00000000-0000-4000-8000-000000000005", "Demo admin", "admin", []),
+    # UI personas without a line of their own: the cross-series PM and the head of product line
+    # (a PM with every line: admins cannot approve requirements), and a second 5 Series PM (China).
+    ("00000000-0000-4000-8000-000000000006", "Demo PM all lines", "pm", []),
+    ("00000000-0000-4000-8000-000000000007", "Demo PM 5 Series China", "pm", ["G60"]),
 ]
 
 
