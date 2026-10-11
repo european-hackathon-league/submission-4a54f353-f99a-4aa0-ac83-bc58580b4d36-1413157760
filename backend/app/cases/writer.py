@@ -15,7 +15,8 @@ from collections import Counter
 from pydantic import BaseModel, Field
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
-from app.llm import prompts
+from app.config import get_settings
+from app.llm import cache, prompts
 from app.llm.client import LLMUnavailable, get_llm, llm_available
 
 CITATION = re.compile(r"\[signal:([0-9a-f-]{36})\]")
@@ -84,20 +85,43 @@ def template(feature: str, signals: list[dict]) -> CaseText:
     return CaseText(title=title[:120], body_md="\n".join(lines).strip() + "\n")
 
 
+def _cache_key(feature: str, signals: list[dict]) -> str:
+    return cache.key(prompts.load("case_writer").prompt_version, get_settings().llm_model_for("case_writer"),
+                     feature, len(signals), sorted(str(s["id"]) for s in _sample(signals)))
+
+
+def _llm_text(feature: str, signals: list[dict]) -> dict:
+    sample = _sample(signals)
+    payload = [{"id": str(s["id"]), "kind": s["kind"], "severity": s["severity"], "market": s["market"],
+                "vehicle": s.get("vehicle"), "quote": (s["quote"] or "")[:500]} for s in sample]
+    result = get_llm().structured(
+        prompts.load("case_writer"), CaseText, feature=feature, guard=prompts.INJECTION_GUARD,
+        n_signals=str(len(signals)), signals=prompts.wrap_source(json.dumps(payload, ensure_ascii=False)),
+    )
+    allowed = {str(s["id"]) for s in sample}
+    body = CITATION.sub(lambda m: m.group(0) if m.group(1) in allowed else "", result.data.body_md)
+    return {"title": result.data.title[:120], "body_md": body, "model": result.model,
+            "prompt_version": result.prompt_version}
+
+
+def prefetch(groups: list[tuple[str, list[dict]]]) -> dict:
+    """Write the pages of many new cases in parallel (cached); ``write`` then reads the cache."""
+    if not llm_available():
+        return {}
+    return cache.prefetch("case_writer", [(_cache_key(f, s), (lambda f=f, s=s: _llm_text(f, s)))
+                                          for f, s in groups])
+
+
 def write(feature: str, signals: list[dict]) -> tuple[CaseText, str | None, str | None]:
     """(text, model, prompt_version)."""
     if llm_available():
-        sample = _sample(signals)
-        payload = [{"id": str(s["id"]), "kind": s["kind"], "severity": s["severity"], "market": s["market"],
-                    "vehicle": s.get("vehicle"), "quote": (s["quote"] or "")[:500]} for s in sample]
+        k = _cache_key(feature, signals)
+        hit = cache.get("case_writer", k)
         try:
-            result = get_llm().structured(
-                prompts.load("case_writer"), CaseText, feature=feature, guard=prompts.INJECTION_GUARD,
-                n_signals=str(len(signals)), signals=prompts.wrap_source(json.dumps(payload, ensure_ascii=False)),
-            )
-            allowed = {str(s["id"]) for s in sample}
-            body = CITATION.sub(lambda m: m.group(0) if m.group(1) in allowed else "", result.data.body_md)
-            return CaseText(title=result.data.title[:120], body_md=body), result.model, result.prompt_version
+            if hit is None:
+                hit = _llm_text(feature, signals)
+                cache.put("case_writer", k, hit)
+            return CaseText(title=hit["title"], body_md=hit["body_md"]), hit["model"], hit["prompt_version"]
         except LLMUnavailable:
             pass
     return template(feature, signals), None, "case_template@v1"

@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 from dataclasses import asdict, dataclass
 from typing import Literal
 
@@ -148,9 +149,12 @@ def _load_cache() -> dict[str, dict]:
     return out
 
 
+_CACHE_LOCK = threading.Lock()  # parallel batches append to one file
+
+
 def _save_cache(entries: list[tuple[str, Verdict]]) -> None:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CACHE_DIR / "feedback_classify.jsonl", "a", encoding="utf-8") as f:
+    with _CACHE_LOCK, open(CACHE_DIR / "feedback_classify.jsonl", "a", encoding="utf-8") as f:
         for key, verdict in entries:
             f.write(json.dumps({"key": key, "verdict": asdict(verdict)}, ensure_ascii=False) + "\n")
 
@@ -168,12 +172,20 @@ def classify_rows(rows, batch_size: int = 25) -> dict[int, Verdict]:
                 verdicts[r.excel_row] = Verdict(**hit)
             else:
                 todo.append(r)
+        # Batches run in parallel (changes.md 10.12); each answered batch is cached at once.
+        from concurrent.futures import ThreadPoolExecutor
+
+        batches = [todo[i : i + batch_size] for i in range(0, len(todo), batch_size)]
+
+        def run(batch):
+            answers = _llm_batch(batch)
+            _save_cache([(_cache_key(r.text), answers[r.excel_row]) for r in batch if r.excel_row in answers])
+            return answers
+
         try:
-            for i in range(0, len(todo), batch_size):
-                batch = todo[i : i + batch_size]
-                answers = _llm_batch(batch)
-                verdicts.update(answers)
-                _save_cache([(_cache_key(r.text), answers[r.excel_row]) for r in batch if r.excel_row in answers])
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                for answers in pool.map(run, batches):
+                    verdicts.update(answers)
         except LLMUnavailable:
             pass
     for r in rows:
