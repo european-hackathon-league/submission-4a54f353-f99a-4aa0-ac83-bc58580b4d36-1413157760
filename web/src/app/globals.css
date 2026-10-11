@@ -382,27 +382,3 @@
 .bg-primary {
   --mark-navy: var(--brand-navy-inverse);
 }
-
-/* Car turntable on the vehicle plan: one sheet of 60 pictures (10 across, 6 down) moved in steps, on the compositor, with no script. 10 s per turn. */
-@keyframes car-turn-x {
-  to {
-    transform: translateX(-100%);
-  }
-}
-@keyframes car-turn-y {
-  to {
-    transform: translateY(-100%);
-  }
-}
-.car-sheet-x {
-  animation: car-turn-x 1.6667s steps(10) infinite;
-}
-.car-sheet-y {
-  animation: car-turn-y 10s steps(6) infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .car-sheet-x,
-  .car-sheet-y {
-    animation: none;
-  }
-}

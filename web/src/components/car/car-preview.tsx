@@ -17,10 +17,10 @@ const AREAS_WIDTH = 232;
 const LIST_WIDTH = 344;
 
 /**
- * The car on top of the vehicle plan. The small card is a pre-rendered turntable (one image, moved by a
- * CSS animation): the car turns slowly, and the page runs no 3D, no WebGL and no script for it.
+ * The car on top of the vehicle plan. The small card is a pre-rendered still picture: the page runs no 3D,
+ * no WebGL and no animation for it.
  * A click opens the real 3D view large, with the car areas and their requirements.
- * Pictures are made by `Car_models/tools/turntable`.
+ * The picture is made by `Car_models/tools/turntable`.
  */
 export function CarPreview({ series, reqs, onOpenRequirement }: { series: Series; reqs: Requirement[]; onOpenRequirement: (id: string) => void }) {
   const model = isModelled(series) ? carModels[series] : null;
@@ -64,17 +64,13 @@ export function CarPreview({ series, reqs, onOpenRequirement }: { series: Series
   const picked = reqs.find((r) => r.id === pickedId) ?? null;
   const focus = picked ? getZone(zoneForCase({ title: picked.title, featureName: picked.shortTitle, carArea: picked.carArea })) : area;
   const name = seriesShort[series];
-  const sheet = model.file.replace(/\.glb$/, "-turn.webp");
+  const still = model.file.replace(/\.glb$/, "-still.webp");
 
   return (
     <div className="px-6 pt-6">
       <section className="relative h-44 overflow-hidden rounded-xl border bg-gradient-to-b from-card to-muted/50">
-        {/* 60 pictures of the car, 10 across and 6 down. Two stepped animations show one at a time. */}
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 aspect-[8/3] -translate-x-1/2 overflow-hidden">
-          <div className="car-sheet-y absolute top-0 left-0 h-[600%] w-[1000%]">
-            <div className="car-sheet-x h-full w-full bg-[length:100%_100%]" style={{ backgroundImage: `url(${sheet})` }} />
-          </div>
-        </div>
+        {/* A still picture of the car: the page runs no 3D until someone opens the view. */}
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 aspect-[8/3] -translate-x-1/2 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${still})` }} />
         <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-card/90 to-transparent" />
         <div className="pointer-events-none absolute top-5 left-6 flex flex-col gap-0.5">
           <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Your car in 3D</span>
