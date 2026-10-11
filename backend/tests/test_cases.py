@@ -39,7 +39,7 @@ def world(conn):
     competitor = audit.insert(conn, "competitor", {"bmw_vehicle": "G60", "brand": "Mercedes-Benz",
                                                    "model": "E-Class"}, actor="seed:test")
     cfg = audit.insert(conn, "config", {"name": "G60 / USA", "vehicle": "G60", "market": "USA",
-                                        "thresholds": {"open_min_customers": 10, "conflict_min_customers": 5,
+                                        "thresholds": {"open_min_customers": 10, "open_min_defects": 3, "conflict_min_customers": 5,
                                                        "similarity_case": {"local": 0.3}}},
                        actor="seed:test")
     profiles = {}
@@ -105,10 +105,29 @@ def test_case_per_topic_and_aspect_group(world):
         "row": 0, "kind": "like", "severity": "none", "topic_id": TOPICS[VENT], "aspect_group": "comfort",
         "confidence": "high", "other_suggestion": "", "summary": "Ventilated front seats liked"}]}}))
     assert reclassify.run(conn)["updated"] == 1
-    cluster.incremental(conn, 0.3)
+    waiting = cluster.incremental(conn, 0.3)
     classified = conn.execute(pending).fetchone()
     assert classified["classified_by"] == "llm" and classified["car_area"] == ["seats"]
-    assert classified["feature_id"] == world["features"][VENT] and classified["case_id"] is not None
+    # Two likes about seat comfort are no reason for a case: the signals wait without one.
+    assert classified["feature_id"] == world["features"][VENT] and classified["case_id"] is None
+    assert waiting["created"] == 0 and waiting["signals_without_a_case"] >= 2
+    # With a bar they pass (a PM setting), the waiting signals become a case together.
+    assert not cluster.viable([{"evidence_role": "bmw_customer", "kind": "like", "severity": "none",
+                                "vehicle": "G60", "customer_ref": "a"}], {"open_min_customers": 1})  # praise only
+    for i in range(3):
+        rid = f"reddit-comfort-{i}"
+        audit.insert(conn, "source_record", {"record_id": rid, "source_id": "reddit", "content_hash": rid,
+                                             "text_original": "The seats are not comfortable on long trips"},
+                     actor="agent:feedback", key="record_id")
+        service.ingest(conn, [{"record_id": rid, "kind": "complaint", "severity": "difficult_to_use",
+                               "summary": "Seats uncomfortable on long trips",
+                               "quote": "seats are not comfortable on long trips", "topic_id": TOPICS[VENT],
+                               "aspect_group": "comfort", "vehicle": "G60", "customer_ref": rid}],
+                       actor="agent:feedback")
+    grown = cluster.incremental(conn, 0.3, thresholds={"open_min_customers": 4, "open_min_defects": 3})
+    assert grown["created"] == 1
+    classified = conn.execute(pending).fetchone()
+    assert classified["case_id"] is not None
     cases = conn.execute(
         "select c.aspect_group, count(*) n, count(distinct s.kind) kinds from case_item c"
         " join signal s on s.case_id = c.id where c.feature_id = %s group by c.id order by 1",

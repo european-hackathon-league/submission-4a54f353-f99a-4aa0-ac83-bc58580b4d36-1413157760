@@ -15,6 +15,7 @@ from app.cases import cluster, feature_link, figures, lifecycle, tags
 from app.signals import reclassify
 
 ACTOR = "agent:cases"
+WRITE_BATCH = 25  # cases per write transaction
 
 
 def thresholds_for(conn, vehicle: str | None = None) -> dict:
@@ -24,7 +25,7 @@ def thresholds_for(conn, vehicle: str | None = None) -> dict:
     merged: dict = {}
     for r in rows:
         for k, v in (r["thresholds"] or {}).items():
-            if k == "open_min_customers":
+            if k in ("open_min_customers", "open_min_defects"):
                 merged[k] = max(merged.get(k, 0), v)
             else:
                 merged.setdefault(k, v)
@@ -113,13 +114,13 @@ def _stages(initial: bool, run_id) -> dict:
     # 2. Grouping. The pages of the new cases are written in parallel first (cached).
     if initial:
         with db.transaction() as conn:
-            planned = cluster.plan_initial(conn, sim, split_min=split_min)
+            planned = cluster.plan_initial(conn, sim, split_min=split_min, thresholds=th)
         cluster.writer.prefetch(planned)
     with db.transaction() as conn:
         if initial:
-            grouped = cluster.initial(conn, sim, run_id=run_id, split_min=split_min)
+            grouped = cluster.initial(conn, sim, run_id=run_id, split_min=split_min, thresholds=th)
         else:
-            grouped = cluster.incremental(conn, sim, run_id=run_id)
+            grouped = cluster.incremental(conn, sim, run_id=run_id, thresholds=th)
 
     # 3. Figures, then the AI tags of every case and line in parallel (cached), then the writes.
     with db.transaction() as conn:
@@ -142,9 +143,14 @@ def _stages(initial: bool, run_id) -> dict:
                 if cv["release_fit_source"] != "pm":
                     jobs.append((case, feature, figs[cid], cv["vehicle"], brand))
     tags.prefetch(jobs)
-    with db.transaction() as conn:
-        opened = sum(update_case(conn, cid, run_id=run_id, brand_profile=brand, fig=figs[cid])["opened"]
-                     for cid in touched)
+    # Written in small transactions: one long transaction over all cases (an hour of round
+    # trips on a remote database) was closed by the server and lost everything. A case whose
+    # batch did not commit still has empty figures, so the next run picks it up again.
+    opened = 0
+    for i in range(0, len(touched), WRITE_BATCH):
+        with db.transaction() as conn:
+            for cid in touched[i : i + WRITE_BATCH]:
+                opened += update_case(conn, cid, run_id=run_id, brand_profile=brand, fig=figs[cid])["opened"]
     return {"classify": classified, "cluster": grouped, "cases_updated": len(touched), "opened": opened,
             "provider": feature_link.provider_key(), "similarity_case": sim}
 

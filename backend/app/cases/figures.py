@@ -74,6 +74,7 @@ def compute(conn, case_id: str, reach_cap: int = 100000, source_filter: dict | N
         competitor = [s for s in own if s["evidence_role"] == "competitor"]
         by_vehicle[v] = {
             "distinct_customers": len({s["customer_ref"] for s in customers}),
+            "defect_customers": len({s["customer_ref"] for s in customers if s["severity"] == "defect"}),
             "markets": market_out,
             "predecessor_signals": sum(1 for s in own if s["vehicle_role"] == "predecessor"),
             "competitor_evidence": {
