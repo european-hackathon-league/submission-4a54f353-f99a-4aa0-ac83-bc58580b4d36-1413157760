@@ -63,13 +63,13 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
     });
 
   return (
-    <div className="space-y-5 rounded-xl border bg-card p-5 shadow-xs">
+    <div className="space-y-6 rounded-xl border bg-card p-6">
       {/* Inherited from the brief */}
       <div>
         <div className="mb-2 flex items-center gap-2">
           <h3 className="text-sm font-semibold">Inherited from your brief</h3>
           {v ? (
-            <Link href="/brief" className="text-xs text-primary hover:underline">
+            <Link href="/brief" className="text-xs font-medium text-foreground underline decoration-border-strong underline-offset-2 transition-colors duration-150 hover:decoration-foreground">
               Open brief
             </Link>
           ) : (
@@ -112,7 +112,7 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
           </div>
         )}
         {v && editing && (
-          <div className="mt-3 space-y-2 rounded-lg border border-dashed p-3">
+          <div className="mt-3 space-y-3 rounded-lg border border-dashed border-border-strong bg-recessed p-4">
             {editing === "costEnvelope" && (
               <Choice<CostSensitivity>
                 label="Cost sensitivity for this case"
@@ -143,7 +143,7 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
                   }}
                 >
                   {(["next_gen", "lci", "ota"] as const).map((r) => (
-                    <ToggleGroupItem key={r} value={r} className="px-3 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                    <ToggleGroupItem key={r} value={r} className="px-3">
                       {releaseLabel[r]}
                     </ToggleGroupItem>
                   ))}
@@ -168,7 +168,7 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
           <div key={t.id} className="flex flex-wrap items-center gap-2">
             <ToggleGroup type="single" variant="outline" size="sm" value={t.effect} disabled={!canEdit} onValueChange={(x) => x && setTakes(takes.map((y, j) => (j === i ? { ...y, effect: x as EvidenceEffect } : y)))}>
               {(["focus", "discount"] as const).map((e) => (
-                <ToggleGroupItem key={e} value={e} className="px-2.5 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                <ToggleGroupItem key={e} value={e} className="px-2.5">
                   {evidenceEffectLabel[e]}
                 </ToggleGroupItem>
               ))}
@@ -224,7 +224,7 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
       <Question n={3} title="How far do you want to go on this problem?" hint={v ? `Left empty, your brief decides (${v.changeAmbition.level}, ${targetCustomerLabel[v.targetCustomer.who].toLowerCase()}).` : "Left empty, the drafter picks from the evidence."}>
         <ToggleGroup type="single" variant="outline" size="sm" value={ambition ?? ""} disabled={!canEdit} onValueChange={(x) => setAmbition((x || null) as Ambition | null)}>
           {(["fix", "match", "beat"] as const).map((a) => (
-            <ToggleGroupItem key={a} value={a} className="px-3 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+            <ToggleGroupItem key={a} value={a} className="px-3">
               {ambitionLabel[a]}
             </ToggleGroupItem>
           ))}
@@ -233,7 +233,7 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
 
       <div className="flex items-center gap-3">
         {mine && <span className="text-xs text-muted-foreground">Saved {fromNow(mine.updatedAt)}</span>}
-        {missingReason && <span className="text-xs text-amber-700 dark:text-amber-400">Every override needs a reason.</span>}
+        {missingReason && <span className="text-xs font-medium text-warning">Every override needs a reason.</span>}
         <span className="flex-1" />
         {canEdit && (
           <Button
@@ -263,12 +263,12 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
 
 function InheritedChip({ label, value, origin, overridden, onEdit }: { label: string; value: string; origin: string; overridden?: boolean; onEdit?: () => void }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${overridden ? "border-violet-300 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/40" : "bg-muted/40"}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${overridden ? "border-tone-violet-bd bg-tone-violet-bg" : "bg-recessed"}`}>
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{value}</span>
-      <Pill className="px-1 py-0 text-[10px]">{overridden ? "this case" : origin === "overlay" ? "regional" : origin === "data" ? "from data" : origin === "brand" ? "brand" : "brief"}</Pill>
+      <Pill className="px-1.5 py-0">{overridden ? "this case" : origin === "overlay" ? "regional" : origin === "data" ? "from data" : origin === "brand" ? "brand" : "brief"}</Pill>
       {onEdit && (
-        <button type="button" onClick={onEdit} aria-label={`Override ${label}`} className="text-muted-foreground hover:text-foreground">
+        <button type="button" onClick={onEdit} aria-label={`Override ${label}`} className="rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground">
           <Pencil className="size-3" />
         </button>
       )}
@@ -297,7 +297,7 @@ function Choice<T extends string>({ label, value, options, onChange }: { label: 
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <ToggleGroup type="single" variant="outline" size="sm" value={value} onValueChange={(x) => x && onChange(x as T)}>
         {options.map(([id, text]) => (
-          <ToggleGroupItem key={id} value={id} className="px-3 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+          <ToggleGroupItem key={id} value={id} className="px-3">
             {text}
           </ToggleGroupItem>
         ))}
