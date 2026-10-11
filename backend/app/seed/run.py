@@ -28,7 +28,7 @@ PROFILES = [
     ("budget", DEFAULT_WEIGHTS, {"S": 1.0, "M": 0.7, "L": 0.4}, False),
 ]
 DEFAULT_THRESHOLDS = {
-    "open_min_customers": 10, "conflict_min_customers": 5, "conflict_negative_share": 0.6,
+    "open_min_customers": 20, "open_min_defects": 10, "conflict_min_customers": 5, "conflict_negative_share": 0.6,
     "similarity_case": {"openai": 0.55, "local": 0.15},
     "case_split_min_signals": 50, "reach_cap": 100000, "competitor_gap_min_rivals": 1,
 }
