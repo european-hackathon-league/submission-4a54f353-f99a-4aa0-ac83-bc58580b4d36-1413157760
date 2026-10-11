@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Bot, CircleHelp, Pencil, Undo2 } from "lucide-react";
+import { CircleHelp, Pencil, Undo2 } from "lucide-react";
+import { ArgusMark } from "@/components/brand/marks";
 import {
   ambitionLabel,
   costSensitivityLabel,
@@ -43,7 +44,7 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
   const [notes, setNotes] = useState(() => [...(mine?.evidenceTakes ?? []).map((t) => t.text), ...(mine?.inside ?? []).map((x) => x.text)].filter((t) => t.trim()).join("\n"));
   const [ambition, setAmbition] = useState<Ambition | null>(mine?.ambition ?? null);
   const [editing, setEditing] = useState<"costEnvelope" | "targetCustomer" | "givens" | null>(null);
-  const save = useApiMutation("saveCaseStance", { success: "Context saved. Your AI colleague has a question." });
+  const save = useApiMutation("saveCaseStance", { success: "Context saved. Argus has a question." });
   const v = brief?.values;
   const missingReason = (Object.keys(overrides) as (keyof Overrides)[]).some((k) => overrides[k] && !reasons[k]?.trim());
 
@@ -204,7 +205,7 @@ export function StanceForm({ c, brief, userId, canEdit, onSaved }: { c: Case; br
               onSaved();
             }}
           >
-            <Bot className="size-4" /> Save context and ask the AI
+            <ArgusMark className="size-4" /> Save context and ask Argus
           </Button>
         )}
       </div>

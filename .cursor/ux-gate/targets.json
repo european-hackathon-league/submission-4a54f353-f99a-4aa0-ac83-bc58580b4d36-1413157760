@@ -1,5 +1,5 @@
 [
-  { "name": "login", "title": "Login (persona picker)", "path": "/login", "waitFor": "Requirement Studio" },
+  { "name": "login", "title": "Login (persona picker)", "path": "/login", "waitFor": "Argon" },
   { "name": "desk-lena", "title": "My desk · Lena", "path": "/", "persona": "u-lena", "waitFor": "Good morning" },
   { "name": "desk-katrin", "title": "My desk · Katrin (head)", "path": "/", "persona": "u-katrin", "waitFor": "Good morning" },
   { "name": "inbox-lena", "title": "Inbox · Lena", "path": "/inbox", "persona": "u-lena", "waitFor": "Inbox" },

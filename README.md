@@ -1,6 +1,6 @@
-# BMW Product Management Challenge
+# Argon
 
-TUM.ai hackathon project for the BMW Group challenge "AI for Product Decision Making": a platform that helps BMW product managers derive, justify and prioritize customer-facing requirements for the successor of a vehicle line, with the product manager in control of every decision and a full audit trail.
+**Argon** is our TUM.ai hackathon project for the BMW Group challenge "AI for Product Decision Making": an AI platform that helps BMW product managers derive, justify and prioritize customer-facing requirements for the successor of a vehicle line, with the product manager in control of every decision and a full audit trail. Its AI assistant, **Argus**, answers questions on every case and requirement page, cites its sources and proposes edits the PM accepts or rejects.
 
 ## How it works
 

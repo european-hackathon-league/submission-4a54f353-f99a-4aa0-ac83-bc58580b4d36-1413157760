@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { Bell, Car, Inbox, KanbanSquare, LayoutDashboard, Lightbulb, Radar } from "lucide-react";
+import { ArgonMark } from "@/components/brand/marks";
 import { useApi } from "@/lib/api/hooks";
 import { getUserId } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/common/page";
+import { ArgusBubble } from "@/components/argus/argus-bubble";
 import { regionLabel, seriesShort } from "@/contracts";
 import { PersonaMenu } from "./persona-menu";
 import { NotificationBell } from "./notification-bell";
@@ -81,9 +83,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex h-dvh overflow-hidden">
       <aside className="flex w-14 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:w-56">
         <Link href="/" className="flex h-14 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-3.5 outline-none focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:ring-inset md:px-4">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-semibold text-primary-foreground">RS</span>
+          <ArgonMark className="size-7" />
           <span className="leading-tight max-md:sr-only">
-            <span className="block text-sm font-semibold">Requirement Studio</span>
+            <span className="block text-sm font-semibold">Argon</span>
           </span>
         </Link>
         <nav className="flex-1 space-y-1 overflow-y-auto p-2 pt-3">{nav.map(link)}</nav>
@@ -106,6 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto bg-background max-md:mb-[33px]">{hydrated && ready ? children : <PageSkeleton />}</main>
       </div>
+      {hydrated && ready && <ArgusBubble />}
     </div>
   );
 }

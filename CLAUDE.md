@@ -1,6 +1,8 @@
 # BMW Product Management Challenge (TUM.ai Hackathon Final)
 
 ## Mission
+The app is called **Argon**; its AI assistant (the RAG sidebar agent, buttons "Ask Argus") is **Argus**.
+
 Build an AI-powered platform that helps BMW product managers (PMs) derive, justify and prioritize **customer-facing requirements for the successor** of an existing vehicle line, 3 to 5 years ahead. It ingests BMW data plus web research, turns it into cases (problems) and requirements (solutions), prioritizes them with explainable logic, keeps the PM in control, and records everything in an audit trail.
 
 The platform is generic: vehicle and market are configuration. The demo shows at least one derivative in one market.

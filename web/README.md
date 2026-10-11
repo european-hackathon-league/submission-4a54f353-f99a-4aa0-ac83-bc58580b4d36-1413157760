@@ -1,9 +1,9 @@
-# Requirement Studio (web)
+# Argon (web)
 
 The clickable demo of our BMW hackathon tool: **Signals → Cases → Requirements → Vehicle plan**. It runs on synthetic data behind a real REST contract, so the team can work in three tracks at once and replace the mock backend later with no UI changes.
 
 - **Signal:** one piece of evidence with its source. Either a real BMW record (verbatim, study row) or a web finding (synthetic in the demo).
-- **Case:** a customer problem built from signals. It has an importance score but no cost. The PM works it with open questions, meeting notes and an AI assistant, then decides one of: confirm, refer, innovation pool, park, merge or reject.
+- **Case:** a customer problem built from signals. It has an importance score but no cost. The PM works it with open questions, meeting notes and Argus, the AI assistant, then decides one of: confirm, refer, innovation pool, park, merge or reject.
 - **Requirement:** what BMW builds, created from a confirmed case. It carries a SMART text, measurable targets, a release (next generation, mid-life update or OTA) and a rough cost. It moves from draft through discussion and PM approval to head sign-off, then the vehicle plan, then Codebeamer export.
 
 ## Screens (six, after Thomas's "less is more" feedback)
@@ -22,7 +22,7 @@ Three things borrowed from the market (see the competitor research):
 - **Ask the segment** in the case chat (like Dovetail's digital twins, but grounded): chips such as *USA (24) · USA BEV (9) · China (0)* answer only from that segment's real BMW verbatims, with citations. No verbatims means "no evidence" plus a proposed open question, never a guess.
 - **Engineering deck** next to *Export to Codebeamer* (like Aha! roadmap decks): one slide per signed-off or planned requirement with the SMART text, three customer quotes, the score breakdown, the competition and the decision log.
 
-A **case** opens with a Sankey of its evidence (*sources → what they say → case*, where "what they say" is a taxonomy topic × type, e.g. *Public charging · hard to use*). Every node is clickable and shows its quotes. Then three steps: **① Evidence** (Sankey + three bullets, full analysis on demand) → **② Your stance** (brief values you inherit, overridable with a reason; your take on the evidence; what you know that the data can't show; how far to go. The AI colleague answers with follow-up questions; open questions to engineering and finance) → **③ Requirements** (up to three shape questions with defaults, then the draft in a side panel). Settings, the audit trail and **My series brief** live in the persona menu.
+A **case** opens with a Sankey of its evidence (*sources → what they say → case*, where "what they say" is a taxonomy topic × type, e.g. *Public charging · hard to use*). Every node is clickable and shows its quotes. Then three steps: **① Evidence** (Sankey + three bullets, full analysis on demand) → **② Your stance** (brief values you inherit, overridable with a reason; your take on the evidence; what you know that the data can't show; how far to go. Argus, the AI assistant, answers with follow-up questions; open questions to engineering and finance) → **③ Requirements** (up to three shape questions with defaults, then the draft in a side panel). Settings, the audit trail and **My series brief** live in the persona menu.
 
 ### PM context layers (why a draft reads like the PM wrote it)
 The drafter combines five layers; [docs/05-solution/ux-and-collaboration.md](../docs/05-solution/ux-and-collaboration.md#5a-pm-context-layers-requirements-that-read-like-the-pm-wrote-them) has the design.
@@ -148,7 +148,7 @@ web/scripts/               seed, contract export, contract test
 ## Demo script: context layers (about 5 minutes, after *Reset demo data*)
 
 1. **Lena → persona menu → My series brief:** eight answers, most pre-filled (*from data*, *from the brand profile*). The thesis names the A6 e-tron.
-2. **CASE-G60-0003 → ② Your stance:** the brief values show as inherited chips. Add a take (*Focus on BEV owners*) and inside knowledge (*Battery team is sampling next-gen cells*), then *Save stance and ask the AI*: the AI colleague asks what the brief and the data can't answer (China weighted 25% with no Chinese records).
+2. **CASE-G60-0003 → ② Your stance:** the brief values show as inherited chips. Add a take (*Focus on BEV owners*) and inside knowledge (*Battery team is sampling next-gen cells*), then *Save context and ask Argus*: Argus asks what the brief and the data can't answer (China weighted 25% with no Chinese records).
 3. **③ Requirements → Confirm case:** three shape questions open, each with a default and *Why I'm asking*. Pick *Beat the best competitor* → *Create requirements*. The draft says *≥ 800 km, beating Audi A6 e-tron 756 km*; every sentence carries a chip (green evidence with signal IDs, blue your context, amber assumption), and the inside knowledge is an assumption.
 4. **Engineering feedback:** "800 km needs the next-gen cells; 700 km is the max for the current pack" → *Compromise* + reason → a v2 proposal with the diff. Accept: **Versions** shows v1 → v2 on the same ID.
 5. **My series brief → Cost envelope → High, ≤ +1%** → *Save*: the dialog lists the affected requirement first; saving creates a v3 proposal on it instead of editing it.
@@ -160,7 +160,7 @@ web/scripts/               seed, contract export, contract test
 
 1. **Lena, My desk:** four cards, one per kind of work. After *Signals → Refresh*, the competitor ripple sits on top of Agent flags as one row per fact.
 2. **CASE-G60-0003** (i5 range and charging): the Sankey shows 36 customers, where they spoke and what they say. Click *Public charging · hard to use* to read the six quotes; the competitor facts are the grey nodes.
-3. **② Your stance:** see the context-layer script above. The AI colleague opens with questions the data can't answer.
+3. **② Your stance:** see the context-layer script above. Argus opens with questions the data can't answer.
 4. **CASE-G60-0001 → Decide → Refer** to Jonas (Baukasten). **Switch to Jonas → Inbox → Accept:** a linked case appears in his workspace.
 5. **Lena, CASE-G60-0005 → ② → Paste meeting notes → Use demo note:** the AI proposes the answers; accept them, the audit trail logs each one.
    - **Ask owners** in the case chat (e.g. CASE-G60-0012): click a chip with data for a cited summary, then *China (0)*: "no evidence", plus a proposed question to the market PM.

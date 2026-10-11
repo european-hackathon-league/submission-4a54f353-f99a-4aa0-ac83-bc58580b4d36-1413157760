@@ -343,6 +343,22 @@ export const ChatPostBody = z.object({
 });
 export const ChatPostResponse = z.object({ messages: z.array(ChatMessage), proposals: z.array(Proposal) });
 
+/** A case, requirement or signal the PM dragged into the global Argus chat as context. */
+export const ArgusAttachment = z.object({ kind: z.enum(["case", "requirement", "signal"]), id: z.string() });
+export type ArgusAttachment = z.infer<typeof ArgusAttachment>;
+export const ArgusAskBody = z.object({
+  content: z.string().min(1),
+  attachments: z.array(ArgusAttachment).max(5),
+  /** The conversation so far; the global chat is kept by the client, the server stores nothing. */
+  history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() })).max(20),
+});
+export const ArgusAskResponse = z.object({
+  content: z.string(),
+  /** Every [ID] in the answer, with the page it opens. */
+  citations: z.array(z.object({ ref: z.string(), label: z.string(), href: z.string() })),
+});
+export type ArgusAskResponse = z.infer<typeof ArgusAskResponse>;
+
 export const ProposalDecisionBody = z.object({ decision: z.enum(["accept", "reject"]), rationale: z.string().optional() });
 
 export const CommentBody = z.object({
@@ -711,6 +727,14 @@ export const endpoints = {
   // Conversation
   messages: ep({ method: "GET", path: "/threads/:type/:id/messages", tag: "conversation", summary: "AI chat thread of a case or requirement", response: z.array(ChatMessage) }),
   postMessage: ep({ method: "POST", path: "/threads/:type/:id/messages", tag: "conversation", summary: "Ask the AI; returns its answer and any proposals", body: ChatPostBody, response: ChatPostResponse }),
+  argusAsk: ep({
+    method: "POST",
+    path: "/argus/ask",
+    tag: "conversation",
+    summary: "Ask Argus from anywhere, with dragged-in cases, requirements or signals as context; answers only, never edits",
+    body: ArgusAskBody,
+    response: ArgusAskResponse,
+  }),
   decideProposal: ep({ method: "POST", path: "/proposals/:id/decide", tag: "conversation", summary: "Accept or reject an AI proposal", body: ProposalDecisionBody, response: Proposal }),
   comments: ep({ method: "GET", path: "/comments", tag: "conversation", summary: "Comments on an object", query: z.object({ objectType: z.enum(["case", "requirement"]), objectId: z.string() }), response: z.array(Comment) }),
   addComment: ep({ method: "POST", path: "/comments", tag: "conversation", summary: "Comment with @mentions", body: CommentBody, response: Comment }),

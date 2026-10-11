@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, ArrowRight, Bot, Car, CornerUpLeft, MessageSquareReply, PanelRight, Upload } from "lucide-react";
+import { AlertTriangle, ArrowRight, Car, CornerUpLeft, MessageSquareReply, PanelRight, Upload } from "lucide-react";
+import { ArgusMark } from "@/components/brand/marks";
 import {
   regionLabel,
   type RequirementAction,
@@ -17,6 +18,7 @@ import { ProposalCard } from "@/components/common/proposal-card";
 import { UserAvatar, useUsers } from "@/components/common/people";
 import { useScores } from "@/components/cases/use-scores";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { useHideArgusBubble } from "@/components/argus/store";
 import { RequirementActionDialog } from "@/components/requirements/requirement-action-dialog";
 import { SignalCard } from "@/components/signals/signal-card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,7 @@ export function RequirementView() {
   const { name } = useUsers();
   const [action, setAction] = useState<RequirementAction | null>(null);
   const [side, setSide] = useState<"details" | "chat">("details");
+  useHideArgusBubble(side === "chat");
   const [tab, setTab] = useState("spec");
   const [feedback, setFeedback] = useState(false);
 
@@ -178,7 +181,7 @@ export function RequirementView() {
               <PanelRight className="size-3.5" /> Details
             </ToggleGroupItem>
             <ToggleGroupItem value="chat" className="flex-1 gap-1.5">
-              <Bot className="size-3.5" /> AI assistant
+              <ArgusMark className="size-3.5" /> Ask Argus
             </ToggleGroupItem>
           </ToggleGroup>
         </div>

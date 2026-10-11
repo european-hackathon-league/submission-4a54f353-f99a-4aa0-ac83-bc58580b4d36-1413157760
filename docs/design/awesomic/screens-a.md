@@ -52,7 +52,7 @@ Selection, current state and primary actions stay obsidian (`primary`): the logo
 
 ## Mobile (<768px): icon rail and footer strip
 
-- **Sidebar → 56px rail:** `w-14 md:w-56`. Nav labels and the "Requirement Studio" wordmark are `max-md:sr-only`, so every link keeps its accessible name ("My desk 1", "Inbox 3", …) and stays in the tab order. Items centre their icon (`max-md:justify-center`, 40px hit area).
+- **Sidebar → 56px rail:** `w-14 md:w-56`. Nav labels and the "Argon" wordmark are `max-md:sr-only`, so every link keeps its accessible name ("My desk 1", "Inbox 3", …) and stays in the tab order. Items centre their icon (`max-md:justify-center`, 40px hit area).
 - **Badges on the rail:** the same element is repositioned with `max-md:absolute top-0.5 right-0.5` as a 16px ember count on the icon's corner, with a 2px ring in the sidebar colour to separate it from the icon.
 - **Active indicator on the rail:** the same 2px ember bar at the rail edge, plus the white chip.
 - **Footer note:** the same `<div>` becomes a fixed full-width strip below `md` (`max-md:fixed inset-x-0 bottom-0 z-40 bg-sidebar border-t`, 12px, centred, 16px line height, 33px tall). The full text stays readable at 390px on one line. `<main>` gets `max-md:mb-[33px]`. A margin rather than padding shrinks main's scrollport, so sticky-bottom bars on pages (e.g. the brief's action bar) sit above the strip instead of under it.

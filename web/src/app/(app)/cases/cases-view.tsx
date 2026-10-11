@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
-import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragMoveEvent } from "@dnd-kit/core";
 import { ArrowDown, ArrowUp, Columns3, Eye, EyeOff, ListOrdered, Minus, Plus, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import {
   CarArea,
@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/common/page";
 import { CaseStateDot, Pill, ScoreBar, caseStateTone } from "@/components/common/badges";
 import { useUsers } from "@/components/common/people";
 import { CaseCard } from "@/components/cases/case-card";
+import { attachToArgus, overArgus, setArgusDrag } from "@/components/argus/store";
 import { CaseActionDialog, type UiCaseAction } from "@/components/cases/case-action-dialog";
 import { NewCaseDialog } from "@/components/cases/case-forms";
 import { useScores } from "@/components/cases/use-scores";
@@ -173,9 +174,16 @@ function Board({ cases, scores, showObserved }: { cases: Case[]; scores: Map<str
   const active = activeId ? cases.find((x) => x.id === activeId) : undefined;
   const columns = CaseStates.options.filter((s) => showObserved || s !== "observed");
 
+  // Cards drag with dnd-kit, not natively, so the Argus bubble is hit-tested by the pointer position.
+  const pointer = (e: DragMoveEvent | DragEndEvent) => {
+    const start = e.activatorEvent as PointerEvent;
+    return [start.clientX + e.delta.x, start.clientY + e.delta.y] as const;
+  };
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null);
+    setArgusDrag(false);
     const c = cases.find((x) => x.id === e.active.id);
+    if (c && overArgus(...pointer(e))) return attachToArgus({ kind: "case", id: c.id, title: c.title });
     const to = e.over?.id as CaseState | undefined;
     if (!c || !to || to === c.state) return;
     if (to === "decided") return setDecide(c);
@@ -185,7 +193,13 @@ function Board({ cases, scores, showObserved }: { cases: Case[]; scores: Map<str
   };
 
   return (
-    <DndContext sensors={sensors} onDragStart={(e) => setActiveId(String(e.active.id))} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={(e) => (setActiveId(String(e.active.id)), setArgusDrag(true))}
+      onDragMove={(e) => setArgusDrag(true, overArgus(...pointer(e)))}
+      onDragEnd={onDragEnd}
+      onDragCancel={() => (setActiveId(null), setArgusDrag(false))}
+    >
       <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto px-6 py-5">
         {columns.map((state) => {
           const col = cases.filter((c) => c.state === state).sort((a, b) => (scores.get(b.id)?.score ?? 0) - (scores.get(a.id)?.score ?? 0));

@@ -43,7 +43,7 @@ import { extractFromDoc } from "@/mock/briefs";
 import { conversions as teamConversions, monitorSettings as defaultMonitorSettings } from "@/mock/authored/world";
 import { buildReplay } from "@/mock/replay";
 import { backend, cached, invalidateCache, type QueryValue } from "./client";
-import { FACTOR_TO_BACKEND, brandFitToBackend, marketFromBackend, marketToBackend, releaseToBackend, weightsFromBackend, weightsToBackend } from "./map";
+import { FACTOR_TO_BACKEND, brandFitToBackend, marketFromBackend, marketToBackend, releaseToBackend, rewriteCitations, weightsFromBackend, weightsToBackend } from "./map";
 import {
   type Row,
   alertFromBackend,
@@ -836,6 +836,50 @@ export const backendHandlers: Handlers = {
     const fresh = await get<Row[]>(user, `/chat/${type}/${id}`);
     const userMsg = [...fresh].reverse().find((m) => m.role === "pm");
     return { messages: [...(userMsg ? [chatFromBackend(userMsg, [], label)] : []), chatFromBackend(answer, proposals, label)], proposals: proposals.filter((p) => p.id === answer.proposal_id).map(proposalFromBackend) };
+  },
+  argusAsk: async ({ user, body }) => {
+    // Attached cases and requirements go to the backend's assistant (the Q&A also lands in that object's thread);
+    // signals and questions without an attachment are answered from search. Nothing is edited from here.
+    const x = await ctx(user);
+    const citations: { ref: string; label: string; href: string }[] = [];
+    const parts: { title: string; text: string }[] = [];
+    // Backend citations are signal UUIDs; a short uppercase token keeps them clickable in the chat.
+    const short = (text: string, caseId: string) =>
+      rewriteCitations(text).replace(/\[([0-9a-f]{8})-[0-9a-f-]{27}\]/gi, (m, head: string) => {
+        const ref = `SIG-${head.toUpperCase()}`;
+        citations.push({ ref, label: "Signal", href: `/cases/${caseId}?signal=${m.slice(1, -1)}` });
+        return `[${ref}]`;
+      });
+    for (const a of body.attachments.slice(0, 3)) {
+      if (a.kind === "signal") {
+        const hit = (await get<Row[]>(user, "/search", { q: a.id, vehicle: x.vehicle })).find((h) => h.type === "signal" && h.id === a.id);
+        if (hit) {
+          citations.push({ ref: a.id, label: a.id, href: hit.case_id ? `/cases/${hit.case_id}?signal=${a.id}` : `/radar?signal=${a.id}` });
+          parts.push({ title: a.id, text: [`[${a.id}] ${hit.title ?? ""}`, hit.subtitle ?? "", hit.case_id ? "Open its case to see the quote in context." : ""].filter(Boolean).join("\n\n") });
+        }
+        continue;
+      }
+      const caseId = a.kind === "requirement" ? (await loadRequirement(user, a.id, x)).row.case_id : a.id;
+      const answer = await send(user, "POST", `/chat/${a.kind}/${encodeURIComponent(a.id)}`, { question: body.content });
+      const note = answer.proposal_id ? `\n\n_I proposed an edit on ${a.id}; accept or reject it on its page._` : "";
+      parts.push({ title: a.id, text: short(answer.content ?? "", caseId) + note });
+    }
+    if (parts.length) {
+      const content = parts.length === 1 ? parts[0].text : parts.map((p) => `**${p.title}**\n\n${p.text}`).join("\n\n---\n\n");
+      return { content, citations: [...new Map(citations.map((c) => [c.ref, c])).values()] };
+    }
+    const words = body.content.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
+    const cases = new Map<string, Row>();
+    for (const q of [body.content, ...words.sort((a, b) => b.length - a.length).slice(0, 3)]) {
+      for (const h of await get<Row[]>(user, "/search", { q, vehicle: x.vehicle })) if (h.type === "case" && cases.size < 5) cases.set(h.id, h);
+      if (cases.size >= 5) break;
+    }
+    if (!cases.size) return { content: "I found no case for that. Drag a case or requirement here and ask about it.", citations: [] };
+    const list = [...cases.values()];
+    return {
+      content: ["These cases match your question:", "", ...list.map((h) => `- [${h.id}] **${h.title ?? h.id}**${h.subtitle ? ` · ${h.subtitle}` : ""}`), "", "_Drag one here to ask about its evidence._"].join("\n"),
+      citations: list.map((h) => ({ ref: h.id, label: h.id, href: `/cases/${h.id}` })),
+    };
   },
   decideProposal: async ({ user, params, body }) => {
     const all = await get<Row[]>(user, "/proposals", {});
