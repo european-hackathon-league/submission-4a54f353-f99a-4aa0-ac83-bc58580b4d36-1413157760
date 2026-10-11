@@ -132,7 +132,8 @@ def test_case_per_topic_and_aspect_group(world):
         "select c.aspect_group, count(*) n, count(distinct s.kind) kinds from case_item c"
         " join signal s on s.case_id = c.id where c.feature_id = %s group by c.id order by 1",
         (world["features"][VENT],)).fetchall()
-    assert cases == [{"aspect_group": "comfort", "n": 2, "kinds": 1},
+    # The comfort case holds the two waiting likes and the three complaints that carried it over the bar.
+    assert cases == [{"aspect_group": "comfort", "n": 5, "kinds": 2},
                      {"aspect_group": "performance", "n": 23, "kinds": 2}]
     # Topic "other" waits in the review queue and is in no case.
     other = conn.execute("select s.case_id from signal s join feature f on f.id = s.feature_id"
