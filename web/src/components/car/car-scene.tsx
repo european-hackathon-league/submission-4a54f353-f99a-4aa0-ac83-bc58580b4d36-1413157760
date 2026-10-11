@@ -107,8 +107,8 @@ function regionToWorld(region: Region, f: Frame) {
 
 function cameraFor(region: Region | null, f: Frame, mode: SceneMode) {
   if (!region) {
-    const target = new THREE.Vector3(0, f.height * (mode === "small" ? 0.4 : 0.45), 0);
-    const distance = f.length * (mode === "small" ? 1.2 : 1.55);
+    const target = new THREE.Vector3(0, f.height * (mode === "small" ? 0.2 : 0.45), 0);
+    const distance = f.length * (mode === "small" ? 1.0 : 1.55);
     return { target, position: target.clone().add(new THREE.Vector3(0.62, 0.22, -0.72).normalize().multiplyScalar(distance)) };
   }
   const { center } = regionToWorld(region, f);
