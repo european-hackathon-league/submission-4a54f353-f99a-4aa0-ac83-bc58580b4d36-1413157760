@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
@@ -19,7 +20,9 @@ from typing import Any, Callable
 from app.config import BACKEND_DIR
 
 CACHE_DIR = BACKEND_DIR / ".data" / "llm_cache"
-WORKERS = 8
+# Parallel LLM calls of a batch run. Raise LLM_WORKERS as far as the OpenAI rate limit allows
+# (a 429 is retried with backoff, so too many workers only wait).
+WORKERS = int(os.environ.get("LLM_WORKERS", "8"))
 _lock = threading.Lock()
 _memory: dict[str, dict[str, Any]] = {}
 
@@ -57,12 +60,12 @@ def put(task: str, k: str, value: Any) -> None:
             f.write(json.dumps({"key": k, "value": value}, ensure_ascii=False, default=str) + "\n")
 
 
-def prefetch(task: str, jobs: list[tuple[str, Callable[[], Any]]], workers: int = WORKERS) -> dict[str, int]:
+def prefetch(task: str, jobs: list[tuple[str, Callable[[], Any]]], workers: int | None = None) -> dict[str, int]:
     """Run the uncached jobs (key, fn) in parallel and cache their JSON-safe results.
     A failing job is skipped (the caller falls back to calling it itself)."""
     todo = [(k, fn) for k, fn in dict(jobs).items() if get(task, k) is None]
     done = failed = 0
-    with ThreadPoolExecutor(max_workers=workers) as pool:
+    with ThreadPoolExecutor(max_workers=workers or WORKERS) as pool:
         futures = {pool.submit(fn): k for k, fn in todo}
         for fut in as_completed(futures):
             try:

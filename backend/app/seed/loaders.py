@@ -105,6 +105,20 @@ def _summary(kind: str, severity: str, l2: str | None, l3: str | None) -> str:
     return " ".join(words[:20])
 
 
+def prefetch_feedback_classification(vehicles=("F70", "G60", "G70")) -> int:
+    """Classify every feedback row that needs the LLM before the seed transaction
+    opens. The answers go to the disk cache, so ``load_feedback`` only reads them:
+    the database connection never waits, idle, for minutes of LLM calls (that idle
+    wait is what dropped the connection and rolled the whole step back)."""
+    rows = []
+    for vehicle in vehicles:
+        rows += [r for r in readers.read_feedback(vehicle)
+                 if r.feedback_type not in FEEDBACK_TYPES or not taxonomy.topic_for_label(r.topic_l2)]
+    # classify_rows keys its result by excel row, which repeats across files; only the cache matters here.
+    classify_rows(rows)
+    return len(rows)
+
+
 def load_feedback(conn, run_id, vehicles=("F70", "G60", "G70")) -> dict[str, int]:
     features = topic_ids(conn)
     version = taxonomy.version()

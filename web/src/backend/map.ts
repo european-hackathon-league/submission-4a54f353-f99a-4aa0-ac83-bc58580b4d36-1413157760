@@ -1,6 +1,5 @@
 import type {
   Agent,
-  CostSource,
   EvidenceLevel,
   FactorKey,
   Market,
@@ -57,18 +56,13 @@ export function evidenceToBackend(e: EvidenceLevel): "bmw_data" | "web" | "assum
   return "assumption";
 }
 
-// ---------- Cost source ----------
-export const costSourceFromBackend = (s: string | null | undefined): CostSource =>
-  s === "engineering" ? "finance" : s === "option_price" || s === "pm" ? s : "ai_estimate";
-
 // ---------- Requirement status ----------
-export type BackendRequirementStatus = "draft" | "in_discussion" | "approved" | "rejected" | "deleted";
-/** Statuses after the PM's approval live in the sidecar layer (`signOff`), on top of backend `approved`. */
-export type SignOffLayer = "signed_off" | "planned" | "exported" | null;
+export type BackendRequirementStatus = "draft" | "in_discussion" | "approved" | "signed_off" | "planned" | "exported" | "rejected" | "deleted";
 
-export function requirementStatusFromBackend(s: string, layer: SignOffLayer = null): RequirementStatus {
-  if (s === "approved") return layer ?? "pm_approved";
-  if (s === "in_discussion" || s === "rejected") return s;
+/** Backend `approved` is the PM's approval; the head's sign-off, planned and exported have the same names. */
+export function requirementStatusFromBackend(s: string): RequirementStatus {
+  if (s === "approved") return "pm_approved";
+  if (s === "in_discussion" || s === "signed_off" || s === "planned" || s === "exported" || s === "rejected") return s;
   return "draft"; // draft; deleted rows never reach the UI
 }
 
@@ -175,4 +169,10 @@ export function powertrainFromBackend(p: string | null | undefined): "ICE" | "PH
 
 // ---------- Citations ----------
 /** `[signal:<uuid>]` -> `[<uuid>]`, the form the UI's markdown links to the case page. */
-export const rewriteCitations = (text: string) => text.replace(/\[signal:([0-9a-f-]{36})\]/gi, "[$1]");
+export const rewriteCitations = (text: string) =>
+  text
+    .replace(/\[signal:([0-9a-f-]{36})\]/gi, "[$1]")
+    // PM context (brief, stance, answers, notes, feedback) is named, not linked to a signal.
+    .replace(/\[context:([a-z_]+):([^\]\s]+)\]/g, (_, type: string, id: string) => `(${CONTEXT_LABEL[type] ?? "PM context"}${/^[A-Z]+-/.test(id) ? ` ${id}` : ""})`);
+
+const CONTEXT_LABEL: Record<string, string> = { series_brief: "series brief", case_stance: "PM stance", open_question: "question", meeting_note: "meeting note", requirement_feedback: "feedback", comment: "comment" };

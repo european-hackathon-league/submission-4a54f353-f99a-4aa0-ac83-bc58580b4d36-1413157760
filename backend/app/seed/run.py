@@ -12,7 +12,7 @@ import datetime as dt
 import json
 
 from app import audit, db, taxonomy
-from app.llm.client import Usage, current_usage
+from app.llm.client import Usage, current_usage, llm_available
 from app.seed import catalog, catalog_proposal, loaders, option_load, readers, registry
 
 DEFAULT_WEIGHTS = {
@@ -43,6 +43,12 @@ Status: **assumption**, written from the PM interviews on 2026-10-10. BMW has no
 
 Off-brand examples: features that trade driving dynamics for gimmicks, or luxury-only items far above the segment of the line.
 """
+
+
+def _done(agent: str) -> bool:
+    with db.transaction() as conn:
+        return bool(conn.execute("select 1 from agent_run where agent = %s and status = 'ok' limit 1",
+                                 (agent,)).fetchone())
 
 
 def _run(agent: str, fn, *args, force: bool = False):
@@ -148,6 +154,8 @@ def seed_all(force: bool = False) -> dict:
         return option_load.load(conn, run, catalog.topic_ids(conn))
 
     out["options"] = _run("seed:option_list", options, force=force)
+    if llm_available() and (force or not _done("seed:feedback")):
+        print(f"classified {loaders.prefetch_feedback_classification()} feedback rows (cached on disk)")
     out["feedback"] = _run("seed:feedback", loaders.load_feedback, force=force)
     out["configs"] = _run("seed:configs", step_configs, force=force)
     out["review_confirmed"] = _run("seed:review_confirmed",

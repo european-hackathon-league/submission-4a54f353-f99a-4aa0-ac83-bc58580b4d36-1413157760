@@ -1,5 +1,6 @@
 """Case tags proposed by the AI (the PM can override every one):
-brand fit, segment, release fit (current car update, next generation, OTA).
+brand fit, segment, release fit (current car update, next generation, OTA),
+case type and change depth.
 
 With an OpenAI key the LLM judges them from the case (prompt ``case_tags``),
 with a reason. Without one, transparent rules propose segment and release fit;
@@ -31,12 +32,33 @@ LUXURY = re.compile(r"massage|rear seat entertainment|automatic doors|executive|
 BASE = re.compile(r"usb|cupholder|radio|storage|floor mat|wipers|horn|12 v|tire repair|towing", re.I)
 
 
+CaseType = Literal["new_feature", "fix_improve", "performance_target", "quality_perception", "market_variant",
+                   "brand_differentiator", "regression"]
+ChangeDepth = Literal["trim_option", "part_module", "platform_powertrain", "software_ota"]
+
+
 class Tags(BaseModel):
     brand_fit: Literal["fits", "neutral", "off_brand"]
     brand_fit_reason: str
     segment: Literal["base", "premium", "luxury"]
     release_fit: Literal["current_car", "next_gen", "ota"]
     release_fit_reason: str
+    case_type: CaseType
+    change_depth: ChangeDepth
+
+
+def rule_change_depth(release_fit: str) -> str:
+    """Fallback: the size of the change follows the release fit."""
+    return {"ota": "software_ota", "current_car": "trim_option"}.get(release_fit, "part_module")
+
+
+def rule_case_type(complaints: int, wishes: int, likes: int, removed: bool) -> str:
+    """Fallback from the opinion counts: what kind of problem the case is."""
+    if removed:
+        return "regression"
+    if likes > complaints + wishes:
+        return "brand_differentiator"
+    return "new_feature" if wishes > complaints else "fix_improve"
 
 
 def rule_segment(feature: str) -> str:
@@ -68,7 +90,8 @@ def _inputs(case: dict, feature: dict, figures: dict, vehicle: str, brand_profil
 
 
 def _cache_key(inputs: dict) -> str:
-    return cache.key(prompts.load("case_tags").prompt_version, get_settings().llm_model_for("case_tags"), inputs)
+    return cache.key(prompts.load("case_tags").prompt_version, get_settings().llm_model_for("case_tags"),
+                     get_settings().llm_reasoning_for("case_tags"), inputs)
 
 
 def _llm_tags(inputs: dict) -> dict:
@@ -77,6 +100,7 @@ def _llm_tags(inputs: dict) -> dict:
     t = result.data
     return {"brand_fit": t.brand_fit, "brand_fit_reason": t.brand_fit_reason, "segment": t.segment,
             "release_fit": t.release_fit, "release_fit_reason": t.release_fit_reason,
+            "case_type": t.case_type, "change_depth": t.change_depth,
             "source": f"llm:{result.prompt_version}"}
 
 
@@ -104,5 +128,10 @@ def propose(case: dict, feature: dict, figures: dict, vehicle: str, brand_profil
         except LLMUnavailable:
             pass
     fit, reason = rule_release_fit(feature["name"], feature["car_area"], defects, customers)
+    markets = v.get("markets", {}).values()
     return {"brand_fit": None, "brand_fit_reason": None, "segment": rule_segment(feature["name"]),
-            "release_fit": fit, "release_fit_reason": reason, "source": "rules@v1"}
+            "release_fit": fit, "release_fit_reason": reason,
+            "case_type": rule_case_type(sum(m["complaints"] for m in markets), sum(m["wishes"] for m in markets),
+                                        sum(m["likes"] for m in markets),
+                                        bool(v.get("equipment", {}).get("removed"))),
+            "change_depth": rule_change_depth(fit), "source": "rules@v2"}

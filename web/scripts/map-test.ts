@@ -50,7 +50,7 @@ t("requirement scope", () => {
 
 t("requirement status with sign-off layer", () => {
   assert.equal(requirementStatusFromBackend("approved"), "pm_approved");
-  assert.equal(requirementStatusFromBackend("approved", "signed_off"), "signed_off");
+  assert.equal(requirementStatusFromBackend("signed_off"), "signed_off");
   assert.equal(requirementStatusFromBackend("in_discussion"), "in_discussion");
   for (const s of ["draft", "in_discussion", "approved", "rejected"]) assert.ok(RequirementStatus.options.includes(requirementStatusFromBackend(s)));
 });

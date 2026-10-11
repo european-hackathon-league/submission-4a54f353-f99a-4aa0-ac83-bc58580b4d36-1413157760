@@ -23,7 +23,7 @@ def wikipedia(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) -
     out = FetchResult()
     if not subject.wikipedia_page:
         return out
-    r = ctx.client.get("https://en.wikipedia.org/w/api.php", source_id="wikipedia", params={
+    r = ctx.client.get("https://en.wikipedia.org/w/api.php", source_id="wikipedia", official_api=True, params={
         "action": "query", "prop": "extracts|revisions", "rvprop": "ids|timestamp", "explaintext": 1,
         "format": "json", "titles": subject.wikipedia_page})
     out.requests += 1
@@ -46,7 +46,7 @@ def wikipedia(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) -
 @adapter("wikidata")
 def wikidata(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) -> FetchResult:
     out = FetchResult()
-    r = ctx.client.get("https://www.wikidata.org/w/api.php", source_id="wikidata", params={
+    r = ctx.client.get("https://www.wikidata.org/w/api.php", source_id="wikidata", official_api=True, params={
         "action": "wbsearchentities", "search": subject.label, "language": "en", "format": "json", "limit": 3})
     out.requests += 1
     for hit in r.json().get("search", [])[:1]:
@@ -204,6 +204,13 @@ def reddit(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) -> F
     return out
 
 
+def youtube_since(subject: Subject) -> str:
+    """Only videos of the last two months (YOUTUBE_WINDOW_DAYS, RFC 3339 for the API):
+    recent videos about the current car, never reviews from years ago."""
+    since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=get_settings().youtube_window_days)
+    return f"{since:%Y-%m-%d}T00:00:00Z"
+
+
 def youtube_channels() -> list[str]:
     """Channel IDs of fetching-sources.md 3.5 (read from each channel page on 2026-10-10)."""
     return ["UCcftUjNsimynCrKGFolLRKQ", "UCG72WbiCvdB6JKU-3YRP8Kg", "UCyXiDU5qjfOPxgOPeFWGwKw",
@@ -225,15 +232,19 @@ def youtube_comments(ctx: FetchContext, source: dict, subject: Subject, cursor: 
     seen = set(cursor.get(cursor_key(subject), []))
     for channel in channels:
         r = ctx.client.get("https://www.googleapis.com/youtube/v3/search", source_id="youtube-comments", params={
-            "part": "snippet", "channelId": channel, "q": term, "type": "video", "maxResults": 5, "key": key})
+            "part": "snippet", "channelId": channel, "q": term, "type": "video", "maxResults": 5, "key": key,
+            "order": "date", "publishedAfter": youtube_since(subject)})
         out.requests += 1
         for item in r.json().get("items", []):
             vid = item["id"]["videoId"]
             page = None
-            for _ in range(ctx.max_pages if ctx.backfill else 1):
+            # The ten most relevant comments of each video (one page, also in a backfill): a few
+            # strong voices per video, not hundreds of one-line reactions.
+            for _ in range(1):
                 c = ctx.client.get("https://www.googleapis.com/youtube/v3/commentThreads", source_id="youtube-comments",
-                                   params={"part": "snippet", "videoId": vid, "maxResults": 100, "key": key,
-                                           "order": "time", "pageToken": page})
+                                   params={"part": "snippet", "videoId": vid, "key": key, "order": "relevance",
+                                           "maxResults": get_settings().youtube_comments_per_video,
+                                           "pageToken": page})
                 out.requests += 1
                 body = c.json()
                 for t in body.get("items", []):

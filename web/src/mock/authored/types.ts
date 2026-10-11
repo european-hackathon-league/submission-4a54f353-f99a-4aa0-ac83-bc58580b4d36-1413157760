@@ -6,7 +6,7 @@ import type {
   Case,
   ChatMessage,
   Market,
-  PmContext,
+  CaseStance,
   Powertrain,
   Series,
   SignalKind,

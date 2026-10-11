@@ -30,17 +30,33 @@ from app.config import BACKEND_DIR, get_settings
 DUMP_DEFAULT = BACKEND_DIR / ".data" / "demo.dump"
 REPORTS = BACKEND_DIR / "reports"
 # Fixed ids so the UI can keep them in its .env; names are placeholders.
+# The people are invented (synthetic = true); they match the personas of the UI (web/src/mock/authored/people.ts).
+# (id, name, role, lines, handle, pm_role, region, title, initials, color)
 DEMO_USERS = [
-    ("00000000-0000-4000-8000-000000000001", "Demo PM 5 Series", "pm", ["G60"]),
-    ("00000000-0000-4000-8000-000000000002", "Demo PM 7 Series", "pm", ["G70"]),
-    ("00000000-0000-4000-8000-000000000003", "Demo PM 1 Series", "pm", ["F70"]),
-    ("00000000-0000-4000-8000-000000000004", "Demo engineer", "engineer", []),
-    ("00000000-0000-4000-8000-000000000005", "Demo admin", "admin", []),
-    # UI personas without a line of their own: the cross-series PM and the head of product line
-    # (a PM with every line: admins cannot approve requirements), and a second 5 Series PM (China).
-    ("00000000-0000-4000-8000-000000000006", "Demo PM all lines", "pm", []),
-    ("00000000-0000-4000-8000-000000000007", "Demo PM 5 Series China", "pm", ["G60"]),
+    ("00000000-0000-4000-8000-000000000001", "Lena Hofmann", "pm", ["G60"], "u-lena", "vehicle_pm", "RoW",
+     "Product Manager 5 Series · Rest of World", "LH", "#2563eb"),
+    ("00000000-0000-4000-8000-000000000002", "Daniel Okafor", "pm", ["G70"], "u-daniel", "vehicle_pm", "global",
+     "Product Manager 7 Series", "DO", "#0891b2"),
+    ("00000000-0000-4000-8000-000000000003", "Sofia Rossi", "pm", ["F70"], "u-sofia", "vehicle_pm", "global",
+     "Product Manager 1 Series", "SR", "#ea580c"),
+    ("00000000-0000-4000-8000-000000000004", "Demo engineer", "engineer", [], "u-engineer", None, "global",
+     "Engineering", "EN", "#64748b"),
+    ("00000000-0000-4000-8000-000000000005", "Demo admin", "admin", [], "u-admin", None, "global",
+     "Administrator", "AD", "#475569"),
+    # The cross-series attribute PM works on every line (Baukasten).
+    ("00000000-0000-4000-8000-000000000006", "Jonas Berger", "pm", [], "u-jonas", "attribute_pm", "global",
+     "Product Manager Operating Concept & HMI · cross-series", "JB", "#7c3aed"),
+    ("00000000-0000-4000-8000-000000000007", "Wei Zhang", "pm", ["G60"], "u-wei", "vehicle_pm", "CN",
+     "Product Manager 5 Series · China", "WZ", "#dc2626"),
+    # The head of product line signs off and resolves escalations (a PM of every line).
+    ("00000000-0000-4000-8000-000000000008", "Katrin Maier", "pm", [], "u-katrin", "head", "global",
+     "Head of Product Line · Compact to Luxury", "KM", "#0f766e"),
 ]
+
+
+_U = "00000000-0000-4000-8000-00000000000"
+DEMO_WORKSPACES = {_U + "1": "G60 / USA", _U + "2": "G70 / USA", _U + "3": "F70 / Europe", _U + "6": "G60 / Europe",
+                   _U + "7": "G60 / China", _U + "8": "G60 / USA"}
 
 
 def _is_local() -> bool:
@@ -54,10 +70,36 @@ def _bin(name: str) -> str:
 
 
 def users() -> list[dict]:
+    """Create or refresh the demo users, then open the shared brief of each line
+    (pre-filled from the data, unconfirmed) for its PM outside China."""
+    from app.collab import briefs
+
     with db.transaction() as conn:
-        for uid, name, role, vehicles in DEMO_USERS:
-            audit.insert(conn, "app_user", {"id": uuid.UUID(uid), "name": name, "role": role, "vehicles": vehicles},
-                         actor="seed:demo", rationale="demo user", on_conflict_do_nothing=True)
+        for uid, name, role, vehicles, handle, pm_role, region, title, initials, color in DEMO_USERS:
+            profile = {"name": name, "role": role, "vehicles": vehicles, "handle": handle, "pm_role": pm_role,
+                       "region": region, "title": title, "initials": initials, "color": color, "synthetic": True}
+            if conn.execute("select 1 from app_user where id = %s", (uid,)).fetchone():
+                audit.update(conn, "app_user", {"id": uuid.UUID(uid)}, profile, actor="seed:demo",
+                             rationale="demo user profile")
+            else:
+                audit.insert(conn, "app_user", {"id": uuid.UUID(uid), **profile}, actor="seed:demo",
+                             rationale="demo user")
+        # Where each demo PM starts: the market with the most evidence for their line (the feedback of
+        # G60 and G70 is mostly from the USA), China for the China PM. They change it in the settings.
+        for uid, config_name in DEMO_WORKSPACES.items():
+            cfg = conn.execute("select c.id, (select id from weight_profile p where p.config_id = c.id order by"
+                               " is_default desc, name limit 1) as profile from config c where c.name = %s and c.active",
+                               (config_name,)).fetchone()
+            if cfg and not conn.execute("select 1 from workspace where user_id = %s", (uid,)).fetchone():
+                audit.insert(conn, "workspace", {"user_id": uuid.UUID(uid), "config_id": cfg["id"],
+                                                 "weight_profile_id": cfg["profile"]},
+                             actor="seed:demo", key="user_id", rationale=f"demo workspace {config_name}")
+        for v in conn.execute("select code from vehicle where is_current order by code").fetchall():
+            owner = conn.execute(
+                "select id from app_user where pm_role = 'vehicle_pm' and region <> 'CN' and %s = any(vehicles)"
+                " order by created_at limit 1", (v["code"],)).fetchone()
+            if owner:
+                briefs.ensure_shared(conn, v["code"], owner["id"])
         return conn.execute("select id, name, role, vehicles from app_user order by name").fetchall()
 
 
@@ -99,6 +141,10 @@ def build(fresh: bool = False) -> dict:
 
     step("embed", _embed)
     step("cases", lambda: pipeline.run(initial=True))
+    # Cases that existed before migration 0014 get their card texts and tags (a no-op on a fresh build).
+    from app.cases import backfill
+
+    step("case_cards", backfill.run)
 
     def _score():
         with db.transaction() as conn:

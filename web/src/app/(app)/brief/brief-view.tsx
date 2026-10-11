@@ -26,7 +26,7 @@ import {
 } from "@/contracts";
 import { api } from "@/lib/api/client";
 import { useApi, useApiMutation } from "@/lib/api/hooks";
-import { showBriefValue } from "@/lib/brief";
+import { BRIEF_START, showBriefValue } from "@/lib/brief";
 import { sampleStrategyDocs } from "@/lib/demo";
 import { fromNow } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -170,7 +170,9 @@ function StrategyDoc({ briefId, userId }: { briefId: string; userId: string }) {
 }
 
 function BriefEditor({ brief, shared, isOverlay }: { brief: SeriesBrief; shared: SeriesBrief; isOverlay: boolean }) {
-  const resolvedValues = { ...shared.values, ...(isOverlay ? brief.values : {}) } as BriefValues;
+  const resolvedValues: BriefValues = { ...BRIEF_START, ...shared.values, ...(isOverlay ? brief.values : {}) };
+  // Questions the shared brief does not answer yet: what the form shows for them is saved with it.
+  const unanswered = isOverlay ? [] : BriefFieldKeys.options.filter((k) => shared.values[k] === undefined);
   const [values, setValues] = useState<BriefValues>(resolvedValues);
   const [dirty, setDirty] = useState<Set<BriefFieldKey>>(new Set());
   const [reasons, setReasons] = useState<Partial<Record<BriefFieldKey, string>>>({});
@@ -191,7 +193,7 @@ function BriefEditor({ brief, shared, isOverlay }: { brief: SeriesBrief; shared:
     setClear(c);
   };
   const body = () => ({
-    values: Object.fromEntries([...dirty].filter((k) => !clear.has(k)).map((k) => [k, values[k]])) as Partial<BriefValues>,
+    values: Object.fromEntries([...new Set([...dirty, ...unanswered])].filter((k) => !clear.has(k)).map((k) => [k, values[k]])) as Partial<BriefValues>,
     reasons,
     confirm: unconfirmed,
     clear: [...clear],

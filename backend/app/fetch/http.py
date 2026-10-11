@@ -89,11 +89,14 @@ class PoliteClient:
         self._last[host] = time.monotonic()
 
     def get(self, url: str, *, source_id: str, params: dict | None = None, headers: dict | None = None,
-            retries: int = 3) -> Response:
+            retries: int = 3, official_api: bool = False) -> Response:
+        """``official_api``: a documented public API meant for programs (e.g. the MediaWiki
+        Action API). robots.txt speaks to crawlers of pages, so it is not consulted there."""
         if self.used >= self.budget:
             raise BudgetExhausted(f"daily request budget of {self.budget} used")
+        params = {k: v for k, v in (params or {}).items() if v is not None}  # an unset parameter is not sent
         full = str(httpx.URL(url, params=params)) if params else url
-        if not self._allowed(full):
+        if not official_api and not self._allowed(full):
             raise Disallowed(full)
         host = urlsplit(full).netloc
         attempt = 0

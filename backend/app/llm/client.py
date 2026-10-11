@@ -126,6 +126,8 @@ class OpenAILLM:
 
         model = model or self._settings.llm_model_for(prompt.name)
         system, user = prompt.render(**variables)
+        effort = self._settings.llm_reasoning_for(prompt.name)
+        options = {"reasoning_effort": effort} if effort else {}
 
         @retry(
             retry=retry_if_exception_type((RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)),
@@ -141,6 +143,7 @@ class OpenAILLM:
                     "type": "json_schema",
                     "json_schema": {"name": schema.__name__, "schema": strict_schema(schema), "strict": True},
                 },
+                **options,
             )
 
         response = call()

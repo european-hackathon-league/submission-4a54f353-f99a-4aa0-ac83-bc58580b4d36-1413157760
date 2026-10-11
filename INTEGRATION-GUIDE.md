@@ -1,5 +1,13 @@
 # Integration guide: frontend (`web/`) ↔ backend (`backend/`)
 
+> **Status: finished (2026-10-11).** The integration this guide plans is done. It is kept as the record of the gap analysis; do not work from its plan any more.
+>
+> - **Approach taken:** option 1 and option 2 of section 8.3 together. The adapter in `web/src/backend` serves all 67 endpoints of the UI contract from the API, and the backend got the tables and endpoints for everything the UI needed (migrations 0014 to 0016, `backend/app/collab/`, `backend/app/api/routers/workspace.py`). The JSON sidecar and the persona table no longer exist.
+> - **The decisions of section 8.5** are taken and recorded in `changes.md`, section "UI alignment" (U.1 to U.18): requirement statuses extended in the backend, structured requirement editing with versions, brand fit stays a multiplier, case workflow and outcomes as columns of `case_vehicle`, free chat on the RAG agent, signals shown by their id.
+> - **Out of date below:** the "Backend today" columns of section 5, the coverage table of 8.2, the plan of 8.4 and the gotchas about the sidecar describe the state before the work. Sections 1, 3, 4 and 6 (what the UI is and which rules it keeps) still hold.
+> - **What is still open** (UI limits on real data, fetch sources, documents to update): `HANDOFF.md`.
+> - **How to run it:** `HANDOFF.md`, section "How to run". `npm run adapter-flow` walks one case from open to exported through the adapter.
+
 **For:** whoever (human or AI agent) connects the synthetic-data frontend to Ghassen's real backend.
 **State as of 11.10.2026, 02:30:** frontend on branch `feature/frontend-demo` ([PR #5](https://github.com/ghassenzaara/BMW-Product-Management-Challenge/pull/5) into `main`); backend on `main` (phases 0 to 10 done, see `plan.md`).
 

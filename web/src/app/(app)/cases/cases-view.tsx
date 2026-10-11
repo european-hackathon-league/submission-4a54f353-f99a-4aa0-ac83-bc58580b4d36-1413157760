@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { ArrowDown, ArrowUp, Columns3, Eye, EyeOff, ListOrdered, Minus, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import {
   CarArea,
@@ -160,9 +160,12 @@ function Board({ cases, scores, showObserved }: { cases: Case[]; scores: Map<str
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [pending, setPending] = useState<{ c: Case; action: UiCaseAction } | null>(null);
   const [decide, setDecide] = useState<Case | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const active = activeId ? cases.find((x) => x.id === activeId) : undefined;
   const columns = CaseStates.options.filter((s) => showObserved || s !== "observed");
 
   const onDragEnd = (e: DragEndEvent) => {
+    setActiveId(null);
     const c = cases.find((x) => x.id === e.active.id);
     const to = e.over?.id as CaseState | undefined;
     if (!c || !to || to === c.state) return;
@@ -173,13 +176,21 @@ function Board({ cases, scores, showObserved }: { cases: Case[]; scores: Map<str
   };
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+    <DndContext sensors={sensors} onDragStart={(e) => setActiveId(String(e.active.id))} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
       <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-4">
         {columns.map((state) => {
           const col = cases.filter((c) => c.state === state).sort((a, b) => (scores.get(b.id)?.score ?? 0) - (scores.get(a.id)?.score ?? 0));
           return <Column key={state} state={state} cases={col} scores={scores} />;
         })}
       </div>
+      {/* The card follows the pointer above the board; moved in place it was cut off at the edge of its scrolling column. */}
+      <DragOverlay dropAnimation={null}>
+        {active && (
+          <div className="w-56 cursor-grabbing">
+            <CaseCard c={active} score={scores.get(active.id)?.score} rank={scores.get(active.id)?.rank} dragging />
+          </div>
+        )}
+      </DragOverlay>
       {pending && <CaseActionDialog c={pending.c} action={pending.action} onOpenChange={(o) => !o && setPending(null)} />}
       <Dialog open={!!decide} onOpenChange={(o) => !o && setDecide(null)}>
         <DialogContent>
@@ -238,10 +249,10 @@ function Column({ state, cases, scores }: { state: CaseState; cases: Case[]; sco
 }
 
 function DraggableCard({ c, score, rank }: { c: Case; score?: number; rank?: number }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: c.id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: c.id });
   return (
-    <div ref={setNodeRef} style={transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50, position: "relative" } : undefined} {...attributes} {...listeners}>
-      <CaseCard c={c} score={score} rank={rank} dragging={isDragging} />
+    <div ref={setNodeRef} className={cn(isDragging && "opacity-40")} {...attributes} {...listeners}>
+      <CaseCard c={c} score={score} rank={rank} />
     </div>
   );
 }

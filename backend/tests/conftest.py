@@ -63,11 +63,18 @@ def offline_settings(tmp_path_factory):
     raw records go to a temporary folder, the API runs in dev auth mode."""
     from app.config import get_settings
 
+    from app.llm import cache
+    from app.seed import classify
+
     s = get_settings()
     saved = (s.storage_backend, s.raw_local_dir, s.auth_mode, s.openai_api_key)
     s.storage_backend, s.raw_local_dir = "local", tmp_path_factory.mktemp("raw-records")
     s.auth_mode, s.openai_api_key = "dev", ""
+    # Answers of the fake LLM must never reach the shared cache the real build reads (backend/.data/llm_cache).
+    caches = (cache.CACHE_DIR, classify.CACHE_DIR)
+    cache.CACHE_DIR = classify.CACHE_DIR = tmp_path_factory.mktemp("llm-cache")
     yield
+    cache.CACHE_DIR, classify.CACHE_DIR = caches
     s.storage_backend, s.raw_local_dir, s.auth_mode, s.openai_api_key = saved
 
 

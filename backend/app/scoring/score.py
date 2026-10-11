@@ -159,9 +159,11 @@ def references(conn, config: dict, cases: list[dict]) -> dict:
             "max_customers": max_customers}
 
 
-def score_config(conn, config_id, *, profile_ids: list | None = None, states=("open", "confirmed", "observed"),
+def score_config(conn, config_id, *, profile_ids: list | None = None, states=("open", "confirmed"),
                  run_id=None, case_ids: list[str] | None = None) -> int:
-    """Score every case of the config's vehicle under each (or the given) weight profile."""
+    """Score the open and confirmed cases of the config's vehicle under each (or the
+    given) weight profile. Observed cases are not ranked and not scored (they were
+    84 % of all score rows); a case is scored when it opens."""
     config = conn.execute("select * from config where id = %s", (config_id,)).fetchone()
     profiles = conn.execute("select * from weight_profile where config_id = %s" +
                             (" and id = any(%s)" if profile_ids else ""),
@@ -183,6 +185,15 @@ def score_config(conn, config_id, *, profile_ids: list | None = None, states=("o
     audit.insert_many(conn, "case_score", rows, actor=ACTOR, run_id=run_id,
                       rationale="case score from the factor breakdown")
     return len(rows)
+
+
+def score_case(conn, case_id: str, vehicle: str | None = None) -> int:
+    """Score one case for every active config of its lines (or of one line): when a PM
+    opens it, takes it over or pulls it into a line."""
+    rows = conn.execute("select distinct cfg.id from config cfg join case_vehicle cv on cv.vehicle = cfg.vehicle"
+                        " where cv.case_id = %s and cfg.active and (%s::text is null or cfg.vehicle = %s)",
+                        (case_id, vehicle, vehicle)).fetchall()
+    return sum(score_config(conn, r["id"], case_ids=[case_id]) for r in rows)
 
 
 def compare_profiles(conn, config_id, top_n: int = 10) -> dict:

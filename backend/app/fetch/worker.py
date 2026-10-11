@@ -92,15 +92,25 @@ def _store(conn, result: FetchResult, actor: str, run_id) -> list[dict]:
 def run_agents(conn, records: list[dict], run_id) -> dict:
     from app.signals import service
 
-    totals = {"valid": 0, "quarantined": 0, "dropped": 0}
+    totals = {"valid": 0, "quarantined": 0, "dropped": 0, "not_relevant": 0}
     for record in records:
         proposals, model, prompt_version = agents.extract(record)
-        if not proposals:
-            continue
-        out = service.ingest(conn, proposals, actor=agents.agent_for(record), run_id=run_id,
-                             prompt_version=prompt_version, model=model)
-        for k in totals:
-            totals[k] += out[k]
+        kept = 0
+        if proposals:
+            out = service.ingest(conn, proposals, actor=agents.agent_for(record), run_id=run_id,
+                                 prompt_version=prompt_version, model=model)
+            for k in ("valid", "quarantined", "dropped"):
+                totals[k] += out[k]
+            kept = out["valid"] + out["quarantined"]
+        if kept == 0 and model is not None:
+            # Relevance filter: the LLM read the record and found no statement about a feature of
+            # the line or its competitors. Its text is not kept; the row stays as a marker (so the
+            # record is not fetched and read again) and the run counts it. Without an LLM nothing
+            # is judged, so nothing is purged.
+            audit.tombstone(conn, "source_record", {"record_id": record["record_id"]},
+                            ("text_original", "text_en", "title"), actor=agents.agent_for(record),
+                            rationale="relevance filter: no statement about a tracked feature; text not kept")
+            totals["not_relevant"] += 1
     return totals
 
 
@@ -156,7 +166,8 @@ def fetch_source(conn_factory, client: PoliteClient, source: dict, subjects: lis
         conn.execute("update agent_run set status = %s, ended_at = now(), error = %s, records_fetched = %s,"
                      " signals_valid = %s, signals_quarantined = %s, params = params || %s where id = %s",
                      (status, error, summary["records"], sig.get("valid", 0), sig.get("quarantined", 0),
-                      json.dumps({"requests": summary["requests"], "notes": summary["notes"][:20]}), run_id))
+                      json.dumps({"requests": summary["requests"], "notes": summary["notes"][:20],
+                                  "not_relevant": sig.get("not_relevant", 0)}), run_id))
         if status == "failed":
             audit.insert(conn, "notification", {"type": "run_failed", "object_type": "agent_run",
                                                 "object_id": str(run_id), "message": f"fetch {sid} failed: {exc_text(error)}"},
