@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     youtube_api_key: str = ""
     fetch_user_agent: str = ("BMW-PM-Research-Prototype/0.1"
                              " (+https://github.com/ghassenzaara/BMW-Product-Management-Challenge)")
-    fetch_daily_request_budget: int = 2000
+    fetch_daily_request_budget: int = 500
 
     def model_post_init(self, __context) -> None:
         # Values still holding the .env.example placeholders count as not set.
@@ -68,6 +68,14 @@ class Settings(BaseSettings):
             self.supabase_service_role_key = self.supabase_secret_key
         if self.auth_mode in ("auto", ""):
             self.auth_mode = "supabase" if self.supabase_url else "dev"
+
+    # Model per prompt (changes.md 8.11): high-volume, closed-list work on the chat model,
+    # few high-stakes texts on the strong model. Override with OPENAI_STRONG_TASKS.
+    openai_strong_tasks: str = "requirement_writer,case_tags"
+
+    def llm_model_for(self, task: str) -> str:
+        strong = {t.strip() for t in self.openai_strong_tasks.split(",") if t.strip()}
+        return self.openai_strong_model if task in strong else self.openai_chat_model
 
     @property
     def db_url(self) -> str:

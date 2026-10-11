@@ -32,7 +32,8 @@ from app.fetch.records import text_record
 from app.fetch.subjects import Subject, author_hash
 
 _WS = re.compile(r"\s+")
-MAX_ARTICLES = 15  # per site and run (incremental); a backfill takes up to ctx.max_pages
+MAX_ARTICLES = 10  # per site and run (incremental); a backfill takes up to ctx.max_pages
+INCREMENTAL_THREADS = 10  # forum threads per board and daily run
 GERMAN_MONTHS = {m: i for i, m in enumerate(["januar", "februar", "märz", "april", "mai", "juni", "juli", "august",
                                               "september", "oktober", "november", "dezember"], start=1)}
 ENGLISH_MONTHS = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct",
@@ -157,12 +158,16 @@ def motor_talk(ctx: FetchContext, source: dict, subject: Subject, cursor: dict) 
             threads = parse_motortalk_list(r.text, base) if r.status == 200 else []
             if not threads:
                 break
-            for t in threads:
+            # The board lists threads by latest activity: a daily run reads the 10 most active
+            # threads, first page and (if longer) the last page where new posts land.
+            for t in threads if ctx.backfill else threads[:INCREMENTAL_THREADS]:
                 turl, tpage, last = t["url"], 1, 1
-                while tpage <= last and tpage <= (ctx.max_pages if ctx.backfill else 3):
+                while tpage <= last and tpage <= ctx.max_pages:
                     tr = ctx.client.get(turl + (f"?page={tpage}" if tpage > 1 else ""), source_id="motor-talk")
                     out.requests += 1
                     title, posts, last = parse_motortalk_thread(tr.text)
+                    if not ctx.backfill and tpage == 1 and last > 2:
+                        tpage = last - 1  # jump to the last page (incremented below)
                     for p in posts:
                         out.records.append(text_record(
                             source=source, subject=subject, record_id=f"motor-talk-post-{p['id']}", response=tr,
@@ -224,7 +229,7 @@ def pistonheads(ctx: FetchContext, source: dict, subject: Subject, cursor: dict)
                 term = names_subject(t["title"], terms)
                 if not term:
                     continue
-                for offset in range(0, 20 * (ctx.max_pages if ctx.backfill else 2), 20):
+                for offset in range(0, 20 * (ctx.max_pages if ctx.backfill else 1), 20):
                     tr = ctx.client.get(f"{t['url']}&i={offset}", source_id="pistonheads")
                     out.requests += 1
                     posts = parse_pistonheads_topic(tr.text)

@@ -21,13 +21,13 @@ Every phase ends with a commit `Completed phase N: <title>` pushed to `main`, an
 
 ## Open issues
 
-- Phase 2 checkpoint: the review CSVs in `backend/seed/review/` wait for the team review (option-list extraction, study attribute -> topic, option item -> topic). Car areas and topics are no longer reviewed there: they come from `taxonomy/`.
+- Phase 2 checkpoint closed on 2026-10-11: the user approved every row of the review CSVs (changes.md R2.1).
 - 666 feedback rows without a Feedback Type stay quarantined, and 2,557 rows without a usable VFC topic stay without a topic and in no case, until the LLM classifier runs (needs `OPENAI_API_KEY`; the case pipeline then classifies them before grouping).
 - Taxonomy eval with the LLM (dev, then test once) is pending the key.
 - Supabase Auth: production needs `app_user` rows for the real users (ids = Supabase auth user ids); `python -m app.demo users` only creates demo users.
 - Market conflicts dropped from 1 to 0 on the seed data: BMW's level-3 labels put likes mostly under `function` and usability complaints under `usability`, so the two sides of a conflict can sit in different cases. To check with the team.
 - Supabase is configured in `backend/.env` (session pooler, eu-west-3, secret key) and reachable; the first build there (`python -m app.demo build`) waits for the user's go. The OpenAI key is still missing: LLM steps run with the offline fallbacks.
-- Phase 8 checkpoint: show `backend/reports/fetch_plan.md` to the user before the first real backfill; Reddit OAuth and a YouTube Data API key are still missing.
+- Phase 8 checkpoint: `backend/reports/fetch_plan.md` now plans about 336 requests per day on average (cadence per source, budget 500, changes.md 8.8); the first real backfill still needs the user's go. Reddit is disabled (8.9); the YouTube key is set.
 
 
 ## Context

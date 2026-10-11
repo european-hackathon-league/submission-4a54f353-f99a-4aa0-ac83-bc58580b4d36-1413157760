@@ -132,6 +132,8 @@ def youtube_transcripts(ctx: FetchContext, source: dict, subject: Subject, curso
     except ImportError as exc:
         raise NotConfigured("youtube-transcripts needs the youtube-transcript-api library") from exc
     out = FetchResult()
+    if subject.kind != "vehicle":
+        return out  # search quota: BMW lines only, as youtube-comments
     term = (subject.safe_terms("en") or [subject.label])[0]
     seen = set(cursor.get(cursor_key(subject), []))
     api = YouTubeTranscriptApi()

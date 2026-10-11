@@ -124,7 +124,7 @@ class OpenAILLM:
     def structured(self, prompt: Prompt, schema: type[T], model: str | None = None, **variables: Any) -> LLMResult[T]:
         from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
 
-        model = model or self._settings.openai_chat_model
+        model = model or self._settings.llm_model_for(prompt.name)
         system, user = prompt.render(**variables)
 
         @retry(

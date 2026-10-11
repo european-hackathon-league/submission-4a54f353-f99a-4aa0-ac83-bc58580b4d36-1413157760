@@ -150,6 +150,10 @@ def seed_all(force: bool = False) -> dict:
     out["options"] = _run("seed:option_list", options, force=force)
     out["feedback"] = _run("seed:feedback", loaders.load_feedback, force=force)
     out["configs"] = _run("seed:configs", step_configs, force=force)
+    out["review_confirmed"] = _run("seed:review_confirmed",
+                                   lambda conn, run: {"records": catalog.confirm_reviewed(conn)}, force=force)
+    out["source_decisions"] = _run("seed:source_decisions",
+                                   lambda conn, run: {"records": registry.apply_source_decisions(conn)}, force=force)
     out["slugs_extra"] = _run("seed:slugs_extra", lambda conn, run: {"records": registry.load_extra_slugs(conn)}, force=force)
     return out
 

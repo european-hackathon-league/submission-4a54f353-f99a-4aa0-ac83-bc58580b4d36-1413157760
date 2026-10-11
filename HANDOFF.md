@@ -14,8 +14,8 @@ Phases 0 to 10 of `plan.md`, each with a "Completed phase N" commit (7, 8, 9, 10
 
 1. **Supabase build.** `backend/.env` is set and both the database (session pooler, eu-west-3) and storage were reached; the database is still empty. Run `cd backend && uv run python -m app.demo build` (no `--fresh`: it is refused on Supabase anyway), then `uv run python -m app.demo e2e "G60 / USA"`. About 10 minutes. Ask the user before running it if they have not said go.
 2. **OpenAI key** (`OPENAI_API_KEY`): then `uv run python -m app.cases.pipeline` (classifies the 666 quarantined and 2,557 topic-less rows first), re-embed (`app.signals.embed --provider-change`), re-tune the case threshold (`app.cases.tune`), `app.signals.eval_taxonomy --split dev` (then `--split test` once), rebuild the RAG index.
-3. **Phase 8 checkpoint:** show `backend/reports/fetch_plan.md` (about 4,500 requests per incremental run, about 150,000 for the backfill) before the first real `python -m app.fetch.worker --backfill`. Reddit OAuth and a YouTube Data API key are missing.
-4. Team review of the phase 2 CSVs in `backend/seed/review/`.
+3. **Phase 8 checkpoint:** `backend/reports/fetch_plan.md` plans about 336 requests per day on average (cadence per source, budget 500) and about 29,000 for the backfill, spread by the budget; ask before the first real run. Reddit is disabled (no API access); the YouTube key is set.
+4. Done: the user approved every row of the phase 2 review CSVs (changes.md R2.1).
 5. Real users: `app_user` rows with the Supabase auth user ids (demo users have fixed placeholder ids).
 
 ## How to run
