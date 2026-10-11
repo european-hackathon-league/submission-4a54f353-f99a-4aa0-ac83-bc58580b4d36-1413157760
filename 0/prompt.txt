@@ -1,0 +1,17 @@
+read the handoff.md file and execute the task there
+
+---
+
+based on your reading these signals will generate how many cases
+
+---
+
+please choose another branch that brange i merged the pull request
+
+---
+
+are you running the openai local server to run it or what?
+
+---
+
+go on commit to another branch and create every time a pull request
